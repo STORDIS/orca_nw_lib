@@ -1,5 +1,8 @@
+
+
 plugins {
 	id 'java'
+  id 'application'
 	id 'org.springframework.boot' version '3.0.1'
 	id 'io.spring.dependency-management' version '1.1.0'
 	id 'com.google.protobuf' version '0.9.1'
@@ -8,6 +11,7 @@ plugins {
 group = 'orca.stordis.backend'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '19'
+def grpcVersion = '1.51.0'
 
 repositories {
 	mavenCentral()
@@ -19,12 +23,13 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 	//grpc
-	runtimeOnly 'io.grpc:grpc-netty-shaded:1.51.0'
-	implementation 'io.grpc:grpc-protobuf:1.51.0'
-	implementation 'io.grpc:grpc-stub:1.51.0'
+	implementation "io.grpc:grpc-netty:${grpcVersion}"
+  implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+  implementation "io.grpc:grpc-stub:${grpcVersion}"
 	compileOnly 'org.apache.tomcat:annotations-api:6.0.53' // necessary for Java 9+
-}
 
+}
+mainClassName = 'orca.stordis.backend.orca_backend.GrpcClient'
 tasks.named('test') {
 	useJUnitPlatform()
 }
@@ -35,7 +40,7 @@ protobuf {
   }
   plugins {
     grpc {
-      artifact = 'io.grpc:protoc-gen-grpc-java:1.51.0'
+      artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
     }
   }
   generateProtoTasks {
