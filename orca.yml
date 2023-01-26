@@ -1,0 +1,5 @@
+device_ip : 10.10.130.13
+username : admin
+password : YourPaSsWoRd
+grpc_port : 8080
+
