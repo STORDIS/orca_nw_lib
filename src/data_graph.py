@@ -1,27 +1,47 @@
+import json
 from neo4j import GraphDatabase
+from src import logging
 
-class HelloWorldExample:
+from utils import settings
+from constants import neo4j_url, neo4j_password,neo4j_user  
+_logger=logging.getLogger(__name__)
 
-    def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+driver = GraphDatabase.driver(settings.get(neo4j_url), 
+                                  auth=(settings.get(neo4j_user),settings.get(neo4j_password)))
+session=driver.session()
 
-    def close(self):
-        self.driver.close()
+def switch_present_in_db(tx,switch_ip):
+    op=tx.run("MATCH (s:Switch) WHERE s.ip = $switch_ip return s",switch_ip=switch_ip)
+    for o in op:
+        if o.data().get('s').get('ip') == switch_ip:
+            return True
+    return False
+     
 
-    def print_greeting(self, message):
-        with self.driver.session() as session:
-            greeting = session.execute_write(self._create_and_return_greeting, message)
-            print(greeting)
-
-    @staticmethod
-    def _create_and_return_greeting(tx, message):
-        result = tx.run("CREATE (a:Greeting) "
-                        "SET a.message = $message "
-                        "RETURN a.message + ', from node ' + id(a)", message=message)
-        return result.single()[0]
+def clean_db(tx):
+    tx.run("MATCH (s) DETACH DELETE s")
 
 
-if __name__ == "__main__":
-    greeter = HelloWorldExample("bolt://localhost:7687", "neo4j", "Test1234")
-    greeter.print_greeting("hello, world")
-    greeter.close()
+def create_switch(tx, switch_ip):
+    tx.run("CREATE (s:Switch {ip: $ip})", ip=switch_ip)
+    
+def create_switch_with_rel(tx, switch_ip,nbr):#
+     tx.run("MATCH (s:Switch) WHERE s.ip = $ip "
+                "CREATE (s)-[:LLDP]->(:Switch {ip: $nbr})",
+                ip=switch_ip, nbr=nbr)
+     
+def create_rel(tx,from_switch_ip,to_switch_ip):
+    tx.run('MATCH (f:Switch {ip:$from_switch_ip}) ,(t:Switch {ip:$to_switch_ip}) MERGE (f)-[:LLDP]->(t)'
+           ,from_switch_ip=from_switch_ip,to_switch_ip=to_switch_ip)
+    
+    
+def insert_topology_in_db(topology):
+    driver.session().execute_write(clean_db)
+    for switch_ip,neighbors in topology.items():
+        if not session.execute_read(switch_present_in_db,switch_ip):
+            driver.session().execute_write(create_switch,switch_ip)
+        #create its neighbor
+        for nbr in neighbors:
+            if not session.execute_read(switch_present_in_db,nbr):
+               driver.session().execute_write(create_switch_with_rel,switch_ip,nbr)
+            driver.session().execute_write(create_rel,switch_ip,nbr)    

@@ -1,5 +1,10 @@
-device_ip : 10.10.130.13
+device_ip : 10.10.130.144 # device_ip to start discovery with.
 username : admin
 password : YourPaSsWoRd
 grpc_port : 8080
+
+##Neo4j
+neo4j_url : "bolt://localhost:7687"
+neo4j_user : "neo4j"
+neo4j_password : "password"
 

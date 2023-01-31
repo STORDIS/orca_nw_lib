@@ -124,6 +124,10 @@ def get_neighbours(device_ip):
                     neighbors.append(nbr_addr.split(',')[0])
     return neighbors
 
+#topology={'10.10.130.144': ['10.10.130.15', '10.10.130.13'], 
+#          '10.10.130.15': ['10.10.130.13', '10.10.130.14', '10.10.130.144'], 
+#          '10.10.130.13': ['10.10.130.15', '10.10.130.144'], 
+#          '10.10.130.14': ['10.10.130.15']}
 topology={}
 def create_lldp_topo(ip):
     #discovered_devices.add(ip)
@@ -135,3 +139,7 @@ def create_lldp_topo(ip):
             
 create_lldp_topo(settings.get(device_ip))
 print(topology)
+
+from data_graph import insert_topology_in_db
+insert_topology_in_db(topology)
+
