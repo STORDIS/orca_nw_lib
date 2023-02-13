@@ -1,9 +1,9 @@
 import json
 from neo4j import GraphDatabase
-from src import logging
+from discovery.processor.sonic_grpc import logging
 
-from utils import settings
-from constants import neo4j_url, neo4j_password,neo4j_user  
+from discovery.processor.utils import settings
+from discovery.processor.constants import neo4j_url, neo4j_password,neo4j_user  
 _logger=logging.getLogger(__name__)
 
 driver = GraphDatabase.driver(settings.get(neo4j_url), 

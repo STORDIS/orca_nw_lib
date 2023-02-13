@@ -1,3 +1,4 @@
+import enum
 import json
 import re
 import ssl
@@ -6,12 +7,12 @@ from typing import List
 
 import grpc
 
-from gnmi_pb2 import GetRequest, Path, PathElem
-from gnmi_pb2_grpc import gNMIStub
-from gnmi_pb2 import JSON_IETF
-from src import logging
-from utils import settings
-from constants import device_ip,grpc_port, username,password
+from discovery.processor.generated.gnmi_pb2 import CapabilityRequest, GetRequest, Path, PathElem
+from discovery.processor.generated.gnmi_pb2_grpc import gNMIStub
+from discovery.processor.generated.gnmi_pb2 import JSON_IETF
+from discovery.processor.utils import settings
+from discovery.processor.constants import device_ip,grpc_port, username,password
+from discovery.processor.utils import logging
 _logger=logging.getLogger(__name__)
 
 stubs={}
@@ -48,6 +49,8 @@ def send_gnmi_get(device_ip,path:Path):
     op={}
     try:
         resp = device_gnmi_stub.Get(GetRequest(path=[path], type=GetRequest.ALL, encoding=JSON_IETF),) if device_gnmi_stub else _logger.error(f"no gnmi stub found for device {device_ip}")
+        #resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
+        #print(resp_cap)
         for u in resp.notification[0].update :
             op = u.val.json_ietf_val.decode("utf-8")
             op = json.loads(op)
@@ -79,7 +82,7 @@ def create_gnmi_path(path_arr:List[str])->List[Path]:
 
             else:
                 gnmi_path.elem.add(name=pe_entry)
-            path.append(gnmi_path)
+            paths.append(gnmi_path)
     return paths
 
 
@@ -115,6 +118,7 @@ def get_neighbours(device_ip):
                                                        PathElem(name="interfaces", ),
                                                        PathElem(name="interface", ),
                                                        ])
+        
         resp=send_gnmi_get(device_ip, path_lldp_intfs)
 
         for intfs in resp.get('openconfig-lldp:interface') or []:
@@ -124,22 +128,36 @@ def get_neighbours(device_ip):
                     neighbors.append(nbr_addr.split(',')[0])
     return neighbors
 
-#topology={'10.10.130.144': ['10.10.130.15', '10.10.130.13'], 
-#          '10.10.130.15': ['10.10.130.13', '10.10.130.14', '10.10.130.144'], 
-#          '10.10.130.13': ['10.10.130.15', '10.10.130.144'], 
-#          '10.10.130.14': ['10.10.130.15']}
 topology={}
-def create_lldp_topo(ip):
+
+class discovery_status(enum.Enum):
+    running=1
+    completed=2
+    never_ran=2
+
+def read_lldp_topo(ip):
     #discovered_devices.add(ip)
     if ip not in topology.keys(): 
         nbrs=get_neighbours(ip)
         topology[ip]=nbrs
         for nbr in nbrs or []:
-            create_lldp_topo(nbr)
+            read_lldp_topo(nbr)
             
-create_lldp_topo(settings.get(device_ip))
-print(topology)
 
-from data_graph import insert_topology_in_db
-insert_topology_in_db(topology)
+from discovery.processor.data_graph import insert_topology_in_db
 
+def discover_topology():
+    _logger.info("Discovery Started.")
+    
+    import ipaddress
+    ip_or_nw=settings.get(device_ip)
+    try:
+        ips=ipaddress.ip_network(ip_or_nw)
+        for ip in ips:
+            read_lldp_topo(str(ip))
+        _logger.info('Discovered topology using {0}: {1}'.format(ip_or_nw,topology))
+    except ValueError as ve:
+        _logger.error(ve)
+
+    return topology
+    
