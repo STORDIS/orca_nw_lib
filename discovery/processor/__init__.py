@@ -10,7 +10,7 @@ load_config(dname)
 
 
 
-from discovery.processor.sonic_grpc import discover_topology
+from discovery.processor.gnmi_util import discover_topology
 import threading
 t = threading.Thread(target=discover_topology, args=(), kwargs={})
 t.setDaemon(True)

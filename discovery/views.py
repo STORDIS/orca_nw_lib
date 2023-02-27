@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from discovery.processor.sonic_grpc import topology
+from discovery.processor.gnmi_util import topology
 
 # Create your views here.
 

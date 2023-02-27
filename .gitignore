@@ -1,7 +1,10 @@
 dist
 proto/
-src/gnmi_pb2*
-src/gnmi_ext_pb2*
+github
+github.com/
+openconfig_models/
+gnmi_pb2*
+gnmi_ext_pb2*
 src/__pycache__
 logs/
 .venv
@@ -10,6 +13,8 @@ logs/
 bin
 *.log
 .DS_Store
+__pychache__
 */__pycache__
 */*/__pycache__
+*/*/*/__pycache__
 */migrations

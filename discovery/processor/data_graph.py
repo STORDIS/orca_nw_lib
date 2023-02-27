@@ -1,6 +1,6 @@
 import json
 from neo4j import GraphDatabase
-from discovery.processor.sonic_grpc import logging
+from discovery.processor.gnmi_util import logging
 
 from discovery.processor.utils import settings
 from discovery.processor.constants import neo4j_url, neo4j_password,neo4j_user  
