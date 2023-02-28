@@ -11,7 +11,6 @@ from gnmi_pb2_grpc import gNMIStub
 from discovery.processor.utils import settings
 from discovery.processor.constants import device_ip,grpc_port, username,password,conn_timeout
 from discovery.processor.utils import logging
-from discovery.processor.generated.openconfig.openconfig_system import yc_state_openconfig_system__system_state
 _logger=logging.getLogger(__name__)
 
 stubs={}

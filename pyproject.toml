@@ -1,13 +1,13 @@
 [tool.poetry]
 version = "1.0.0"
-name = "src"
+name = "discovery"
 description = "orca backend serves as nms"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
-
-[tool.poetry.scripts]
-compile_proto = "build_scripts.gnerate_code:compile_gnmi_proto"
-#compile_openconfig = "compile_openconfig.py"
-
+##Can not include git ignored directories recursively hence need to do like this
+include = ["gnmi*.py*", "github/*/*/*/*/*/*.py*","github.com/*/*/*/*/*.py*"]
+packages = [
+    { include = "discovery"},
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
