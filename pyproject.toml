@@ -5,9 +5,9 @@ description = "orca backend serves as nms"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
 ##Can not include git ignored directories recursively hence need to do like this
 include = ["gnmi*.py*", "github/*/*/*/*/*/*.py*","github.com/*/*/*/*/*.py*"]
-packages = [
-    { include = "discovery"},
-]
+
+[packages]
+include = ["discovery","orca_netbox"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
