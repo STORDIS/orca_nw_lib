@@ -53,7 +53,7 @@ def compile_openconfig_yang():
     for item in os.listdir(openconfig_dir):
         file_nname_no_ext=os.path.splitext(os.path.basename(item))[0]
         if item.endswith('.yang'):
-            cmd=f'pyang --plugindir .venv/lib/python3.10/site-packages/pyangbind/plugin -f pybind -p {openconfig_dir} -o {openconfig_dir}/{file_nname_no_ext}.py {dst_yang}'
+            cmd=f'pyang --plugindir .venv/lib/python3.10/site-packages/pyangbind/plugin -f pybind -p {openconfig_dir} -o {openconfig_dir}/{file_nname_no_ext}.py {openconfig_dir}/{item}'
             os.popen(cmd)
 
     ## Cleanup everything except python files
@@ -81,7 +81,7 @@ def cleanup_generated_code():
         shutil.rmtree(gnmi_proto_dir)
         shutil.rmtree('./github')
         shutil.rmtree('./github.com')
-        fileList = glob.glob('gnmi*.py*')
+        fileList = glob.glob('gnmi_pb2*.py*')
         for f in fileList:
             try:
                 os.remove(f)

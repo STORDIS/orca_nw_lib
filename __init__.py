@@ -1,6 +1,6 @@
 
 import os
-from discovery.processor.utils import load_config,load_logging_config
+from utils import load_config,load_logging_config
 
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
@@ -10,8 +10,7 @@ load_config(dname)
 
 
 
-from discovery.processor.gnmi_util import discover_topology
+from gnmi_util import discover_topology
 import threading
 t = threading.Thread(target=discover_topology, args=(), kwargs={})
-t.setDaemon(True)
 t.start()
