@@ -6,7 +6,7 @@ import sys
 from typing import List
 
 import grpc
-from gnmi_pb2 import CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF
+from gnmi_pb2 import CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF, SetRequest, TypedValue, Update
 from gnmi_pb2_grpc import gNMIStub
 from utils import settings
 from constants import device_ip,grpc_port, username,password,conn_timeout
@@ -69,28 +69,34 @@ def send_gnmi_get(device_ip,path:list[Path]):
     return op
 
 
-def send_gnmi_set(device_ip,path:list[Path]):
+def send_gnmi_set_example():
     op={}
     try:
-        device_gnmi_stub=getGrpcStubs(device_ip)
+        ip="10.10.130.12"
+        device_gnmi_stub=getGrpcStubs(ip)
+
+        path_intf_status_path = Path(target='openconfig',
+                           origin='openconfig-interfaces', 
+                           elem=[PathElem(name="interfaces", ),
+                                 PathElem(name="interface",key={"name":"Ethernet47"}),
+                                 PathElem(name="config"),
+                                 PathElem(name="enabled"),
+                                ])
+        
+        update=Update(path=path_intf_status_path,val=TypedValue(json_ietf_val=bytes("{\"openconfig-interfaces:enabled\": false}","utf-8")))
+        set_req=SetRequest(update=[update])
         try:
-            resp = device_gnmi_stub.set(GetRequest(path=path, 
-                                                type=GetRequest.ALL, 
-                                                encoding=JSON_IETF),timeout=15) if device_gnmi_stub else _logger.error(f"no gnmi stub found for device {device_ip}")
-            #resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
-            #print(resp_cap)
-            for u in resp.notification[0].update :
-                op = u.val.json_ietf_val.decode("utf-8")
-                op = json.loads(op)
+            resp = device_gnmi_stub.Set(set_req,timeout=15) if device_gnmi_stub else _logger.error(f"no gnmi stub found for device {device_ip}")
+            print(resp)
+            resp_get=send_gnmi_get(ip,[path_intf_status_path])
+            print(resp_get)
         except Exception as e:
-            _logger.error(f"{e} \n {path}")
+            _logger.error(f"{e} \n {path_intf_status_path}")
         
     except TimeoutError as e:
         #_logger.error(f"Failed to get server certificate for device {device_ip} {e}")
         raise e
     return op
-
-
 
 def create_gnmi_path(path_arr:List[str])->List[Path]:
     '''Returns a list of gnmi path object create from string formated path array'''
@@ -184,7 +190,7 @@ def read_lldp_topo(ip):
         except TimeoutError as te:
             _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
 
-from discovery.processor.data_graph import insert_topology_in_db
+from data_graph import insert_topology_in_db
 
 def discover_topology():
     _logger.info("Discovery Started.")
