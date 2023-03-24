@@ -6,22 +6,22 @@ import sys
 from typing import List
 
 import grpc
-from gnmi_pb2 import CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF, SetRequest, TypedValue, Update
-from gnmi_pb2_grpc import gNMIStub
-from utils import settings
-from constants import device_ip,grpc_port, username,password,conn_timeout
-from utils import logging
+from orca_backend.gnmi_pb2 import CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF, SetRequest, TypedValue, Update
+from orca_backend.gnmi_pb2_grpc import gNMIStub
+from orca_backend.utils import settings, logging
+from orca_backend.constants import device_ip,grpc_port, username,password,conn_timeout
 _logger=logging.getLogger(__name__)
 
 stubs={}
 def getGrpcStubs(device_ip,grpc_port=settings.get(grpc_port),
                  username=settings.get(username),password=settings.get(password)):
+    global stubs
     if stubs and stubs.get(device_ip):
         return stubs.get(device_ip)
     else:
         try:
             sw_cert = ssl.get_server_certificate((device_ip, grpc_port),timeout=settings.get(conn_timeout)).encode("utf-8")
-             # Option 1
+            # Option 1
             #creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
             #stub.Get(GetRequest(path=[path], type=GetRequest.ALL, encoding=JSON_IETF),
             #        metadata=[("username", user),
@@ -54,7 +54,7 @@ def send_gnmi_get(device_ip,path:list[Path]):
         try:
             resp = device_gnmi_stub.Get(GetRequest(path=path, 
                                                 type=GetRequest.ALL, 
-                                                encoding=JSON_IETF),timeout=15) if device_gnmi_stub else _logger.error(f"no gnmi stub found for device {device_ip}")
+                                                encoding=JSON_IETF),timeout=settings.get(conn_timeout)) if device_gnmi_stub else _logger.error(f"no gnmi stub found for device {device_ip}")
             #resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
             #print(resp_cap)
             for u in resp.notification[0].update :
@@ -190,7 +190,7 @@ def read_lldp_topo(ip):
         except TimeoutError as te:
             _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
 
-from data_graph import insert_topology_in_db
+from orca_backend.data_graph import insert_topology_in_db
 
 def discover_topology():
     _logger.info("Discovery Started.")

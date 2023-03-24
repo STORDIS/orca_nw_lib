@@ -1,8 +1,8 @@
-device_ip : 10.10.130.189 # device_ip to start discovery with or subnet.
+device_ip : 10.10.130.12 # device_ip to start discovery with or subnet.
 username : admin
 password : YourPaSsWoRd
 grpc_port : 8080
-conn_timeout : 10 #connection timeout with device in seconds.
+conn_timeout : 60 #connection timeout with device in seconds.
 
 ##Neo4j
 neo4j_url : "bolt://localhost:7687"

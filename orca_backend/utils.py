@@ -1,4 +1,3 @@
-import os
 import yaml
 import logging
 import logging.config
@@ -6,13 +5,16 @@ from pathlib import Path
 import yaml
 
 settings={}
+
 def load_config(dname):
-    with open(f"{dname}/orca.yml", "r") as stream:
-         try:
-             global settings
-             settings=yaml.safe_load(stream)
-         except yaml.YAMLError as exc:
-             print(exc)
+    global settings
+    if not settings:
+        with open(f"{dname}/orca.yml", "r") as stream:
+            try:
+                settings=yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+    return settings
 
 def load_logging_config():
     base_path = Path(__file__).parent

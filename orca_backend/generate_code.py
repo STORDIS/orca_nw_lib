@@ -76,19 +76,29 @@ def cleanup_generated_code():
     except FileNotFoundError as e:
         print(e)
     
+    print('Deleting generated gnmi code.')
+    
     try:
-        print('Deleting generated gnmi code.')
         shutil.rmtree(gnmi_proto_dir)
-        shutil.rmtree('./github')
-        shutil.rmtree('./github.com')
-        fileList = glob.glob('gnmi_pb2*.py*')
-        for f in fileList:
-            try:
-                os.remove(f)
-            except Exception as e:
-                print(e)
     except FileNotFoundError as e:
         print(e)
+        
+    try:
+        shutil.rmtree('./github')
+    except FileNotFoundError as e:
+        print(e)
+        
+    try:
+        shutil.rmtree('./github.com')
+    except FileNotFoundError as e:
+        print(e)
+        
+    fileList = glob.glob('gnmi_pb2*.py*')
+    for f in fileList:
+        try:
+            os.remove(f)
+        except Exception as e:
+            print(e)
         
     
     

@@ -1,3 +1,6 @@
+__pycache__
+*/__pycache__
+
 dist
 proto/
 github
@@ -12,7 +15,3 @@ logs/
 bin
 *.log
 .DS_Store
-__pycache__
-*/__pycache__
-*/*/__pycache__
-*/*/*/__pycache__

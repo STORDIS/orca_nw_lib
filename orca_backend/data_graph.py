@@ -1,13 +1,17 @@
 import json
 from neo4j import GraphDatabase
 
-from utils import settings, logging
-from constants import neo4j_url, neo4j_password,neo4j_user  
+from orca_backend.utils import settings, logging
+from orca_backend.constants import neo4j_url, neo4j_password,neo4j_user  
 _logger=logging.getLogger(__name__)
 
-driver = GraphDatabase.driver(settings.get(neo4j_url), 
-                                  auth=(settings.get(neo4j_user),settings.get(neo4j_password)))
-session=driver.session()
+db_session=None
+def get_db_session():
+    global db_session
+    if db_session is None:
+        db_session = GraphDatabase.driver(settings.get(neo4j_url), 
+                                  auth=(settings.get(neo4j_user),settings.get(neo4j_password))).session()
+    return db_session
 
 def switch_present_in_db(tx,switch_ip):
     op=tx.run("MATCH (s:Switch) WHERE s.ip = $switch_ip return s",switch_ip=switch_ip)
@@ -35,12 +39,12 @@ def create_rel(tx,from_switch_ip,to_switch_ip):
     
     
 def insert_topology_in_db(topology):
-    driver.session().execute_write(clean_db)
+    get_db_session().execute_write(clean_db)
     for switch_ip,neighbors in topology.items():
-        if not session.execute_read(switch_present_in_db,switch_ip):
-            driver.session().execute_write(create_switch,switch_ip)
+        if not get_db_session().execute_read(switch_present_in_db,switch_ip):
+             get_db_session().execute_write(create_switch,switch_ip)
         #create its neighbor
         for nbr in neighbors:
-            if not session.execute_read(switch_present_in_db,nbr):
-               driver.session().execute_write(create_switch_with_rel,switch_ip,nbr)
-            driver.session().execute_write(create_rel,switch_ip,nbr)    
+            if not get_db_session().execute_read(switch_present_in_db,nbr):
+               get_db_session().execute_write(create_switch_with_rel,switch_ip,nbr)
+            get_db_session().execute_write(create_rel,switch_ip,nbr)    
