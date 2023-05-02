@@ -20,9 +20,6 @@ def getGrpcStubs(device_ip,grpc_port=settings.get(grpc_port),
         return stubs.get(device_ip)
     else:
         try:
-            print('********************************')
-            print(grpc_port)
-            print(settings.get(conn_timeout))
             sw_cert = ssl.get_server_certificate((device_ip, grpc_port),timeout=settings.get(conn_timeout)).encode("utf-8")
             # Option 1
             #creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
