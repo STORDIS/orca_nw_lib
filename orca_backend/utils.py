@@ -1,3 +1,4 @@
+import os
 import yaml
 import logging
 import logging.config
@@ -5,6 +6,13 @@ from pathlib import Path
 import yaml
 
 settings={}
+
+def load_orca_config():
+    abspath = os.path.abspath(__file__)
+    # Absolute directory name containing this file
+    dname = os.path.dirname(abspath)
+    load_logging_config()
+    load_config(f"{dname}/")
 
 def load_config(dname):
     global settings

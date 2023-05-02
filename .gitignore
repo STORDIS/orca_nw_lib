@@ -3,11 +3,7 @@ __pycache__
 
 dist
 proto/
-github
-github.com/
 openconfig_models/
-gnmi_pb2*
-gnmi_ext_pb2*
 logs/
 .venv
 .vscode/

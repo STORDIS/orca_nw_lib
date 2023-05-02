@@ -3,6 +3,7 @@ version = "0.1"
 name = "orca_backend"
 description = "orca backend serves as nms"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
+include = ["orca_backend/github/**/*","orca_backend/github.com/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -15,3 +16,4 @@ pyangbind = "^0.8.1"
 wget = "^3.2"
 autopep8 = "^2.0.1"
 GitPython = "^3.1.31"
+
