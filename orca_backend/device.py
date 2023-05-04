@@ -29,6 +29,9 @@ class Device:
     
     def __hash__(self):
         return hash((self.mgt_ip, self.mac))
+    
+    def __str__(self):
+        return self.mgt_ip
         
 
 
