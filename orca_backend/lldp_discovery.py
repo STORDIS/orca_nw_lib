@@ -3,7 +3,7 @@ from orca_backend.device import Device, wrapper_getDeviceDetails
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
 from orca_backend.utils import logging,settings
-from orca_backend.constants import device_ip
+from orca_backend.constants import network
 
 _logger=logging.getLogger(__name__)
 
@@ -69,33 +69,35 @@ def getDeviceObject(ip_addr:str):
     
 
 
-def read_lldp_topo(ip):
-    #discovered_devices.add(ip)
-    
-    device=getDeviceObject(ip)
-    if device not in topology.keys(): 
-        try:
+def read_lldp_topo(ip):   
+    try:
+        device=getDeviceObject(ip)
+        if device not in topology.keys(): 
             nbrs=get_neighbours(ip)
             topology[device]=[getDeviceObject(nbr_ip) for nbr_ip in nbrs]
             for nbr in nbrs or []:
                 read_lldp_topo(nbr)
-        except TimeoutError as te:
-            _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
+    except Exception as te:
+        _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
 
 from orca_backend.data_graph import insert_topology_in_db
 
+
 def discover_topology():
     _logger.info("Discovery Started.")
-    
     import ipaddress
-    ip_or_nw=settings.get(device_ip)
     try:
-        ips=ipaddress.ip_network(ip_or_nw)
-        for ip in ips:
-            read_lldp_topo(str(ip))
-        _logger.info('Discovered topology using {0}: {1}'.format(ip_or_nw,topology))
+        for ip_or_nw in settings.get(network):
+            ips=ipaddress.ip_network(ip_or_nw)
+            for ip in ips:
+                _logger.debug(f'Discovering device:{ip} and its neighbors.')
+                read_lldp_topo(str(ip))
+        _logger.info('Discovered topology using network provided {0}: {1}'.format(settings.get(network),topology))
     except ValueError as ve:
         _logger.error(ve)
-    insert_topology_in_db(topology)
+        
+    if topology:
+        _logger.info("Inserting topology to database.")
+        insert_topology_in_db(topology)
     return topology
     

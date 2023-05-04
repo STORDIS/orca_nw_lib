@@ -40,11 +40,14 @@ def wrapper_getDeviceDetails(device_ip: str):
         'hwsku': 'DellEMC-S5248f-P-25G-DPB', 'mac': '0c:72:05:74:00:08', 'platform': 'x86_64-kvm_x86_64-r0', 'type': 'LeafRouter'}
 
     '''
+    op_dict = {'img_name': '', 'mgt_intf': '', 'mgt_ip': '',
+                'hwsku': '', 'mac': '', 'platform': '', 'type': ''}
+    
+    
     op1 = getDeviceImgName(device_ip)
     op2 = getDeviceMgmtIntfcInfo(device_ip)
     op3 = getDeviceMetadata(device_ip)
-    op_dict = {'img_name': '', 'mgt_intf': '', 'mgt_ip': '',
-                'hwsku': '', 'mac': '', 'platform': '', 'type': ''}
+    
     if op1 is not None and op1:
         op_dict['img_name'] = op1.get('openconfig-image-management:current')
     if op2 is not None and op2:
@@ -61,6 +64,7 @@ def wrapper_getDeviceDetails(device_ip: str):
     for key,val in op_dict.items():
         op_dict[key]='' if val is None else val
     return op_dict
+
 
 def getDeviceImgName(device_ip: str):
     '''

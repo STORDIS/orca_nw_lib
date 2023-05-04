@@ -1,4 +1,4 @@
-device_ip : 10.10.130.12 # device_ip to start discovery with or subnet.
+network : [10.10.130.12,10.10.130.0/24] # device_ip(s) to start discovery with or subnet(s) separated by comma.
 username : admin
 password : YourPaSsWoRd
 grpc_port : 8080
