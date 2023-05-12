@@ -285,7 +285,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "791adde34bccb08f79b2ac9203f1fc5503f05814056cfdbf74ba4d6a29723180"
+content-hash = "5b6fb03f072ab34d5f86ae5fbf5de2175a52089fb791e3a5d0d93c0665dc279d"
 
 [metadata.files]
 autopep8 = [

@@ -23,5 +23,9 @@ def insert_topology_in_db(topology):
 def clean_db():
    clear_neo4j_database(db) 
    
+def getAllDevices():
+    return Device.nodes.all()
+
+   
 
 

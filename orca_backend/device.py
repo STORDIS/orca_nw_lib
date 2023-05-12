@@ -1,6 +1,21 @@
+import json
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
+from orca_backend.graph_db_utils import getAllDevices
 
+
+def getDeviceDetailsFromDB():
+    '''
+    Sample output :
+        [{'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
+        'hwsku': 'DellEMC-S5248f-P-25G-DPB', 'mac': '0c:72:05:74:00:08', 'platform': 'x86_64-kvm_x86_64-r0', 'type': 'LeafRouter'}]
+
+    '''
+    op_dict = []
+    allDevices =getAllDevices()
+    for device in allDevices or []:
+        op_dict.append(json.dumps(device.__properties__))
+    return op_dict
 
 def getDeviceDetails(device_ip: str):
     
