@@ -1,5 +1,5 @@
 import enum
-from orca_backend.device import Device, wrapper_getDeviceDetails
+from orca_backend.device import Device, getDeviceDetails
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
 from orca_backend.utils import logging,settings
@@ -58,7 +58,7 @@ def get_neighbours(device_ip):
 topology={}
 
 def getDeviceObject(ip_addr:str):
-    device_detail=wrapper_getDeviceDetails(ip_addr)
+    device_detail=getDeviceDetails(ip_addr)
     return Device(img_name=device_detail.get('img_name'), 
                   mgt_intf=device_detail.get('mgt_intf'), 
                   mgt_ip= device_detail.get('mgt_ip'),

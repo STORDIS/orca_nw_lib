@@ -34,8 +34,7 @@ class Device:
         return self.mgt_ip
         
 
-
-def wrapper_getDeviceDetails(device_ip: str):
+def getDeviceDetails(device_ip: str):
     
     '''
     Sample output :
