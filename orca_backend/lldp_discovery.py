@@ -1,7 +1,8 @@
 import enum
-from orca_backend.device import Device, getDeviceDetails
+from orca_backend.device import getDeviceDetails
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
+from orca_backend.graph_db_models import Device
 from orca_backend.utils import logging,settings
 from orca_backend.constants import network
 
@@ -31,8 +32,7 @@ def is_lldp_enabled(device_ip):
 
 def get_neighbours(device_ip):
     '''
-        Parses the json out of the request, 
-        Sample output is in sample directory.
+        Returns a list of IP addresses of LLDP neighbors of the device_ip provided in prameters
     '''
     neighbors=[]
     #if is_lldp_enabled(device_ip):
@@ -79,11 +79,13 @@ def read_lldp_topo(ip):
                 read_lldp_topo(nbr)
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
+        
 
-from orca_backend.data_graph import insert_topology_in_db
+from orca_backend.graph_db_utils import clean_db, insert_topology_in_db
 
 
 def discover_topology():
+    clean_db()
     _logger.info("Discovery Started.")
     import ipaddress
     try:
@@ -100,4 +102,5 @@ def discover_topology():
         _logger.info("Inserting topology to database.")
         insert_topology_in_db(topology)
     return topology
+    
     

@@ -6,6 +6,7 @@ import logging
 import logging.config
 from pathlib import Path
 import yaml
+from orca_backend.constants import conn_timeout
 
 settings={}
 
@@ -40,7 +41,7 @@ def load_logging_config():
 def ping_ok(sHost) -> bool:
     try:
         subprocess.check_output(
-            "ping -{} 1 -t 1 {}".format("n" if platform.system().lower() == "windows" else "c", sHost), shell=True
+            f'ping -{"n" if platform.system().lower() == "windows" else "c"} 1 -t {settings.get(conn_timeout)} {sHost}', shell=True
         )
     except Exception:
         return False

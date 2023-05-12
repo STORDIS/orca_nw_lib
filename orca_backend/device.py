@@ -2,38 +2,6 @@ from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
 
 
-
-class Device:
-    
-    img_name:str=''
-    mgt_intf:str=''
-    mgt_ip:str= ''
-    hwsku:str=''
-    mac:str=''
-    platform:str=''
-    type:str=''
-    def __init__(self,img_name:str='', mgt_intf:str='', mgt_ip:str= '',
-               hwsku:str='', mac:str='', platform:str='', type:str=''):
-        self.img_name=img_name
-        self.mgt_intf=mgt_intf
-        self.mgt_ip=mgt_ip
-        self.hwsku=hwsku
-        self.mac=mac
-        self.platform=platform
-        self.type=type
-    
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.mgt_ip == other.mgt_ip and self.mac == other.mac
-        return NotImplemented
-    
-    def __hash__(self):
-        return hash((self.mgt_ip, self.mac))
-    
-    def __str__(self):
-        return self.mgt_ip
-        
-
 def getDeviceDetails(device_ip: str):
     
     '''

@@ -1,10 +1,11 @@
-network : [10.10.130.12,10.10.130.0/24] # device_ip(s) to start discovery with or subnet(s) separated by comma.
+network : ['10.10.130.13'] # device_ip(s) to start discovery with or subnet(s) separated by comma.
 username : admin
 password : YourPaSsWoRd
 grpc_port : 8080
-conn_timeout : 60 #connection timeout with device in seconds.
+conn_timeout : 60 #connection timeout in seconds - used in - device ping , getting certificate and gnmi requests.
 
 ##Neo4j
-neo4j_url : "bolt://localhost:7687"
+protocol : "bolt"
+neo4j_url : "localhost:7687"
 neo4j_user : "neo4j"
 neo4j_password : "password"
