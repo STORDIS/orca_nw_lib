@@ -1,10 +1,22 @@
 import json
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
+from orca_backend.graph_db_models import Device
 from orca_backend.graph_db_utils import getAllDevices
 
 
-def getDeviceDetailsFromDB():
+def createDeviceGraphObject(ip_addr:str):
+    device_detail=getDeviceDetails(ip_addr)
+    return Device(img_name=device_detail.get('img_name'),
+                  mgt_intf=device_detail.get('mgt_intf'),
+                  mgt_ip= device_detail.get('mgt_ip').split('/')[0],
+                  hwsku=device_detail.get('hwsku'),
+                  mac=device_detail.get('mac'),
+                  platform=device_detail.get('platform'),
+                  type=device_detail.get('type'))
+
+
+def getDeviceDetailsFromGraph():
     '''
     Sample output :
         [{'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
@@ -95,3 +107,5 @@ def getDeviceMetadata(device_ip: str):
                                                                PathElem(
                                                                    name="DEVICE_METADATA", ),
                                                                ])])
+
+

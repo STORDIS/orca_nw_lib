@@ -1,8 +1,9 @@
 import enum
-from orca_backend.device import getDeviceDetails
+import ipaddress
+from orca_backend.device import createDeviceGraphObject
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
-from orca_backend.graph_db_models import Device
+from orca_backend.interfaces import createInterfaceGraphObjects
 from orca_backend.utils import logging,settings
 from orca_backend.constants import network
 
@@ -57,37 +58,31 @@ def get_neighbours(device_ip):
 
 topology={}
 
-def getDeviceObject(ip_addr:str):
-    device_detail=getDeviceDetails(ip_addr)
-    return Device(img_name=device_detail.get('img_name'), 
-                  mgt_intf=device_detail.get('mgt_intf'), 
-                  mgt_ip= device_detail.get('mgt_ip'),
-                  hwsku=device_detail.get('hwsku'), 
-                  mac=device_detail.get('mac'), 
-                  platform=device_detail.get('platform'), 
-                  type=device_detail.get('type'))
-    
-
-
 def read_lldp_topo(ip):   
     try:
-        device=getDeviceObject(ip)
+        device=createDeviceGraphObject(ip)
         if device not in topology.keys(): 
             nbrs=get_neighbours(ip)
-            topology[device]=[getDeviceObject(nbr_ip) for nbr_ip in nbrs]
+            topology[device]=[createDeviceGraphObject(nbr_ip) for nbr_ip in nbrs]
             for nbr in nbrs or []:
                 read_lldp_topo(nbr)
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
         
 
-from orca_backend.graph_db_utils import clean_db, insert_topology_in_db
+from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_topology_in_db
+
+
+def discover_interfaces():
+    _logger.info("Interface Discovery Started.")
+    for device in getAllDevices():
+        _logger.info(f'Discovering interfaces of device {device}.')
+        insert_device_interfaces_in_db(device, createInterfaceGraphObjects(device.mgt_ip))
 
 
 def discover_topology():
     clean_db()
-    _logger.info("Discovery Started.")
-    import ipaddress
+    _logger.info("Device Discovery Started.")
     try:
         for ip_or_nw in settings.get(network):
             ips=ipaddress.ip_network(ip_or_nw)
@@ -99,8 +94,11 @@ def discover_topology():
         _logger.error(ve)
         
     if topology:
-        _logger.info("Inserting topology to database.")
+        _logger.info("Inserting Device LLDP topology to database.")
         insert_topology_in_db(topology)
-    return topology
+    
+def discover():
+    discover_topology()
+    discover_interfaces()
     
     
