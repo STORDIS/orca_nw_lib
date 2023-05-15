@@ -25,6 +25,15 @@ def insert_device_interfaces_in_db(device:Device, interfaces:List[Interface]):
     for intfc in interfaces:
         intfc.save()
         device.interfaces.connect(intfc)
+        
+def insert_device_port_chnl_in_db(device:Device, portchnl_to_mem_list):
+    for chnl,mem_list in portchnl_to_mem_list.items():
+        chnl.save()
+        device.port_chnl.connect(chnl)
+        for intf_name in mem_list:
+            intf_obj=getInterfacesOfDevice(device.mgt_ip,intf_name)
+            if intf_obj:
+                chnl.members.connect(intf_obj)
 
 def clean_db():
    clear_neo4j_database(db) 
@@ -33,12 +42,18 @@ def getAllDevices():
     return Device.nodes.all()
 
 def getDevice(mgt_ip:str):
-    return Device.nodes.get(mgt_ip=mgt_ip)
+    return Device.nodes.get_or_none(mgt_ip=mgt_ip)
 
 def getAllInterfacesOfDevice(device_ip:str):
-    return getDevice(device_ip).interfaces.all()
-    
+    device=getDevice(device_ip)
+    return device.interfaces.all() if device else None
 
-   
+def getInterfacesOfDevice(device_ip:str,interface_name:str)-> Interface:
+    device=getDevice(device_ip)
+    return getDevice(device_ip).interfaces.get_or_none(name=interface_name) if device else None
+    
+def getAllPortChnlOfDevice(device_ip:str):
+    device=getDevice(device_ip)
+    return getDevice(device_ip).port_chnl.all() if device else None
 
 

@@ -13,6 +13,7 @@ class Device(StructuredNode):
     
     neighbor=RelationshipTo('Device','LLDP')
     interfaces=RelationshipTo('Interface','HAS')
+    port_chnl=RelationshipTo('PortChannel','HAS')
     
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -54,3 +55,28 @@ class Interface(StructuredNode):
     
     def __str__(self):
         return self.name
+    
+class PortChannel(StructuredNode):
+    
+    lag_name=StringProperty(unique_index=True)
+    active=BooleanProperty()
+    admin_sts=StringProperty()
+    mtu=IntegerProperty()
+    name=StringProperty()
+    fallback_operational=BooleanProperty()
+    oper_sts=StringProperty()
+    speed=StringProperty()
+    oper_sts_reason=StringProperty()
+    
+    members=RelationshipTo('Interface','HAS MEMBER')
+       
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.lag_name == other.lag_name
+        return NotImplemented
+    
+    def __hash__(self):
+        return hash(self.lag_name)
+    
+    def __str__(self):
+        return self.lag_name

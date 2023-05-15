@@ -1,5 +1,43 @@
+import json
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from orca_backend.graph_db_models import PortChannel
+from orca_backend.graph_db_utils import getAllPortChnlOfDevice
+
+
+def createPortChnlGraphObject(device_ip: str):
+    port_chnl_json = get_port_chnl(device_ip)
+    port_chnl_obj_list = {}
+    if port_chnl_json:
+        lag_table_json_list = port_chnl_json.get(
+            'sonic-portchannel:sonic-portchannel').get('LAG_TABLE').get('LAG_TABLE_LIST')
+        lag_mem_table_json_list = port_chnl_json.get(
+            'sonic-portchannel:sonic-portchannel').get('LAG_MEMBER_TABLE').get('LAG_MEMBER_TABLE_LIST')
+        for lag in lag_table_json_list:
+            ifname_list=[]
+            for mem in lag_mem_table_json_list:
+                if lag.get('lagname') == mem.get('name'):
+                    ifname_list.append(mem.get('ifname'))
+            port_chnl_obj_list[PortChannel(active=lag.get('active'),
+                                            lag_name=lag.get('lagname'),
+                                            admin_sts=lag.get('admin_status'),
+                                            mtu=lag.get('mtu'),
+                                            name=lag.get('name'),
+                                            fallback_operational=lag.get(
+                                                'fallback_operational'),
+                                            oper_sts=lag.get('oper_status'),
+                                            speed=lag.get('speed'),
+                                            oper_sts_reason=lag.get('reason'),
+                                            )]=ifname_list
+    return port_chnl_obj_list
+
+
+def getPortChnlDetailsFromGraph(device_ip:str):
+    port_chnl=getAllPortChnlOfDevice(device_ip)
+    op_dict = []
+    for chnl in port_chnl or []:
+        op_dict.append(chnl.__properties__)
+    return op_dict
 
 
 def add_port_chnl(device_ip: str, chnl_name: str):

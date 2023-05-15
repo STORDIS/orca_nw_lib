@@ -4,6 +4,7 @@ from orca_backend.device import createDeviceGraphObject
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
 from orca_backend.interfaces import createInterfaceGraphObjects
+from orca_backend.port_chnl import createPortChnlGraphObject
 from orca_backend.utils import logging,settings
 from orca_backend.constants import network
 
@@ -70,7 +71,14 @@ def read_lldp_topo(ip):
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
         
 
-from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_topology_in_db
+from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_device_port_chnl_in_db, insert_topology_in_db
+
+
+def discover_port_chnl():
+    _logger.info("Port Channel Discovery Started.")
+    for device in getAllDevices():
+        _logger.info(f'Discovering Port Channels of device {device}.')
+        insert_device_port_chnl_in_db(device, createPortChnlGraphObject(device.mgt_ip))
 
 
 def discover_interfaces():
@@ -81,7 +89,6 @@ def discover_interfaces():
 
 
 def discover_topology():
-    clean_db()
     _logger.info("Device Discovery Started.")
     try:
         for ip_or_nw in settings.get(network):
@@ -97,8 +104,6 @@ def discover_topology():
         _logger.info("Inserting Device LLDP topology to database.")
         insert_topology_in_db(topology)
     
-def discover():
-    discover_topology()
-    discover_interfaces()
+
     
     

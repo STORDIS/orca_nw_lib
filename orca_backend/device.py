@@ -26,7 +26,7 @@ def getDeviceDetailsFromGraph():
     op_dict = []
     allDevices =getAllDevices()
     for device in allDevices or []:
-        op_dict.append(json.dumps(device.__properties__))
+        op_dict.append(device.__properties__)
     return op_dict
 
 def getDeviceDetails(device_ip: str):
