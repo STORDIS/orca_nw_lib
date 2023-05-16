@@ -10,9 +10,9 @@ def createPortChnlGraphObject(device_ip: str):
     port_chnl_obj_list = {}
     if port_chnl_json:
         lag_table_json_list = port_chnl_json.get(
-            'sonic-portchannel:sonic-portchannel').get('LAG_TABLE').get('LAG_TABLE_LIST')
+            'sonic-portchannel:sonic-portchannel').get('LAG_TABLE',{}).get('LAG_TABLE_LIST')
         lag_mem_table_json_list = port_chnl_json.get(
-            'sonic-portchannel:sonic-portchannel').get('LAG_MEMBER_TABLE').get('LAG_MEMBER_TABLE_LIST')
+            'sonic-portchannel:sonic-portchannel').get('LAG_MEMBER_TABLE',{}).get('LAG_MEMBER_TABLE_LIST')
         for lag in lag_table_json_list:
             ifname_list=[]
             for mem in lag_mem_table_json_list:

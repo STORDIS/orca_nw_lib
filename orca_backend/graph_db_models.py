@@ -1,4 +1,4 @@
-from neomodel import BooleanProperty,cardinality,StructuredNode, StringProperty, IntegerProperty,  UniqueIdProperty, RelationshipTo
+from neomodel import BooleanProperty,ArrayProperty,StructuredNode, StringProperty, IntegerProperty,  UniqueIdProperty, RelationshipTo
 
 
 class Device(StructuredNode):
@@ -14,6 +14,7 @@ class Device(StructuredNode):
     neighbor=RelationshipTo('Device','LLDP')
     interfaces=RelationshipTo('Interface','HAS')
     port_chnl=RelationshipTo('PortChannel','HAS')
+    mclags=RelationshipTo('MCLAG','HAS')
     
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -80,3 +81,32 @@ class PortChannel(StructuredNode):
     
     def __str__(self):
         return self.lag_name
+    
+    
+class MCLAG(StructuredNode):
+    
+    domain_id=IntegerProperty()
+    keepalive_interval=IntegerProperty()
+    mclag_sys_mac=StringProperty()
+    peer_addr=StringProperty()
+    peer_link=StringProperty()
+    session_timeout=IntegerProperty()
+    source_address=StringProperty()
+    oper_status=StringProperty()
+    role=StringProperty()
+    system_mac=StringProperty()
+    gateway_macs=ArrayProperty()
+    
+    intfc_members=RelationshipTo('Interface','HAS MEMBER')
+    portChnl_member=RelationshipTo('PortChannel','HAS MEMBER')
+       
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.domain_id == other.domain_id
+        return NotImplemented
+    
+    def __hash__(self):
+        return hash(self.domain_id)
+    
+    def __str__(self):
+        return self.domain_id

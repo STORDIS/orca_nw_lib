@@ -1,7 +1,7 @@
 import json
 from typing import List
 from neo4j import GraphDatabase
-from orca_backend.graph_db_models import Device, Interface
+from orca_backend.graph_db_models import MCLAG, Device, Interface, PortChannel
 
 from orca_backend.utils import settings, logging
 from orca_backend.constants import neo4j_url, neo4j_password,neo4j_user,protocol
@@ -21,10 +21,25 @@ def insert_topology_in_db(topology):
                 nbr.save()
             Device.nodes.get(mac=device.mac).neighbor.connect(Device.nodes.get(mac=nbr.mac))
 
+
 def insert_device_interfaces_in_db(device:Device, interfaces:List[Interface]):
     for intfc in interfaces:
         intfc.save()
         device.interfaces.connect(intfc)
+        
+        
+def insert_device_mclag_in_db(device:Device, mclag_to_intfc_list):
+    for mclag,intfcs in mclag_to_intfc_list.items():
+        mclag.save()
+        device.mclags.connect(mclag)
+        for intf_name in intfcs:
+            intf_obj=getInterfacesOfDevice(device.mgt_ip,intf_name)
+            if intf_obj:
+                mclag.intfc_members.connect(intf_obj)
+            port_chnl_obj=getPortChnlOfDevice(device.mgt_ip,intf_name)
+            if port_chnl_obj:
+                mclag.portChnl_member.connect(port_chnl_obj)
+        
         
 def insert_device_port_chnl_in_db(device:Device, portchnl_to_mem_list):
     for chnl,mem_list in portchnl_to_mem_list.items():
@@ -55,5 +70,9 @@ def getInterfacesOfDevice(device_ip:str,interface_name:str)-> Interface:
 def getAllPortChnlOfDevice(device_ip:str):
     device=getDevice(device_ip)
     return getDevice(device_ip).port_chnl.all() if device else None
+
+def getPortChnlOfDevice(device_ip:str, port_chnl_name:str)-> PortChannel:
+    device=getDevice(device_ip)
+    return getDevice(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
 
 

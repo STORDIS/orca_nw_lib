@@ -1,6 +1,39 @@
+from typing import List
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from orca_backend.graph_db_models import MCLAG
 
+    
+def createMclagGraphObjects(device_ip: str)->dict:
+    mclags_obj_list={}
+    mclag_config=get_mclag_config(device_ip)
+    mclag=mclag_config.get("openconfig-mclag:mclag")
+    mclag_domains_dict_list=mclag.get("mclag-domains",{}).get("mclag-domain")
+    mclag_intfc_list=mclag.get("interfaces",{}).get("interface")
+    mclag_gateway_macs=mclag.get('mclag-gateway-macs',{}).get('mclag-gateway-mac')
+    
+    for mclag_domain in mclag_domains_dict_list:
+        mclag_obj=MCLAG(domain_id=mclag_domain.get("config").get("domain-id"),
+                        keepalive_interval=mclag_domain.get("config").get("keepalive-interval"),
+                        mclag_sys_mac=mclag_domain.get("config").get("mclag-system-mac"),
+                        peer_addr=mclag_domain.get("config").get("peer-address"),
+                        peer_link=mclag_domain.get("config").get("peer-link"),
+                        session_timeout=mclag_domain.get("config").get("session-timeout"),
+                        source_address=mclag_domain.get("config").get("source-address"),
+                        oper_status=mclag_domain.get("state").get("oper-status"),
+                        role=mclag_domain.get("state").get("role"),
+                        system_mac=mclag_domain.get("state").get("system-mac"),
+                        )
+        intfc_list=[]
+        for mclag_intfc in mclag_intfc_list or []:
+            if mclag_obj.domain_id == mclag_intfc.get('config').get('mclag-id'):
+                intfc_list.append(mclag_intfc.get('name'))
+                
+        mclag_obj.gateway_macs=[(gw.get("gateway-mac")) for gw in mclag_gateway_macs]
+                
+        mclags_obj_list[mclag_obj]=intfc_list
+    
+    return mclags_obj_list
 
 def config_mclag_domain(device_ip: str, domain_id: int,
                         source_addr: str, peer_addr: str, peer_link: str,

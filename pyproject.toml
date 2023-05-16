@@ -17,4 +17,5 @@ neomodel = "^5.0.0"
 grpcio = "<=1.48.2"
 protobuf = "^4.23.0"
 pyangbind = "^0.8.1"
+pytest = "^7.3.1"
 

@@ -4,6 +4,7 @@ from orca_backend.device import createDeviceGraphObject
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_get
 from orca_backend.interfaces import createInterfaceGraphObjects
+from orca_backend.mclag import createMclagGraphObjects
 from orca_backend.port_chnl import createPortChnlGraphObject
 from orca_backend.utils import logging,settings
 from orca_backend.constants import network
@@ -71,7 +72,7 @@ def read_lldp_topo(ip):
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
         
 
-from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_device_port_chnl_in_db, insert_topology_in_db
+from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_device_mclag_in_db, insert_device_port_chnl_in_db, insert_topology_in_db
 
 
 def discover_port_chnl():
@@ -86,6 +87,13 @@ def discover_interfaces():
     for device in getAllDevices():
         _logger.info(f'Discovering interfaces of device {device}.')
         insert_device_interfaces_in_db(device, createInterfaceGraphObjects(device.mgt_ip))
+        
+
+def discover_mclag():
+    _logger.info("MCLAG Discovery Started.")
+    for device in getAllDevices():
+        _logger.info(f'Discovering MCLAG on device {device}.')
+        insert_device_mclag_in_db(device, createMclagGraphObjects(device.mgt_ip))
 
 
 def discover_topology():

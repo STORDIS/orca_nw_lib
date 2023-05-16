@@ -48,14 +48,15 @@ def getDeviceDetails(device_ip: str):
     if op1 is not None and op1:
         op_dict['img_name'] = op1.get('openconfig-image-management:current')
     if op2 is not None and op2:
-        op_dict['mgt_intf'] = op2.get('sonic-mgmt-interface:sonic-mgmt-interface').get('MGMT_INTF_TABLE').get('MGMT_INTF_TABLE_IPADDR_LIST')[0].get('ifName')
-        op_dict['mgt_ip'] = op2.get('sonic-mgmt-interface:sonic-mgmt-interface').get(
-            'MGMT_INTF_TABLE').get('MGMT_INTF_TABLE_IPADDR_LIST')[0].get('ipPrefix')
+        mgt_intfc_table_dict=op2.get('sonic-mgmt-interface:sonic-mgmt-interface',{}).get('MGMT_INTF_TABLE',{})
+        op_dict['mgt_intf'] = mgt_intfc_table_dict.get('MGMT_INTF_TABLE_IPADDR_LIST')[0].get('ifName')
+        op_dict['mgt_ip'] = mgt_intfc_table_dict.get('MGMT_INTF_TABLE_IPADDR_LIST')[0].get('ipPrefix')
     if op3 is not None and op3:
-        op_dict['hwsku'] = op3.get('sonic-device-metadata:DEVICE_METADATA').get('DEVICE_METADATA_LIST')[0].get('hwsku')
-        op_dict['mac'] = op3.get('sonic-device-metadata:DEVICE_METADATA').get('DEVICE_METADATA_LIST')[0].get('mac')
-        op_dict['platform'] = op3.get('sonic-device-metadata:DEVICE_METADATA').get('DEVICE_METADATA_LIST')[0].get('platform')
-        op_dict['type'] = op3.get('sonic-device-metadata:DEVICE_METADATA').get('DEVICE_METADATA_LIST')[0].get('type')
+        metadata_dict=op3.get('sonic-device-metadata:DEVICE_METADATA',{})
+        op_dict['hwsku'] = metadata_dict.get('DEVICE_METADATA_LIST')[0].get('hwsku')
+        op_dict['mac'] = metadata_dict.get('DEVICE_METADATA_LIST')[0].get('mac')
+        op_dict['platform'] = metadata_dict.get('DEVICE_METADATA_LIST')[0].get('platform')
+        op_dict['type'] = metadata_dict.get('DEVICE_METADATA_LIST')[0].get('type')
     
     ## Replace None values with empty string
     for key,val in op_dict.items():
