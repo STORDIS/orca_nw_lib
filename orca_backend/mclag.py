@@ -20,6 +20,7 @@ def createMclagGraphObjects(device_ip: str)->dict:
                         peer_link=mclag_domain.get("config").get("peer-link"),
                         session_timeout=mclag_domain.get("config").get("session-timeout"),
                         source_address=mclag_domain.get("config").get("source-address"),
+                        delay_restore=mclag_domain.get("config").get("delay-restore"),
                         oper_status=mclag_domain.get("state").get("oper-status"),
                         role=mclag_domain.get("state").get("role"),
                         system_mac=mclag_domain.get("state").get("system-mac"),

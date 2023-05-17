@@ -96,6 +96,7 @@ class MCLAG(StructuredNode):
     role=StringProperty()
     system_mac=StringProperty()
     gateway_macs=ArrayProperty()
+    delay_restore=IntegerProperty()
     
     intfc_members=RelationshipTo('Interface','HAS MEMBER')
     portChnl_member=RelationshipTo('PortChannel','HAS MEMBER')
