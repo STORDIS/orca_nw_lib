@@ -1,22 +1,24 @@
 import json
 import logging
 from typing import List
+
 from orca_backend.gnmi_pb2 import Path, PathElem
 from orca_backend.gnmi_util import send_gnmi_set, get_gnmi_update_req, send_gnmi_get
-from orca_backend.graph_db_models import Interface, PortChannel
+from orca_backend.graph_db_models import Interface, PortChannel, SubInterface
 from orca_backend.graph_db_utils import getAllInterfacesOfDevice
 _logger=logging.getLogger(__name__)
 
+
 def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
     interfaces_json = get_all_interfaces(device_ip)
-    intfc_graph_obj_list = []
+    intfc_graph_obj_list = {}
     for intfc in interfaces_json.get('openconfig-interfaces:interface'):
         intfc_state = intfc.get('state')
         intfc_counters = intfc_state.get('counters')
         type=intfc.get('config').get('type')
-        name=intfc.get('config').get('name')
+        
         if 'ether' in type.lower():
-            intfc_graph_obj_list.append(Interface(name=intfc_state.get('name'),
+            interface=Interface(name=intfc_state.get('name'),
                                                 enabled=intfc_state.get(
                                                     'enabled'),
                                                 mtu=intfc_state.get('mtu'),
@@ -80,7 +82,21 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                                                     'out-unicast-pkts'),
                                                 out_utilization=intfc_counters.get(
                                                     'out-utilization')
-                                                ))
+                                                )
+            sub_intf_obj_list = []
+            for sub_intfc in intfc.get('subinterfaces',{}).get('subinterface'):
+                sub_intf_obj=SubInterface()
+                sub_interface_ip_addresses=[]
+                for addr in sub_intfc.get('openconfig-if-ip:ipv4',{}).get('addresses',{}).get('address') or []:
+                    if addr.get('ip'):
+                        sub_interface_ip_addresses.append(addr.get('ip')) 
+                if sub_interface_ip_addresses:
+                    sub_intf_obj.ip_addresses=sub_interface_ip_addresses
+                    sub_intf_obj_list.append(sub_intf_obj)
+            
+                #sub_intf_obj.ip_addresses=sub_interface_ip_addresses if sub_intf_obj_list else []
+            
+            intfc_graph_obj_list[interface]=sub_intf_obj_list if sub_interface_ip_addresses else []
         elif 'lag' in type.lower():
             #its a poert channel
             pass
@@ -118,6 +134,8 @@ def get_all_interfaces(device_ip: str):
                            PathElem(name="interface",)
                            ])
     return send_gnmi_get(device_ip=device_ip, path=[path_intf])
+
+
 
 
 

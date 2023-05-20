@@ -1,7 +1,8 @@
 import json
 from typing import List
 from neo4j import GraphDatabase
-from orca_backend.graph_db_models import MCLAG, Device, Interface, PortChannel
+from orca_backend.graph_db_models import MCLAG, Device, PortChannel
+from orca_backend.graph_db_models import Interface
 
 from orca_backend.utils import settings, logging
 from orca_backend.constants import neo4j_url, neo4j_password,neo4j_user,protocol
@@ -22,10 +23,13 @@ def insert_topology_in_db(topology):
             Device.nodes.get(mac=device.mac).neighbor.connect(Device.nodes.get(mac=nbr.mac))
 
 
-def insert_device_interfaces_in_db(device:Device, interfaces:List[Interface]):
-    for intfc in interfaces:
+def insert_device_interfaces_in_db(device:Device, interfaces:dict):
+    for intfc,sub_intfc in interfaces.items():
         intfc.save()
         device.interfaces.connect(intfc)
+        for sub_i in sub_intfc:
+            sub_i.save()
+            intfc.subInterfaces.connect(sub_i)
         
         
 def insert_device_mclag_in_db(device:Device, mclag_to_intfc_list):

@@ -11,7 +11,7 @@ port_chnl_100="PortChannel100"
 
 
 
-getInterfacesDetailsFromGraph(dut_ip)
+print(getInterfacesDetailsFromGraph(dut_ip))
 createInterfaceGraphObjects(dut_ip)
 print(get_all_interfaces(dut_ip))
 
