@@ -1,8 +1,8 @@
 import sys
-sys.path.append('../orca_backend')
+sys.path.append('../orca_nw_lib')
 from test_common import dut_ip
-from orca_backend.port_chnl import add_port_chnl_member, get_port_chnl,add_port_chnl,del_all_port_chnl
-from orca_backend.interfaces import createInterfaceGraphObjects, enable_interface, get_all_interfaces, getInterfacesDetailsFromGraph
+from orca_nw_lib.port_chnl import add_port_chnl_member, get_port_chnl,add_port_chnl,del_all_port_chnl
+from orca_nw_lib.interfaces import createInterfaceGraphObjects, enable_interface, get_all_interfaces, getInterfacesDetailsFromGraph
 
 eth_1="Ethernet1"
 eth_2="Ethernet2"

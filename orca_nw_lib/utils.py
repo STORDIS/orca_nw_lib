@@ -6,7 +6,7 @@ import logging
 import logging.config
 from pathlib import Path
 import yaml
-from orca_backend.constants import conn_timeout
+from .constants import conn_timeout
 
 settings={}
 

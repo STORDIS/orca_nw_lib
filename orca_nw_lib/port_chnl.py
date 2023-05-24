@@ -1,8 +1,8 @@
 import json
-from orca_backend.gnmi_pb2 import Path, PathElem
-from orca_backend.gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
-from orca_backend.graph_db_models import PortChannel
-from orca_backend.graph_db_utils import getAllPortChnlOfDevice
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from .graph_db_models import PortChannel
+from .graph_db_utils import getAllPortChnlOfDevice
 
 
 def createPortChnlGraphObject(device_ip: str):

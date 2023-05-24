@@ -1,5 +1,5 @@
 from test_common import dut_ip
-from orca_backend.device import getDeviceDetailsFromGraph, getDeviceImgName, getDeviceMetadata,getDeviceMgmtIntfcInfo,getDeviceDetails
+from orca_nw_lib.device import getDeviceDetailsFromGraph, getDeviceImgName, getDeviceMetadata,getDeviceMgmtIntfcInfo,getDeviceDetails
 
 
 print(getDeviceDetailsFromGraph())

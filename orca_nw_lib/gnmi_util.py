@@ -6,10 +6,10 @@ import sys
 from typing import List
 
 import grpc
-from orca_backend.gnmi_pb2 import JSON, CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF, SetRequest, TypedValue, Update
-from orca_backend.gnmi_pb2_grpc import gNMIStub
-from orca_backend.utils import ping_ok, settings, logging
-from orca_backend.constants import grpc_port, username,password,conn_timeout
+from .gnmi_pb2 import JSON, CapabilityRequest, GetRequest, Path, PathElem, JSON_IETF, SetRequest, TypedValue, Update
+from .gnmi_pb2_grpc import gNMIStub
+from .utils import ping_ok, settings, logging
+from .constants import grpc_port, username,password,conn_timeout
 _logger=logging.getLogger(__name__)
 
 stubs={}

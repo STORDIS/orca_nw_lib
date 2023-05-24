@@ -1,13 +1,13 @@
 import enum
 import ipaddress
-from orca_backend.device import createDeviceGraphObject
-from orca_backend.gnmi_pb2 import Path, PathElem
-from orca_backend.gnmi_util import send_gnmi_get
-from orca_backend.interfaces import createInterfaceGraphObjects
-from orca_backend.mclag import createMclagGraphObjects
-from orca_backend.port_chnl import createPortChnlGraphObject
-from orca_backend.utils import logging,settings
-from orca_backend.constants import network
+from .device import createDeviceGraphObject
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import send_gnmi_get
+from .interfaces import createInterfaceGraphObjects
+from .mclag import createMclagGraphObjects
+from .port_chnl import createPortChnlGraphObject
+from .utils import logging,settings
+from .constants import network
 
 _logger=logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def read_lldp_topo(ip):
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
         
 
-from orca_backend.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_device_mclag_in_db, insert_device_port_chnl_in_db, insert_topology_in_db
+from orca_nw_lib.graph_db_utils import clean_db, getAllDevices, insert_device_interfaces_in_db, insert_device_mclag_in_db, insert_device_port_chnl_in_db, insert_topology_in_db
 
 
 def discover_port_chnl():

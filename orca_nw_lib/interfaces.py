@@ -2,10 +2,10 @@ import json
 import logging
 from typing import List
 
-from orca_backend.gnmi_pb2 import Path, PathElem
-from orca_backend.gnmi_util import send_gnmi_set, get_gnmi_update_req, send_gnmi_get
-from orca_backend.graph_db_models import Interface, PortChannel, SubInterface
-from orca_backend.graph_db_utils import getAllInterfacesOfDevice
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import send_gnmi_set, get_gnmi_update_req, send_gnmi_get
+from .graph_db_models import Interface, PortChannel, SubInterface
+from .graph_db_utils import getAllInterfacesOfDevice
 _logger=logging.getLogger(__name__)
 
 

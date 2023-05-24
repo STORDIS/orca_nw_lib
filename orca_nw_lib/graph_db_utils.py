@@ -1,11 +1,11 @@
 import json
 from typing import List
 from neo4j import GraphDatabase
-from orca_backend.graph_db_models import MCLAG, Device, PortChannel
-from orca_backend.graph_db_models import Interface
+from .graph_db_models import MCLAG, Device, PortChannel
+from .graph_db_models import Interface
 
-from orca_backend.utils import settings, logging
-from orca_backend.constants import neo4j_url, neo4j_password,neo4j_user,protocol
+from .utils import settings, logging
+from .constants import neo4j_url, neo4j_password,neo4j_user,protocol
 
 from neomodel import config,db,clear_neo4j_database,StructuredNode, StringProperty, IntegerProperty,  UniqueIdProperty, RelationshipTo
 config.DATABASE_URL=f'{settings.get(protocol)}://{settings.get(neo4j_user)}:{settings.get(neo4j_password)}@{settings.get(neo4j_url)}'

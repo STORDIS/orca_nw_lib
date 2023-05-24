@@ -1,8 +1,8 @@
 import json
-from orca_backend.gnmi_pb2 import Path, PathElem
-from orca_backend.gnmi_util import send_gnmi_get
-from orca_backend.graph_db_models import Device
-from orca_backend.graph_db_utils import getAllDevices
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import send_gnmi_get
+from .graph_db_models import Device
+from .graph_db_utils import getAllDevices
 
 
 def createDeviceGraphObject(ip_addr:str):

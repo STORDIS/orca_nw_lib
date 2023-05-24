@@ -1,18 +1,18 @@
 from typing import List
-from orca_backend.gnmi_pb2 import Path, PathElem
-from orca_backend.gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
-from orca_backend.graph_db_models import MCLAG
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from .graph_db_models import MCLAG
 
     
 def createMclagGraphObjects(device_ip: str)->dict:
     mclags_obj_list={}
     mclag_config=get_mclag_config(device_ip)
-    mclag=mclag_config.get("openconfig-mclag:mclag")
+    mclag=mclag_config.get("openconfig-mclag:mclag",{})
     mclag_domains_dict_list=mclag.get("mclag-domains",{}).get("mclag-domain")
     mclag_intfc_list=mclag.get("interfaces",{}).get("interface")
     mclag_gateway_macs=mclag.get('mclag-gateway-macs',{}).get('mclag-gateway-mac')
     
-    for mclag_domain in mclag_domains_dict_list:
+    for mclag_domain in mclag_domains_dict_list or []:
         mclag_obj=MCLAG(domain_id=mclag_domain.get("config").get("domain-id"),
                         keepalive_interval=mclag_domain.get("config").get("keepalive-interval"),
                         mclag_sys_mac=mclag_domain.get("config").get("mclag-system-mac"),

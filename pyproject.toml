@@ -1,9 +1,9 @@
 [tool.poetry]
 version = "0.1"
-name = "orca_backend"
-description = "orca backend serves as nms"
+name = "orca_nw_lib"
+description = "APIs to interact with SONiC NW"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
-include = ["orca_backend/github/**/*","orca_backend/github.com/**/*"]
+include = ["orca_nw_lib/github/**/*","orca_nw_lib/github.com/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
