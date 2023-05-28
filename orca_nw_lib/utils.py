@@ -11,18 +11,18 @@ from .constants import conn_timeout
 settings={}
 
 
-def load_orca_config():
+def load_default_orca_config():
     abspath = os.path.abspath(__file__)
     # Absolute directory name containing this file
     dname = os.path.dirname(abspath)
-    load_logging_config()
-    load_config(f"{dname}/")
+    load_logging_config(f'{dname}/logging.yml')
+    load_config(f"{dname}/orca.yml")
 
 
-def load_config(dname):
+def load_config(orca_config_file):
     global settings
     if not settings:
-        with open(f"{dname}/orca.yml", "r") as stream:
+        with open(orca_config_file, "r") as stream:
             try:
                 settings=yaml.safe_load(stream)
             except yaml.YAMLError as exc:
@@ -30,10 +30,8 @@ def load_config(dname):
     return settings
 
 
-def load_logging_config():
-    base_path = Path(__file__).parent
-    file_path = (base_path / "./logging.yml").resolve()
-    with open(file_path, 'r') as stream:
+def load_logging_config(logging_config_file):
+    with open(logging_config_file, 'r') as stream:
         config = yaml.load(stream, Loader=yaml.FullLoader)
     logging.config.dictConfig(config)
 
