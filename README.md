@@ -24,6 +24,7 @@ Then open https://localhost:7474 with credentials neo4j/password to browse the d
 >**Note** - Poetry , python and pip must be pre installed.
 
 ## To use the ORCA APIs
+- Before using APIs of orca_nw_lib, neo4j database and logging configurations should be done by calling the functions load_config and load_logging_config in [./orca_nw_lib/utils.py](./orca_nw_lib/utils.py), As an example for loading default configs refer function load_default_orca_config.
 - In the device components specific python modules i.e. device.py or interfaces.py there are APIs to get information directly from the device or from Neo4j datatbase.
 - APIs which get information directly from device might take longer than the API which retrirved data from the Neo4j datatbase.
 - To use APIs which get data from Neo4j datatbase ends with ******FromGraph() i.e. getInterfacesDetailsFromGraph(device_ip), those APIs will return data only when the network discovery is initiated using the APIs in [./orca_nw_lib/discovery.py](./orca_nw_lib/discovery.py), refer [./orca_nw_lib/test/test_discovery.py](./orca_nw_lib/test/test_discovery.py).
