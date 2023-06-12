@@ -1,7 +1,8 @@
 import sys
 sys.path.append('../orca_nw_lib')
-from orca_nw_lib.utils import load_default_orca_config
-load_default_orca_config()
+from orca_nw_lib.utils import load_config,load_logging_config
+load_config()
+load_logging_config()
 
 from orca_nw_lib.mclag import del_mclag, get_mclag_config,config_mclag_domain
 dut_ip='10.10.130.12'

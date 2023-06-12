@@ -107,11 +107,21 @@ def discover_topology():
         _logger.info('Discovered topology using network provided {0}: {1}'.format(settings.get(network),topology))
     except ValueError as ve:
         _logger.error(ve)
+        return False
         
     if topology:
         _logger.info("Inserting Device LLDP topology to database.")
         insert_topology_in_db(topology)
+    else:
+        return False
+    return True
     
-
-    
+def discover_all():
+    clean_db()
+    if discover_topology():
+        discover_interfaces()
+        discover_port_chnl()
+        discover_mclag()
+        return True
+    return False
     

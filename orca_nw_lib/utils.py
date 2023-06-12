@@ -9,17 +9,11 @@ import yaml
 from .constants import conn_timeout
 
 settings={}
+abspath = os.path.abspath(__file__)
+# Absolute directory name containing this file
+dname = os.path.dirname(abspath)
 
-
-def load_default_orca_config():
-    abspath = os.path.abspath(__file__)
-    # Absolute directory name containing this file
-    dname = os.path.dirname(abspath)
-    load_logging_config(f'{dname}/logging.yml')
-    load_config(f"{dname}/orca.yml")
-
-
-def load_config(orca_config_file):
+def load_config(orca_config_file:str=f"{dname}/orca.yml"):
     global settings
     if not settings:
         with open(orca_config_file, "r") as stream:
@@ -30,7 +24,7 @@ def load_config(orca_config_file):
     return settings
 
 
-def load_logging_config(logging_config_file):
+def load_logging_config(logging_config_file:str=f'{dname}/logging.yml'):
     with open(logging_config_file, 'r') as stream:
         config = yaml.load(stream, Loader=yaml.FullLoader)
     logging.config.dictConfig(config)

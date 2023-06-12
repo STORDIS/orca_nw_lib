@@ -2,7 +2,7 @@ import json
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import send_gnmi_get
 from .graph_db_models import Device
-from .graph_db_utils import getAllDevices
+from .graph_db_utils import getAllDevices, getDevice
 
 
 def createDeviceGraphObject(ip_addr:str):
@@ -16,7 +16,7 @@ def createDeviceGraphObject(ip_addr:str):
                   type=device_detail.get('type'))
 
 
-def getDeviceDetailsFromGraph():
+def getDeviceDetailsFromGraph(mgt_ip=None):
     '''
     Sample output :
         [{'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
@@ -24,9 +24,14 @@ def getDeviceDetailsFromGraph():
 
     '''
     op_dict = []
-    allDevices =getAllDevices()
-    for device in allDevices or []:
-        op_dict.append(device.__properties__)
+    if mgt_ip:
+        device=getDevice(mgt_ip)
+        if device:
+            op_dict.append(device.__properties__) 
+    else:
+        device_dict =getAllDevices()
+        for device in device_dict or []:
+            op_dict.append(device.__properties__)
     return op_dict
 
 def getDeviceDetails(device_ip: str):

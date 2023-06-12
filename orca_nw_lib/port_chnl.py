@@ -2,7 +2,7 @@ import json
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
 from .graph_db_models import PortChannel
-from .graph_db_utils import getAllPortChnlOfDevice
+from .graph_db_utils import getAllPortChnlOfDevice,getPortChnlOfDevice
 
 
 def createPortChnlGraphObject(device_ip: str):
@@ -32,11 +32,15 @@ def createPortChnlGraphObject(device_ip: str):
     return port_chnl_obj_list
 
 
-def getPortChnlDetailsFromGraph(device_ip:str):
-    port_chnl=getAllPortChnlOfDevice(device_ip)
+def getPortChnlDetailsFromGraph(device_ip:str,port_chnl_name=None):
     op_dict = []
-    for chnl in port_chnl or []:
-        op_dict.append(chnl.__properties__)
+    if port_chnl_name:
+        port_chnl=getPortChnlOfDevice(device_ip,port_chnl_name)
+        op_dict.append(port_chnl.__properties__)
+    else:
+        port_chnl=getAllPortChnlOfDevice(device_ip)
+        for chnl in port_chnl or []:
+            op_dict.append(chnl.__properties__)
     return op_dict
 
 

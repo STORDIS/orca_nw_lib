@@ -2,6 +2,20 @@ from typing import List
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
 from .graph_db_models import MCLAG
+from .graph_db_utils import getAllMCLAGsDevice,getMCLAGOfDevice
+
+
+def getMCLAGsFromGraph(device_ip: str, domain_id=None):
+    op_dict = []
+    if domain_id :
+        mclag=getMCLAGOfDevice(device_ip, domain_id)
+        if mclag:
+            op_dict.append(mclag.__properties__)
+    else:
+        mclags = getAllMCLAGsDevice(device_ip)
+        for mclag in mclags or []:
+            op_dict.append(mclag.__properties__)
+    return op_dict
 
     
 def createMclagGraphObjects(device_ip: str)->dict:

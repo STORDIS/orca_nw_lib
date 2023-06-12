@@ -79,4 +79,11 @@ def getPortChnlOfDevice(device_ip:str, port_chnl_name:str)-> PortChannel:
     device=getDevice(device_ip)
     return getDevice(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
 
+def getAllMCLAGsDevice(device_ip:str):
+    device=getDevice(device_ip)
+    return getDevice(device_ip).mclags.all() if device else None
+
+def getMCLAGOfDevice(device_ip:str, domain_id:str)-> PortChannel:
+    device=getDevice(device_ip)
+    return getDevice(device_ip).mclags.get_or_none(domain_id=domain_id) if device else None
 

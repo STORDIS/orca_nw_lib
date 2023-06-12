@@ -5,7 +5,7 @@ from typing import List
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import send_gnmi_set, get_gnmi_update_req, send_gnmi_get
 from .graph_db_models import Interface, PortChannel, SubInterface
-from .graph_db_utils import getAllInterfacesOfDevice
+from .graph_db_utils import getAllInterfacesOfDevice,getInterfacesOfDevice
 
 _logger = logging.getLogger(__name__)
 
@@ -88,11 +88,17 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
     return intfc_graph_obj_list
 
 
-def getInterfacesDetailsFromGraph(device_ip: str):
-    interfaces = getAllInterfacesOfDevice(device_ip)
+def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
-    for intfc in interfaces or []:
-        op_dict.append(intfc.__properties__)
+    
+    if intfc_name :
+        intfc=getInterfacesOfDevice(device_ip, intfc_name)
+        if intfc:
+            op_dict.append(intfc.__properties__)
+    else:
+        interfaces = getAllInterfacesOfDevice(device_ip)
+        for intfc in interfaces or []:
+            op_dict.append(intfc.__properties__)
     return op_dict
 
 
