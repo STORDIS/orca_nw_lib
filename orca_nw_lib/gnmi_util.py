@@ -66,14 +66,15 @@ def send_gnmi_get(device_ip,path:list[Path]):
             op = u.val.json_ietf_val.decode("utf-8")
             op = json.loads(op)
     except Exception as e:
-        _logger.error(f"{e} \n {path}")
+        _logger.error(e)
     return op
 
 
-def get_gnmi_update_req(path:Path, val:dict):
-    update=Update(path=path,val=TypedValue(json_ietf_val=bytes(json.dumps(val),"utf-8")))
-    return SetRequest(update=[update])
+def create_gnmi_update(path:Path, val:dict):
+    return Update(path=path,val=TypedValue(json_ietf_val=bytes(json.dumps(val),"utf-8")))
 
+def create_req_for_update(updates:List[Update]):
+    return SetRequest(update=updates)
 
 def get_gnmi_del_req(path:Path):
     return SetRequest(delete=[path])

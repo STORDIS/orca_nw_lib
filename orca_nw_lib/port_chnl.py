@@ -1,6 +1,6 @@
 import json
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from .gnmi_util import create_req_for_update, get_gnmi_del_req, create_gnmi_update, send_gnmi_get, send_gnmi_set
 from .graph_db_models import PortChannel
 from .graph_db_utils import getAllPortChnlOfDevice,getPortChnlOfDevice
 
@@ -56,7 +56,7 @@ def add_port_chnl(device_ip: str, chnl_name: str):
     }
     port_chnl_add.get(
         "sonic-portchannel:PORTCHANNEL_LIST").append({"name": chnl_name})
-    return send_gnmi_set(get_gnmi_update_req(path, port_chnl_add), device_ip)
+    return send_gnmi_set(create_req_for_update([create_gnmi_update(path, port_chnl_add)]), device_ip)
 
 
 
@@ -72,7 +72,7 @@ def add_port_chnl_member(device_ip: str, chnl_name: str, ifname:str):
     }
     port_chnl_add.get(
         "sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append({"name": chnl_name,"ifname":ifname})
-    return send_gnmi_set(get_gnmi_update_req(path, port_chnl_add), device_ip)
+    return send_gnmi_set(create_req_for_update([create_gnmi_update(path, port_chnl_add)]), device_ip)
 
 
 

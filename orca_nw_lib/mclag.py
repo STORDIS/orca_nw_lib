@@ -1,6 +1,6 @@
 from typing import List
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import get_gnmi_del_req, get_gnmi_update_req, send_gnmi_get, send_gnmi_set
+from .gnmi_util import create_req_for_update, get_gnmi_del_req, create_gnmi_update, send_gnmi_get, send_gnmi_set
 from .graph_db_models import MCLAG
 from .graph_db_utils import getAllMCLAGsDevice,getMCLAGOfDevice
 
@@ -91,7 +91,7 @@ def config_mclag_domain(device_ip: str, domain_id: int,
         mc_lag.get("config").update({"session-timeout": session_timeout})
         mc_lag.get("config").update({"delay-restore": delay_restore})
 
-    return send_gnmi_set(get_gnmi_update_req(path, mclag_config_json), device_ip)
+    return send_gnmi_set(create_req_for_update([create_gnmi_update(path, mclag_config_json)]), device_ip)
 
 
 def get_mclag_config(device_ip: str):

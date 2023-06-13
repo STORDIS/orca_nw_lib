@@ -1,9 +1,10 @@
+from enum import Enum, auto
 import json
 import logging
 from typing import List
 
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_set, get_gnmi_update_req, send_gnmi_get
+from .gnmi_util import create_req_for_update, send_gnmi_set, create_gnmi_update, send_gnmi_get
 from .graph_db_models import Interface, PortChannel, SubInterface
 from .graph_db_utils import getAllInterfacesOfDevice,getInterfacesOfDevice
 
@@ -102,25 +103,109 @@ def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     return op_dict
 
 
-def enable_interface(device_ip: str, interface_name: str, enable: bool):
-    path_intf_status_path = Path(
-        target="openconfig",
-        origin="openconfig-interfaces",
-        elem=[
-            PathElem(
-                name="interfaces",
-            ),
-            PathElem(name="interface", key={"name": interface_name}),
-            PathElem(name="config"),
-            PathElem(name="enabled"),
-        ],
-    )
-    return send_gnmi_set(
-        get_gnmi_update_req(
-            path_intf_status_path, {"openconfig-interfaces:enabled": enable}
-        ),
-        device_ip,
-    )
+class Speed(Enum):
+    SPEED_1GB = auto()
+    SPEED_5GB = auto()
+    SPEED_10GB = auto()
+    SPEED_25GB = auto()
+    SPEED_40GB = auto()
+    SPEED_50GB = auto()
+    SPEED_100GB = auto()
+    def __str__(self):
+        return f'openconfig-if-ethernet:{self.name}'
+
+def get_possible_speeds():
+    return [str(e) for e in Speed]
+
+def config_interface(device_ip: str, interface_name: str, enable:bool=None,mtu:int=None,loopback:bool=None,description:str=None
+                     ,speed:Speed=None):
+    updates=[]
+    
+    if enable is not None:
+        updates.append(create_gnmi_update(
+         Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": interface_name}),
+                PathElem(name="config"),
+                PathElem(name="enabled"),
+            ],
+        ),{"openconfig-interfaces:enabled": enable}))
+        
+    if mtu is not None:
+        updates.append(create_gnmi_update(
+         Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": interface_name}),
+                PathElem(name="config"),
+                PathElem(name="mtu"),
+            ],
+        ),{"openconfig-interfaces:mtu": mtu}))
+        
+    if loopback is not None:
+        updates.append(create_gnmi_update(
+         Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": interface_name}),
+                PathElem(name="config"),
+                PathElem(name="loopback-mode"),
+            ],
+        ),{"openconfig-interfaces:loopback-mode": loopback}))
+    
+    
+    if description is not None:
+        updates.append(create_gnmi_update(
+         Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": interface_name}),
+                PathElem(name="config"),
+                PathElem(name="description"),
+            ],
+        ),{"openconfig-interfaces:description": description}))
+    
+    if speed is not None:
+        updates.append(create_gnmi_update(
+         Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": interface_name}),
+                PathElem(name="openconfig-if-ethernet:ethernet"),
+                #PathElem(name="ethernet"),
+                PathElem(name="config"),
+                PathElem(name="port-speed"),
+            ],
+        ),{"openconfig-if-ethernet:port-speed": str(speed)}))
+    
+    if updates:
+        return send_gnmi_set(
+            create_req_for_update(updates),
+            device_ip,
+        )
+    else :
+        return None
 
 
 def get_all_interfaces(device_ip: str):
@@ -136,4 +221,49 @@ def get_all_interfaces(device_ip: str):
             ),
         ],
     )
+    return send_gnmi_get(device_ip=device_ip, path=[path_intf])
+
+def get_interface(device_ip: str,intfc_name:str):
+    path_intf = Path(
+        target="openconfig",
+        origin="openconfig-interfaces",
+        elem=[
+            PathElem(
+                name="interfaces",
+            ),
+            PathElem(name="interface", key={"name": intfc_name}),
+        ],
+    )
+    return send_gnmi_get(device_ip=device_ip, path=[path_intf])
+
+def get_interface_speed(device_ip: str,intfc_name:str):
+    path_intf =  Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": intfc_name}),
+                PathElem(name="openconfig-if-ethernet:ethernet"),
+                #PathElem(name="ethernet"),
+                PathElem(name="config"),
+                PathElem(name="port-speed1"),
+            ],
+        )
+    return send_gnmi_get(device_ip=device_ip, path=[path_intf])
+
+def get_interface_status(device_ip: str,intfc_name:str):
+    path_intf =   Path(
+            target="openconfig",
+            origin="openconfig-interfaces",
+            elem=[
+                PathElem(
+                    name="interfaces",
+                ),
+                PathElem(name="interface", key={"name": intfc_name}),
+                PathElem(name="config"),
+                PathElem(name="enabled"),
+            ],
+        )
     return send_gnmi_get(device_ip=device_ip, path=[path_intf])
