@@ -1,3 +1,4 @@
+from ast import List
 import json
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import create_req_for_update, get_gnmi_del_req, create_gnmi_update, send_gnmi_get, send_gnmi_set
@@ -6,7 +7,7 @@ from .graph_db_utils import getAllPortChnlOfDevice,getPortChnlOfDevice
 
 
 def createPortChnlGraphObject(device_ip: str):
-    port_chnl_json = get_port_chnl(device_ip)
+    port_chnl_json = get_port_chnls_all(device_ip)
     port_chnl_obj_list = {}
     if port_chnl_json:
         lag_table_json_list = port_chnl_json.get(
@@ -43,38 +44,46 @@ def getPortChnlDetailsFromGraph(device_ip:str,port_chnl_name=None):
             op_dict.append(chnl.__properties__)
     return op_dict
 
-
-def add_port_chnl(device_ip: str, chnl_name: str):
-    path = Path(target='openconfig',
+port_chnl_list_path = Path(target='openconfig',
                 origin='sonic-portchannel',
                 elem=[PathElem(name="sonic-portchannel"),
                       PathElem(name="PORTCHANNEL"),
                       PathElem(name="PORTCHANNEL_LIST"),
                       ])
+
+def add_port_chnl(device_ip: str, chnl_name: str,admin_status: str=None,mtu:int=None):
     port_chnl_add = {
         "sonic-portchannel:PORTCHANNEL_LIST": []
     }
+    port_chnl_item={"name": chnl_name}
+    if admin_status is not None and admin_status in ["up", "down"]:
+        port_chnl_item["admin_status"]=admin_status
+    if mtu is not None :
+        port_chnl_item["mtu"]=mtu
+
     port_chnl_add.get(
-        "sonic-portchannel:PORTCHANNEL_LIST").append({"name": chnl_name})
-    return send_gnmi_set(create_req_for_update([create_gnmi_update(path, port_chnl_add)]), device_ip)
+        "sonic-portchannel:PORTCHANNEL_LIST").append(port_chnl_item)
+    return send_gnmi_set(create_req_for_update([create_gnmi_update(port_chnl_list_path, port_chnl_add)]), device_ip)
 
 
-
-def add_port_chnl_member(device_ip: str, chnl_name: str, ifname:str):
-    path = Path(target='openconfig',
+port_chnl_mem_path = Path(target='openconfig',
                 origin='sonic-portchannel',
                 elem=[PathElem(name="sonic-portchannel"),
                       PathElem(name="PORTCHANNEL_MEMBER"),
                       PathElem(name="PORTCHANNEL_MEMBER_LIST"),
                       ])
+def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames):
     port_chnl_add = {
         "sonic-portchannel:PORTCHANNEL_MEMBER_LIST": []
     }
-    port_chnl_add.get(
-        "sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append({"name": chnl_name,"ifname":ifname})
-    return send_gnmi_set(create_req_for_update([create_gnmi_update(path, port_chnl_add)]), device_ip)
+    for intf in ifnames:
+        port_chnl_add.get(
+            "sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append({"name": chnl_name,"ifname":intf})
+    return send_gnmi_set(create_req_for_update([create_gnmi_update(port_chnl_mem_path, port_chnl_add)]), device_ip)
 
 
+def get_all_port_chnl_members(device_ip: str):
+    return send_gnmi_get(device_ip,[port_chnl_mem_path])
 
 
 def remove_port_chnl_member(device_ip: str, chnl_name: str, ifname:str):
@@ -100,7 +109,7 @@ def del_port_chnl(device_ip: str, chnl_name: str):
     return send_gnmi_set(get_gnmi_del_req(path), device_ip)
 
 
-def get_port_chnl(device_ip: str):
+def get_port_chnls_all(device_ip: str):
     path_intf_status_path = Path(target='openconfig',
                                  origin='sonic-portchannel',
                                  elem=[PathElem(name="sonic-portchannel"),
@@ -108,11 +117,16 @@ def get_port_chnl(device_ip: str):
     return send_gnmi_get(device_ip, [path_intf_status_path])
 
 
-def del_all_port_chnl(device_ip: str):
+def get_port_chnl(device_ip: str,chnl_name:str):
     path = Path(target='openconfig',
                 origin='sonic-portchannel',
                 elem=[PathElem(name="sonic-portchannel"),
                       PathElem(name="PORTCHANNEL"),
-                      PathElem(name="PORTCHANNEL_LIST"),
+                      PathElem(name="PORTCHANNEL_LIST",
+                               key={"name": chnl_name}),
                       ])
-    return send_gnmi_set(get_gnmi_del_req(path), device_ip)
+    return send_gnmi_get(device_ip, [path])
+
+
+def del_all_port_chnl(device_ip: str):
+    return send_gnmi_set(get_gnmi_del_req(port_chnl_list_path), device_ip)

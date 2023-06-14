@@ -248,7 +248,7 @@ def get_interface_speed(device_ip: str,intfc_name:str):
                 PathElem(name="openconfig-if-ethernet:ethernet"),
                 #PathElem(name="ethernet"),
                 PathElem(name="config"),
-                PathElem(name="port-speed1"),
+                PathElem(name="port-speed"),
             ],
         )
     return send_gnmi_get(device_ip=device_ip, path=[path_intf])
