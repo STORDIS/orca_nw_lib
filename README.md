@@ -28,3 +28,17 @@ Then open https://localhost:7474 with credentials neo4j/password to browse the d
 - In the device components specific python modules i.e. device.py or interfaces.py there are APIs to get information directly from the device or from Neo4j datatbase.
 - APIs which get information directly from device might take longer than the API which retrirved data from the Neo4j datatbase.
 - To use APIs which get data from Neo4j datatbase ends with ******FromGraph() i.e. getInterfacesDetailsFromGraph(device_ip), those APIs will return data only when the network discovery is initiated using the APIs in [./orca_nw_lib/discovery.py](./orca_nw_lib/discovery.py), refer [./orca_nw_lib/test/test_discovery.py](./orca_nw_lib/test/test_discovery.py).
+
+## Execute Tests
+Test cases are located under [./orca_nw_lib/test](./orca_nw_lib/test) directory.
+- To execute tests
+  
+        pytest orca_nw_lib/test/test_network.py
+
+- To execute single test cases 
+  
+        pytest orca_nw_lib/test/test_network.py -k test_remove_port_chnl_members
+
+- To print console messages from code 
+  
+        pytest orca_nw_lib/test/test_interface.py -k test_remove_port_chnl_members -s
