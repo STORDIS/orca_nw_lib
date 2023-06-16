@@ -1,4 +1,3 @@
-from typing import List
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_req_for_update,
@@ -68,6 +67,12 @@ def get_mclag_path():
     )
 
 
+def get_mclag_gateway_mac_path():
+    path = get_mclag_path()
+    path.elem.append(PathElem(name="mclag-gateway-macs"))
+    return path
+
+
 def get_mclag_domain_path():
     path = get_mclag_path()
     path.elem.append(PathElem(name="mclag-domains"))
@@ -95,7 +100,7 @@ def config_mclag_domain(
                     "source-address": "string",
                     "peer-address": "string",
                     "peer-link": "string",
-                    "mclag-system-mac": "string"
+                    "mclag-system-mac": "string",
                 },
             }
         ]
@@ -122,9 +127,42 @@ def config_mclag_domain(
         device_ip,
     )
 
+
+def config_mclag_gateway_mac(device_ip: str, mclag_gateway_mac: str):
+    mclag_gateway_mac_json = {
+        "openconfig-mclag:mclag-gateway-macs": {
+            "mclag-gateway-mac": [
+            {
+                "gateway-mac": mclag_gateway_mac,
+                "config": {
+                "gateway-mac": mclag_gateway_mac
+                }
+            }
+            ]
+        }
+        }
+    
+    
+    return send_gnmi_set(
+        create_req_for_update(
+            [create_gnmi_update(get_mclag_gateway_mac_path(), mclag_gateway_mac_json)]
+        ),
+        device_ip,
+    )
+
+
+def get_mclag_gateway_mac(device_ip: str):
+    return send_gnmi_get(device_ip=device_ip, path=[get_mclag_gateway_mac_path()])
+
+
+def del_mclag_gateway_mac(device_ip: str):
+    return send_gnmi_set(get_gnmi_del_req(get_mclag_gateway_mac_path()), device_ip)
+
+
 def get_mclag_domain(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_mclag_domain_path()])
-    
+
+
 def get_mclag_config(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_mclag_path()])
 

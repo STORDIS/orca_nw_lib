@@ -15,8 +15,15 @@ from orca_nw_lib.graph_db_utils import (
     getAllInterfacesOfDevice,
 )
 import unittest
-from orca_nw_lib.mclag import config_mclag_domain,get_mclag_domain,del_mclag,get_mclag_config
-
+from orca_nw_lib.mclag import (
+    config_mclag_domain,
+    config_mclag_gateway_mac,
+    del_mclag_gateway_mac,
+    get_mclag_domain,
+    del_mclag,
+    get_mclag_config,
+    get_mclag_gateway_mac,
+)
 
 
 from orca_nw_lib.interfaces import (
@@ -171,22 +178,61 @@ class PortChannelTests(unittest.TestCase):
 
 
 class MclagTests(unittest.TestCase):
-    
-     # dut_ip = getAllDevicesIP()[0]
+    # dut_ip = getAllDevicesIP()[0]
     dut_ip = "10.10.131.111"
     peer_address = "10.10.131.10"
     peer_link = "PortChannel100"
-    mclag_sys_mac="00:00:00:22:22:22"
+    mclag_sys_mac = "00:00:00:22:22:22"
     # ethernet = [ether for ether in getAllInterfacesNameOfDevice(dut_ip) if 'Ethernet' in ether][0]
     ethernet = "Ethernet0"
-    domain_id=1
-    
+    domain_id = 1
+
     def test_mclag_domain(self):
-        config_mclag_domain(self.dut_ip,self.domain_id,self.dut_ip,self.peer_address,self.peer_link,self.mclag_sys_mac)
-        resp=get_mclag_domain(self.dut_ip)
-        assert resp.get('openconfig-mclag:mclag-domain')[0].get('config').get('domain-id') == self.domain_id
-        assert resp.get('openconfig-mclag:mclag-domain')[0].get('config').get('mclag-system-mac') == self.mclag_sys_mac
-        assert resp.get('openconfig-mclag:mclag-domain')[0].get('config').get('peer-address') == self.peer_address
-        assert resp.get('openconfig-mclag:mclag-domain')[0].get('config').get('peer-link') == self.peer_link
+        config_mclag_domain(
+            self.dut_ip,
+            self.domain_id,
+            self.dut_ip,
+            self.peer_address,
+            self.peer_link,
+            self.mclag_sys_mac,
+        )
+        resp = get_mclag_domain(self.dut_ip)
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("domain-id")
+            == self.domain_id
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0]
+            .get("config")
+            .get("mclag-system-mac")
+            == self.mclag_sys_mac
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0]
+            .get("config")
+            .get("peer-address")
+            == self.peer_address
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
+            == self.peer_link
+        )
         del_mclag(self.dut_ip)
         assert not get_mclag_config(self.dut_ip)
+
+    def test_maclag_gateway_mac(self):
+        del_mclag_gateway_mac(self.dut_ip)
+        assert not get_mclag_gateway_mac(self.dut_ip)
+        gw_mac = "aa:bb:aa:bb:aa:bb"
+        config_mclag_gateway_mac(self.dut_ip, gw_mac)
+        print(get_mclag_gateway_mac(self.dut_ip))
+        assert (
+            get_mclag_gateway_mac(self.dut_ip)
+            .get("openconfig-mclag:mclag-gateway-macs")
+            .get("mclag-gateway-mac")[0]
+            .get("gateway-mac")
+            == gw_mac
+        )
+        del_mclag_gateway_mac(self.dut_ip)
+        assert not get_mclag_gateway_mac(self.dut_ip)
+        
