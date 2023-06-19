@@ -4,7 +4,7 @@ from neo4j import GraphDatabase
 from .graph_db_models import MCLAG, Device, PortChannel
 from .graph_db_models import Interface
 
-from .utils import settings, logging
+from .utils import get_orca_config, get_logging
 from .constants import neo4j_url, neo4j_password, neo4j_user, protocol
 
 from neomodel import (
@@ -18,9 +18,9 @@ from neomodel import (
     RelationshipTo,
 )
 
-config.DATABASE_URL = f"{settings.get(protocol)}://{settings.get(neo4j_user)}:{settings.get(neo4j_password)}@{settings.get(neo4j_url)}"
+config.DATABASE_URL = f"{get_orca_config().get(protocol)}://{get_orca_config().get(neo4j_user)}:{get_orca_config().get(neo4j_password)}@{get_orca_config().get(neo4j_url)}"
 
-_logger = logging.getLogger(__name__)
+_logger = get_logging().getLogger(__name__)
 
 
 def insert_topology_in_db(topology):

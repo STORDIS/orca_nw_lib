@@ -1,6 +1,5 @@
 from enum import Enum, auto
 import json
-import logging
 from typing import List
 
 from .gnmi_pb2 import Path, PathElem
@@ -12,8 +11,8 @@ from .gnmi_util import (
 )
 from .graph_db_models import Interface, PortChannel, SubInterface
 from .graph_db_utils import getAllInterfacesOfDevice, getInterfacesOfDevice
-
-_logger = logging.getLogger(__name__)
+from .utils import get_logging
+_logger = get_logging().getLogger(__name__)
 
 
 def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:

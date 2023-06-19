@@ -28,7 +28,7 @@ def createPortChnlGraphObject(device_ip: str):
         )
         for lag in lag_table_json_list:
             ifname_list = []
-            for mem in lag_mem_table_json_list:
+            for mem in lag_mem_table_json_list or []:
                 if lag.get("lagname") == mem.get("name"):
                     ifname_list.append(mem.get("ifname"))
             port_chnl_obj_list[

@@ -6,10 +6,10 @@ from .gnmi_util import send_gnmi_get
 from .interfaces import createInterfaceGraphObjects
 from .mclag import createMclagGraphObjects
 from .port_chnl import createPortChnlGraphObject
-from .utils import logging, settings
+from .utils import get_logging, get_orca_config
 from .constants import network
 
-_logger = logging.getLogger(__name__)
+_logger = get_logging().getLogger(__name__)
 
 
 def is_lldp_enabled(device_ip):
@@ -80,10 +80,17 @@ def get_neighbours(device_ip):
         )
         try:
             resp = send_gnmi_get(device_ip, [path_lldp_intfs, path_system_state])
+            
             for intfs in resp.get("openconfig-lldp:interface") or []:
-                if intfs.get("neighbors"):
-                    for nbr in intfs.get("neighbors").get("neighbor"):
+                if intfs.get("neighbors") or []:
+                    
+                    if not intfs.get("neighbors").get("neighbor"):
+                        _logger.error(f'can find neighbor in {intfs}')
+                    
+                    for nbr in intfs.get("neighbors").get("neighbor") or []:
                         nbr_addr = nbr.get("state").get("management-address")
+                        if not nbr_addr :
+                            _logger.error(f'can find neighbor addr in {nbr}')
                         neighbors.append(nbr_addr.split(",")[0])
         except TimeoutError as te:
             raise te
@@ -141,18 +148,18 @@ def discover_mclag():
 def discover_topology():
     _logger.info(
         "Network Discovery Started using network provided {0}".format(
-            settings.get(network)
+            get_orca_config().get(network)
         )
     )
     try:
-        for ip_or_nw in settings.get(network):
+        for ip_or_nw in get_orca_config().get(network):
             ips = ipaddress.ip_network(ip_or_nw)
             for ip in ips:
                 _logger.debug(f"Discovering device:{ip} and its neighbors.")
                 read_lldp_topo(str(ip))
         _logger.info(
             "Discovered topology using network provided {0}: {1}".format(
-                settings.get(network), topology
+                get_orca_config().get(network), topology
             )
         )
     except ValueError as ve:

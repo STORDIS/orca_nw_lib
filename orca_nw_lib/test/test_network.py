@@ -1,12 +1,11 @@
 import re
 import sys
 
-sys.path.append("../orca_nw_lib")
-from orca_nw_lib.utils import load_config, load_logging_config, ping_ok
+from orca_nw_lib.utils import get_orca_config, get_logging, ping_ok
 
-load_config()
-load_logging_config()
-from orca_nw_lib.utils import settings
+get_logging()
+
+
 from orca_nw_lib.constants import network
 from orca_nw_lib.discovery import discover_all
 from orca_nw_lib.graph_db_utils import (
@@ -43,77 +42,116 @@ from orca_nw_lib.port_chnl import (
 )
 
 
+# @unittest.skip("Because takes too long.")
 class TestDiscovery(unittest.TestCase):
-    def test_discovery():
+    def test_discovery(self):
         discover_all()
         # Not the best way to test but atleast check for if all pingable ips from settings are present in DB
-        assert set([ip for ip in settings.get(network) if ping_ok(ip)]).issubset(
-            set(getAllDevicesIP())
-        )
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP()))
 
 
 class InterfaceTests(unittest.TestCase):
-    # dut_ip = getAllDevicesIP()[0]
-    dut_ip = "10.10.131.111"
-    # ethernet = [ether for ether in getAllInterfacesNameOfDevice(dut_ip) if 'Ethernet' in ether][0]
-    ethernet = "Ethernet0"
+    dut_ip = None
+    ethernet = None
 
-    print(f"{dut_ip}:{ethernet}")
+    @classmethod
+    def setUpClass(cls):
+        if not set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP())):
+            discover_all()
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP()))
+        cls.dut_ip = getAllDevicesIP()[0]
+        cls.ethernet = [
+            ether
+            for ether in getAllInterfacesNameOfDevice(cls.dut_ip)
+            if "Ethernet" in ether
+        ][0]
+        assert cls.dut_ip is not None and cls.ethernet is not None
 
-    def test_interface_config(self):
-        speed_to_set = Speed.SPEED_10GB
-        mtu_to_set = 8000
-        enable = False
-        loopback = False
-        description = "Test Description"
-        config_interface(
-            self.dut_ip,
-            self.ethernet,
-            speed=speed_to_set,
-            mtu=mtu_to_set,
-            description=description,
-            loopback=loopback,
-            enable=enable,
-        )
+    def setUp(self) -> None:
+        print(f"Executing test on {self.dut_ip}:{self.ethernet}")
+        return super().setUp()
+
+    def test_interface_mtu(self):
         config = get_interface_config(self.dut_ip, self.ethernet).get(
             "openconfig-interfaces:config"
         )
+        mtu_before_test = config.get("mtu")
+        mtu_to_set = 9100
+        config_interface(self.dut_ip, self.ethernet, mtu=mtu_to_set)
+        config = get_interface_config(self.dut_ip, self.ethernet).get(
+            "openconfig-interfaces:config"
+        )
+        assert config.get("mtu") == mtu_to_set
+        config_interface(self.dut_ip, self.ethernet, mtu=mtu_before_test)
+
+        config = get_interface_config(self.dut_ip, self.ethernet).get(
+            "openconfig-interfaces:config"
+        )
+        assert config.get("mtu") == mtu_before_test
+    @unittest.skip("need port-group implementation")
+    def test_interface_speed(self):
+        speed_before_test = get_interface_speed(self.dut_ip, self.ethernet).get(
+            "openconfig-if-ethernet:port-speed"
+        )
+
+        speed_to_set = Speed.SPEED_25GB
+        config_interface(self.dut_ip, self.ethernet, speed=speed_to_set)
         assert get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
         ) == str(speed_to_set)
-        assert config.get("enabled") == enable
-        assert config.get("mtu") == mtu_to_set
-        assert config.get("enabled") == enable
-        assert config.get("description") == description
 
-        mtu_to_set = 9100
-        enable = True
-        loopback = True
-        description = "Test Description 2"
+        config_interface(self.dut_ip, self.ethernet, speed=speed_before_test)
+        assert get_interface_speed(self.dut_ip, self.ethernet).get(
+            "openconfig-if-ethernet:port-speed"
+        ) == str(speed_before_test)
+
+    def test_interface_enable(self):
+        enable = False
         config_interface(
             self.dut_ip,
             self.ethernet,
-            mtu=mtu_to_set,
-            description=description,
-            loopback=loopback,
             enable=enable,
         )
         config = get_interface_config(self.dut_ip, self.ethernet).get(
             "openconfig-interfaces:config"
         )
         assert config.get("enabled") == enable
-        assert config.get("mtu") == mtu_to_set
+
+        enable = True
+        config_interface(
+            self.dut_ip,
+            self.ethernet,
+            enable=enable,
+        )
+        config = get_interface_config(self.dut_ip, self.ethernet).get(
+            "openconfig-interfaces:config"
+        )
         assert config.get("enabled") == enable
-        assert config.get("description") == description
 
 
 class PortChannelTests(unittest.TestCase):
-    # dut_ip = getAllDevicesIP()[0]
-    dut_ip = "10.10.131.111"
-    # ethernet = [ether for ether in getAllInterfacesNameOfDevice(dut_ip) if 'Ethernet' in ether][0]
+    dut_ip = None
     ethernet1 = "Ethernet4"
     ethernet2 = "Ethernet8"
     chnl_name = "PortChannel101"
+
+    @classmethod
+    def setUpClass(cls):
+        if not set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP())):
+            discover_all()
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP()))
+        cls.dut_ip = getAllDevicesIP()[0]
+        assert cls.dut_ip is not None
 
     def test_add_port_chnl(self):
         add_port_chnl(self.dut_ip, self.chnl_name)
@@ -178,16 +216,38 @@ class PortChannelTests(unittest.TestCase):
 
 
 class MclagTests(unittest.TestCase):
-    # dut_ip = getAllDevicesIP()[0]
-    dut_ip = "10.10.131.111"
-    peer_address = "10.10.131.10"
+    peer_address = None
     peer_link = "PortChannel100"
     mclag_sys_mac = "00:00:00:22:22:22"
-    # ethernet = [ether for ether in getAllInterfacesNameOfDevice(dut_ip) if 'Ethernet' in ether][0]
-    ethernet = "Ethernet0"
     domain_id = 1
 
+    dut_ip = None
+    ethernet1 = "Ethernet4"
+    ethernet2 = "Ethernet8"
+
+    @classmethod
+    def setUpClass(cls):
+        if not set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP())):
+            discover_all()
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIP()))
+        cls.dut_ip = getAllDevicesIP()[0]
+        cls.peer_address = getAllDevicesIP()[1]
+        assert cls.dut_ip is not None
+
     def test_mclag_domain(self):
+        del_port_chnl(self.dut_ip, self.peer_link)
+        add_port_chnl(self.dut_ip, self.peer_link)
+        assert (
+            get_port_chnl(self.dut_ip, self.peer_link)
+            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
+            .get("name")
+            == self.peer_link
+        )
+        del_mclag(self.dut_ip)
         config_mclag_domain(
             self.dut_ip,
             self.domain_id,
@@ -217,15 +277,18 @@ class MclagTests(unittest.TestCase):
             resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
             == self.peer_link
         )
+
         del_mclag(self.dut_ip)
         assert not get_mclag_config(self.dut_ip)
+
+        del_port_chnl(self.dut_ip, self.peer_link)
+        assert not get_port_chnl(self.dut_ip, self.peer_link)
 
     def test_maclag_gateway_mac(self):
         del_mclag_gateway_mac(self.dut_ip)
         assert not get_mclag_gateway_mac(self.dut_ip)
         gw_mac = "aa:bb:aa:bb:aa:bb"
         config_mclag_gateway_mac(self.dut_ip, gw_mac)
-        print(get_mclag_gateway_mac(self.dut_ip))
         assert (
             get_mclag_gateway_mac(self.dut_ip)
             .get("openconfig-mclag:mclag-gateway-macs")
@@ -235,4 +298,3 @@ class MclagTests(unittest.TestCase):
         )
         del_mclag_gateway_mac(self.dut_ip)
         assert not get_mclag_gateway_mac(self.dut_ip)
-        

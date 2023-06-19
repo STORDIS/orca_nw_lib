@@ -23,19 +23,19 @@ from .gnmi_pb2 import (
     Update,
 )
 from .gnmi_pb2_grpc import gNMIStub
-from .utils import ping_ok, settings, logging
+from .utils import ping_ok, get_orca_config, get_logging
 from .constants import grpc_port, username, password, conn_timeout
 
-_logger = logging.getLogger(__name__)
+_logger = get_logging().getLogger(__name__)
 
 stubs = {}
 
 
 def getGrpcStubs(
     device_ip,
-    grpc_port=settings.get(grpc_port),
-    username=settings.get(username),
-    password=settings.get(password),
+    grpc_port=get_orca_config().get(grpc_port),
+    username=get_orca_config().get(username),
+    password=get_orca_config().get(password),
 ):
     global stubs
 
@@ -47,7 +47,7 @@ def getGrpcStubs(
     else:
         try:
             sw_cert = ssl.get_server_certificate(
-                (device_ip, grpc_port), timeout=settings.get(conn_timeout)
+                (device_ip, grpc_port), timeout=get_orca_config().get(conn_timeout)
             ).encode("utf-8")
             # Option 1
             # creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
@@ -86,7 +86,7 @@ def send_gnmi_get(device_ip, path: list[Path]):
         resp = (
             device_gnmi_stub.Get(
                 GetRequest(path=path, type=GetRequest.ALL, encoding=JSON_IETF),
-                timeout=settings.get(conn_timeout),
+                timeout=get_orca_config().get(conn_timeout),
             )
             if device_gnmi_stub
             else _logger.error(f"no gnmi stub found for device {device_ip}")
@@ -120,7 +120,7 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
     device_gnmi_stub = getGrpcStubs(device_ip)
     try:
         resp = (
-            device_gnmi_stub.Set(req, timeout=settings.get(conn_timeout))
+            device_gnmi_stub.Set(req, timeout=get_orca_config().get(conn_timeout))
             if device_gnmi_stub
             else _logger.error(f"no gnmi stub found for device {device_ip}")
         )
