@@ -1,5 +1,7 @@
 import enum
 import ipaddress
+
+from orca_nw_lib.portgroup import createPortGroupGraphObjects
 from .device import createDeviceGraphObject
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import send_gnmi_get
@@ -80,17 +82,16 @@ def get_neighbours(device_ip):
         )
         try:
             resp = send_gnmi_get(device_ip, [path_lldp_intfs, path_system_state])
-            
+
             for intfs in resp.get("openconfig-lldp:interface") or []:
                 if intfs.get("neighbors") or []:
-                    
                     if not intfs.get("neighbors").get("neighbor"):
-                        _logger.error(f'can find neighbor in {intfs}')
-                    
+                        _logger.error(f"can find neighbor in {intfs}")
+
                     for nbr in intfs.get("neighbors").get("neighbor") or []:
                         nbr_addr = nbr.get("state").get("management-address")
-                        if not nbr_addr :
-                            _logger.error(f'can find neighbor addr in {nbr}')
+                        if not nbr_addr:
+                            _logger.error(f"can find neighbor addr in {nbr}")
                         neighbors.append(nbr_addr.split(",")[0])
         except TimeoutError as te:
             raise te
@@ -118,6 +119,7 @@ from orca_nw_lib.graph_db_utils import (
     insert_device_interfaces_in_db,
     insert_device_mclag_in_db,
     insert_device_port_chnl_in_db,
+    insert_device_port_groups_in_db,
     insert_topology_in_db,
 )
 
@@ -135,6 +137,15 @@ def discover_interfaces():
         _logger.info(f"Discovering interfaces of device {device}.")
         insert_device_interfaces_in_db(
             device, createInterfaceGraphObjects(device.mgt_ip)
+        )
+
+
+def discover_port_groups():
+    _logger.info("Port-groups Discovery Started.")
+    for device in getAllDevices():
+        _logger.info(f"Discovering port-groups of device {device}.")
+        insert_device_port_groups_in_db(
+            device, createPortGroupGraphObjects(device.mgt_ip)
         )
 
 
@@ -180,5 +191,6 @@ def discover_all():
         discover_interfaces()
         discover_port_chnl()
         discover_mclag()
+        discover_port_groups()
         return True
     return False

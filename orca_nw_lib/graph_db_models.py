@@ -15,6 +15,7 @@ class Device(StructuredNode):
     interfaces=RelationshipTo('Interface','HAS')
     port_chnl=RelationshipTo('PortChannel','HAS')
     mclags=RelationshipTo('MCLAG','HAS')
+    port_groups=RelationshipTo('PortGroup','HAS')
     
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -98,7 +99,6 @@ class Interface(StructuredNode):
     description=StringProperty()
     last_chng=StringProperty()
     mac_addr=StringProperty()
-
     subInterfaces=RelationshipTo('SubInterface','HAS')
 
     ##counters
@@ -117,3 +117,24 @@ class Interface(StructuredNode):
 
     def __str__(self):
         return self.name
+    
+class PortGroup(StructuredNode):
+
+    port_group_id=IntegerProperty()
+    speed=StringProperty()
+    valid_speeds=ArrayProperty()
+    default_speed=StringProperty()
+    memberInterfaces=RelationshipTo('Interface','MEMBER')
+    
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.port_group_id == other.port_group_id
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.port_group_id)
+
+    def __str__(self):
+        return self.port_group_id
+    

@@ -2,8 +2,11 @@ import re
 import sys
 
 from orca_nw_lib.utils import get_orca_config, get_logging, ping_ok
+from orca_nw_lib.discovery import discover_all
 
-get_logging()
+# import sys
+# sys.path.append('../orca_nw_lib')
+# discover_all()
 
 
 from orca_nw_lib.constants import network
@@ -73,10 +76,6 @@ class InterfaceTests(unittest.TestCase):
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
 
-    def setUp(self) -> None:
-        print(f"Executing test on {self.dut_ip}:{self.ethernet}")
-        return super().setUp()
-
     def test_interface_mtu(self):
         config = get_interface_config(self.dut_ip, self.ethernet).get(
             "openconfig-interfaces:config"
@@ -94,6 +93,7 @@ class InterfaceTests(unittest.TestCase):
             "openconfig-interfaces:config"
         )
         assert config.get("mtu") == mtu_before_test
+
     @unittest.skip("need port-group implementation")
     def test_interface_speed(self):
         speed_before_test = get_interface_speed(self.dut_ip, self.ethernet).get(
@@ -235,7 +235,7 @@ class MclagTests(unittest.TestCase):
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIP()))
         cls.dut_ip = getAllDevicesIP()[0]
-        cls.peer_address = getAllDevicesIP()[1]
+        cls.peer_address = getAllDevicesIP()[0]
         assert cls.dut_ip is not None
 
     def test_mclag_domain(self):

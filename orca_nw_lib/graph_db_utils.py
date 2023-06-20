@@ -1,11 +1,11 @@
 import json
 from typing import List
 from neo4j import GraphDatabase
-from .graph_db_models import MCLAG, Device, PortChannel
-from .graph_db_models import Interface
+from orca_nw_lib.graph_db_models import MCLAG, Device, PortChannel
+from orca_nw_lib.graph_db_models import Interface
 
-from .utils import get_orca_config, get_logging
-from .constants import neo4j_url, neo4j_password, neo4j_user, protocol
+from orca_nw_lib.utils import get_orca_config, get_logging
+from orca_nw_lib.constants import neo4j_url, neo4j_password, neo4j_user, protocol
 
 from neomodel import (
     config,
@@ -45,12 +45,23 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             intfc.subInterfaces.connect(sub_i)
 
 
+def insert_device_port_groups_in_db(device: Device=None, port_groups: dict=None):
+    for pg, mem_intfcs in port_groups.items():
+        pg.save()
+        device.port_groups.connect(pg)
+        for if_name in mem_intfcs:
+            intf = getInterfaceOfDevice(device.mgt_ip, if_name)
+            if intf:
+                pg.memberInterfaces.connect(intf) 
+
+
+
 def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
     for mclag, intfcs in mclag_to_intfc_list.items():
         mclag.save()
         device.mclags.connect(mclag)
         for intf_name in intfcs:
-            intf_obj = getInterfacesOfDevice(device.mgt_ip, intf_name)
+            intf_obj = getInterfaceOfDevice(device.mgt_ip, intf_name)
             if intf_obj:
                 mclag.intfc_members.connect(intf_obj)
             port_chnl_obj = getPortChnlOfDevice(device.mgt_ip, intf_name)
@@ -63,7 +74,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
         chnl.save()
         device.port_chnl.connect(chnl)
         for intf_name in mem_list:
-            intf_obj = getInterfacesOfDevice(device.mgt_ip, intf_name)
+            intf_obj = getInterfaceOfDevice(device.mgt_ip, intf_name)
             if intf_obj:
                 chnl.members.connect(intf_obj)
 
@@ -94,7 +105,7 @@ def getAllInterfacesNameOfDevice(device_ip: str):
     return [intfc.name for intfc in intfcs] if intfcs else None
 
 
-def getInterfacesOfDevice(device_ip: str, interface_name: str) -> Interface:
+def getInterfaceOfDevice(device_ip: str, interface_name: str) -> Interface:
     device = getDevice(device_ip)
     return (
         getDevice(device_ip).interfaces.get_or_none(name=interface_name)

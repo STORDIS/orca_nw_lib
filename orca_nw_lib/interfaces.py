@@ -10,7 +10,7 @@ from .gnmi_util import (
     send_gnmi_get,
 )
 from .graph_db_models import Interface, PortChannel, SubInterface
-from .graph_db_utils import getAllInterfacesOfDevice, getInterfacesOfDevice
+from .graph_db_utils import getAllInterfacesOfDevice, getInterfaceOfDevice
 from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
@@ -97,7 +97,7 @@ def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
 
     if intfc_name:
-        intfc = getInterfacesOfDevice(device_ip, intfc_name)
+        intfc = getInterfaceOfDevice(device_ip, intfc_name)
         if intfc:
             op_dict.append(intfc.__properties__)
     else:
