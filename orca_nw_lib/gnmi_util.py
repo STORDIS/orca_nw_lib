@@ -97,7 +97,9 @@ def send_gnmi_get(device_ip, path: list[Path]):
             op = u.val.json_ietf_val.decode("utf-8")
             op = json.loads(op)
     except Exception as e:
-        _logger.error(e)
+        _logger.error(
+            f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
+        )
     return op
 
 
@@ -125,7 +127,9 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
             else _logger.error(f"no gnmi stub found for device {device_ip}")
         )
     except Exception as e:
-        _logger.error(e)
+        _logger.error(
+            f"{e} \n on device_ip : {device_ip} \n set request : {req}"
+        )
     return resp
 
 

@@ -19,7 +19,7 @@ _logger = get_logging().getLogger(__name__)
 def createPortGroupGraphObjects(device_ip: str):
     port_groups_json = get_port_groups(device_ip)
     port_group_graph_objs = {}
-    for port_group in port_groups_json.get("openconfig-port-group:port-group"):
+    for port_group in port_groups_json.get("openconfig-port-group:port-group") or []:
         port_group_state = port_group.get("state", {})
         default_speed = port_group_state.get("default-speed")
         member_if_start = port_group_state.get("member-if-start")
