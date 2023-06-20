@@ -1,13 +1,15 @@
 import re
 import sys
+from orca_nw_lib.common import Speed
 
 from orca_nw_lib.utils import get_orca_config, get_logging, ping_ok
 from orca_nw_lib.discovery import discover_all
 
+
 # import sys
 # sys.path.append('../orca_nw_lib')
-# discover_all()
-
+# from orca_nw_lib.interfaces import config_interface
+# config_interface('10.10.130.12', 'Ethernet0', speed=Speed.SPEED_10GB)
 
 from orca_nw_lib.constants import network
 from orca_nw_lib.discovery import discover_all
@@ -29,7 +31,6 @@ from orca_nw_lib.mclag import (
 
 
 from orca_nw_lib.interfaces import (
-    Speed,
     config_interface,
     get_interface_config,
     get_interface_speed,
@@ -94,11 +95,16 @@ class InterfaceTests(unittest.TestCase):
         )
         assert config.get("mtu") == mtu_before_test
 
-    @unittest.skip("need port-group implementation")
     def test_interface_speed(self):
+        self.ethernet='Ethernet0'
         speed_before_test = get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
         )
+        speed_to_set = Speed.SPEED_10GB
+        config_interface(self.dut_ip, self.ethernet, speed=speed_to_set)
+        assert get_interface_speed(self.dut_ip, self.ethernet).get(
+            "openconfig-if-ethernet:port-speed"
+        ) == str(speed_to_set)
 
         speed_to_set = Speed.SPEED_25GB
         config_interface(self.dut_ip, self.ethernet, speed=speed_to_set)

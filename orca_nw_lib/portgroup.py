@@ -1,6 +1,3 @@
-from enum import Enum, auto
-import json
-from typing import List
 
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
@@ -9,9 +6,10 @@ from .gnmi_util import (
     create_gnmi_update,
     send_gnmi_get,
 )
-from .graph_db_models import Interface, PortChannel, PortGroup, SubInterface
+from .graph_db_models import PortGroup
 from .graph_db_utils import getAllInterfacesOfDevice, getInterfaceOfDevice
 from .utils import get_logging
+from .common import Speed
 
 _logger = get_logging().getLogger(__name__)
 
@@ -72,7 +70,6 @@ def get_port_groups_base_path():
         ],
     )
 
-
 def get_port_groups_path():
     path = get_port_groups_base_path()
     path.elem.append(
@@ -83,15 +80,36 @@ def get_port_groups_path():
     return path
 
 
-def get_port_group_path(id: int):
+def get_port_group_path(id: str):
     path = get_port_groups_base_path()
-    path.elem.append(PathElem(name="port-group", key={"port-group": id}))
+    path.elem.append(PathElem(name="port-group", key={"id": str(id)}))
     return path
 
+def get_port_group_config_path(id: str):
+    path=get_port_group_path(id)
+    path.elem.append(PathElem(name="config"))
+    return path
+    
+def get_port_group_speed_path(id: str):
+    path=get_port_group_config_path(id)
+    path.elem.append(PathElem(name="speed"))
+    return path
 
 def get_port_groups(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_port_groups_path()])
 
-
 def get_port_group(device_ip: str, id: int):
     return send_gnmi_get(device_ip=device_ip, path=[get_port_group_path(id)])
+
+def get_port_group_speed(device_ip: str, id: int):
+    return send_gnmi_get(device_ip=device_ip, path=[get_port_group_speed_path(id)])
+
+def set_port_group_speed(device_ip: str, id: int, speed:Speed):
+    return send_gnmi_set(
+        create_req_for_update(
+            [create_gnmi_update(get_port_group_speed_path(id), {
+  "openconfig-port-group:speed": str(speed)
+})]
+        ),
+        device_ip,
+    )

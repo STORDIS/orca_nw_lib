@@ -1,6 +1,8 @@
-from enum import Enum, auto
 import json
 from typing import List
+
+from orca_nw_lib.common import Speed
+from orca_nw_lib.portgroup import get_port_group_speed_path, set_port_group_speed
 
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
@@ -10,8 +12,14 @@ from .gnmi_util import (
     send_gnmi_get,
 )
 from .graph_db_models import Interface, PortChannel, SubInterface
-from .graph_db_utils import getAllInterfacesOfDevice, getInterfaceOfDevice
+from .graph_db_utils import (
+    getAllInterfacesOfDevice,
+    getInterfaceOfDevice,
+    getAllPortGroupsOfDevice,
+    getPortGroupIDOfDeviceInterface,
+)
 from .utils import get_logging
+
 _logger = get_logging().getLogger(__name__)
 
 
@@ -107,19 +115,6 @@ def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     return op_dict
 
 
-class Speed(Enum):
-    SPEED_1GB = auto()
-    SPEED_5GB = auto()
-    SPEED_10GB = auto()
-    SPEED_25GB = auto()
-    SPEED_40GB = auto()
-    SPEED_50GB = auto()
-    SPEED_100GB = auto()
-
-    def __str__(self):
-        return f"openconfig-if-ethernet:{self.name}"
-
-
 def get_possible_speeds():
     return [str(e) for e in Speed]
 
@@ -135,37 +130,38 @@ def get_interface_base_path():
         ],
     )
 
-def get_interface_path(intfc_name:str):
-    path=get_interface_base_path()
+
+def get_interface_path(intfc_name: str):
+    path = get_interface_base_path()
     path.elem.append(PathElem(name="interface", key={"name": intfc_name}))
     return path
 
 
 def get_all_interfaces_path():
-    path=get_interface_base_path()
+    path = get_interface_base_path()
     path.elem.append(PathElem(name="interface"))
     return path
 
 
 def get_intfc_config_path(intfc_name: str):
-    path=get_interface_path(intfc_name)
+    path = get_interface_path(intfc_name)
     path.elem.append(PathElem(name="config"))
     return path
 
+
 def get_intfc_speed_path(intfc_name: str):
-    path=get_interface_path(intfc_name)
+    path = get_interface_path(intfc_name)
     path.elem.append(PathElem(name="openconfig-if-ethernet:ethernet"))
     path.elem.append(PathElem(name="config"))
     path.elem.append(PathElem(name="port-speed"))
     return path
 
 
-
 def get_intfc_enabled_path(intfc_name: str):
-    path=get_intfc_config_path(intfc_name)
+    path = get_intfc_config_path(intfc_name)
     path.elem.append(PathElem(name="enabled"))
     return path
-    
+
 
 def config_interface(
     device_ip: str,
@@ -217,7 +213,23 @@ def config_interface(
         )
 
     if speed is not None:
-        updates.append(create_gnmi_update(get_intfc_speed_path(interface_name),{"openconfig-if-ethernet:port-speed": str(speed)}))
+        # if switch supports port groups then configure speed on port-group otherwise directly on interface
+        if getAllPortGroupsOfDevice(device_ip) and getPortGroupIDOfDeviceInterface(device_ip, interface_name):
+            pg_id = getPortGroupIDOfDeviceInterface(device_ip, interface_name)
+            updates.append(
+                create_gnmi_update(
+                    get_port_group_speed_path(pg_id),
+                    {"openconfig-port-group:speed": str(speed)},
+                )
+            )
+            
+        else:
+            updates.append(
+                create_gnmi_update(
+                    get_intfc_speed_path(interface_name),
+                    {"openconfig-if-ethernet:port-speed": str(speed)},
+                )
+            )
 
     if updates:
         return send_gnmi_set(
@@ -238,6 +250,7 @@ def get_interface(device_ip: str, intfc_name: str):
 
 def get_interface_config(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_config_path(intfc_name)])
+
 
 def get_interface_speed(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_speed_path(intfc_name)])

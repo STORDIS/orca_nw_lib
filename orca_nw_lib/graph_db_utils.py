@@ -1,7 +1,4 @@
-import json
-from typing import List
-from neo4j import GraphDatabase
-from orca_nw_lib.graph_db_models import MCLAG, Device, PortChannel
+from orca_nw_lib.graph_db_models import Device, PortChannel, PortGroup
 from orca_nw_lib.graph_db_models import Interface
 
 from orca_nw_lib.utils import get_orca_config, get_logging
@@ -11,11 +8,8 @@ from neomodel import (
     config,
     db,
     clear_neo4j_database,
-    StructuredNode,
-    StringProperty,
-    IntegerProperty,
-    UniqueIdProperty,
-    RelationshipTo,
+    Traversal,
+    OUTGOING
 )
 
 config.DATABASE_URL = f"{get_orca_config().get(protocol)}://{get_orca_config().get(neo4j_user)}:{get_orca_config().get(neo4j_password)}@{get_orca_config().get(neo4j_url)}"
@@ -98,6 +92,19 @@ def getDevice(mgt_ip: str):
 def getAllInterfacesOfDevice(device_ip: str):
     device = getDevice(device_ip)
     return device.interfaces.all() if device else None
+
+
+def getAllPortGroupsOfDevice(device_ip: str):
+    device:Device = getDevice(device_ip)
+    return device.port_groups.all() if device else None
+
+def getPortGroupIDOfDeviceInterface(device_ip: str,inertface_name:str):
+    ## TODO: Following query certainly has scope of performance enhancement.
+    for pg in getAllPortGroupsOfDevice(device_ip):
+        for intf in pg.memberInterfaces.all():
+            if intf.name == inertface_name:
+                return pg.port_group_id
+    return None
 
 
 def getAllInterfacesNameOfDevice(device_ip: str):

@@ -1,4 +1,4 @@
-from neomodel import BooleanProperty,ArrayProperty,StructuredNode, StringProperty, IntegerProperty,  RelationshipTo
+from neomodel import BooleanProperty,ArrayProperty,StructuredNode, StringProperty, IntegerProperty,  RelationshipTo, RelationshipFrom
 
 
 class Device(StructuredNode):
@@ -125,7 +125,6 @@ class PortGroup(StructuredNode):
     valid_speeds=ArrayProperty()
     default_speed=StringProperty()
     memberInterfaces=RelationshipTo('Interface','MEMBER')
-    
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
