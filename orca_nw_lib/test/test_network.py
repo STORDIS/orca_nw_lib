@@ -20,11 +20,14 @@ import unittest
 from orca_nw_lib.mclag import (
     config_mclag_domain,
     config_mclag_gateway_mac,
+    config_mclag_mem_portchnl,
     del_mclag_gateway_mac,
+    del_mclag_mem_portchnl,
     get_mclag_domain,
     del_mclag,
     get_mclag_config,
     get_mclag_gateway_mac,
+    get_mclag_mem_portchnl,
 )
 
 
@@ -94,7 +97,7 @@ class InterfaceTests(unittest.TestCase):
         assert config.get("mtu") == mtu_before_test
 
     def test_interface_speed(self):
-        self.ethernet='Ethernet0'
+        self.ethernet = "Ethernet0"
         speed_before_test = get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
         )
@@ -224,6 +227,9 @@ class MclagTests(unittest.TestCase):
     peer_link = "PortChannel100"
     mclag_sys_mac = "00:00:00:22:22:22"
     domain_id = 1
+    mem_port_chnl = "PortChannel101"
+    mem_port_chnl_2 = "PortChannel102"
+    
 
     dut_ip = None
     ethernet1 = "Ethernet4"
@@ -302,3 +308,93 @@ class MclagTests(unittest.TestCase):
         )
         del_mclag_gateway_mac(self.dut_ip)
         assert not get_mclag_gateway_mac(self.dut_ip)
+
+    def test_mclag_mem_port_chnl(self):
+        del_port_chnl(self.dut_ip, self.peer_link)
+        add_port_chnl(self.dut_ip, self.peer_link)
+        assert (
+            get_port_chnl(self.dut_ip, self.peer_link)
+            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
+            .get("name")
+            == self.peer_link
+        )
+        del_mclag(self.dut_ip)
+        config_mclag_domain(
+            self.dut_ip,
+            self.domain_id,
+            self.dut_ip,
+            self.peer_address,
+            self.peer_link,
+            self.mclag_sys_mac,
+        )
+        resp = get_mclag_domain(self.dut_ip)
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("domain-id")
+            == self.domain_id
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0]
+            .get("config")
+            .get("mclag-system-mac")
+            == self.mclag_sys_mac
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0]
+            .get("config")
+            .get("peer-address")
+            == self.peer_address
+        )
+        assert (
+            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
+            == self.peer_link
+        )
+
+        del_port_chnl(self.dut_ip, self.mem_port_chnl)
+        del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+        
+        add_port_chnl(self.dut_ip, self.mem_port_chnl)
+        add_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+        
+        assert (
+            get_port_chnl(self.dut_ip, self.mem_port_chnl)
+            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
+            .get("name")
+            == self.mem_port_chnl
+        )
+        
+        assert (
+            get_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
+            .get("name")
+            == self.mem_port_chnl_2
+        )
+        
+        config_mclag_mem_portchnl(self.dut_ip, self.domain_id, self.mem_port_chnl)
+        config_mclag_mem_portchnl(self.dut_ip, self.domain_id, self.mem_port_chnl_2)
+
+        assert (
+            get_mclag_mem_portchnl(self.dut_ip)
+            .get("openconfig-mclag:interface")[0]
+            .get("name")
+            == self.mem_port_chnl
+        )
+        
+        assert (
+            get_mclag_mem_portchnl(self.dut_ip)
+            .get("openconfig-mclag:interface")[1]
+            .get("name")
+            == self.mem_port_chnl_2
+        )
+        
+        del_mclag_mem_portchnl(self.dut_ip)
+
+        assert not get_mclag_mem_portchnl(self.dut_ip)
+
+        del_port_chnl(self.dut_ip, self.mem_port_chnl)
+        assert not get_port_chnl(self.dut_ip, self.mem_port_chnl)
+
+        del_mclag(self.dut_ip)
+        assert not get_mclag_config(self.dut_ip)
+
+        del_port_chnl(self.dut_ip, self.peer_link)
+        assert not get_port_chnl(self.dut_ip, self.peer_link)

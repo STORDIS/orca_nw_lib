@@ -67,6 +67,13 @@ def get_mclag_path():
     )
 
 
+def get_mclag_if_path():
+    path = get_mclag_path()
+    path.elem.append(PathElem(name="interfaces"))
+    path.elem.append(PathElem(name="interface"))
+    return path
+
+
 def get_mclag_gateway_mac_path():
     path = get_mclag_path()
     path.elem.append(PathElem(name="mclag-gateway-macs"))
@@ -128,21 +135,43 @@ def config_mclag_domain(
     )
 
 
+def config_mclag_mem_portchnl(
+    device_ip: str, mclag_domain_id: int, port_chnl_name: str
+):
+    payload = {
+        "openconfig-mclag:interface": [
+            {
+                "name": port_chnl_name,
+                "config": {"name": port_chnl_name, "mclag-domain-id": mclag_domain_id},
+            }
+        ]
+    }
+    return send_gnmi_set(
+        create_req_for_update([create_gnmi_update(get_mclag_if_path(), payload)]),
+        device_ip,
+    )
+
+
+def get_mclag_mem_portchnl(device_ip: str):
+    return send_gnmi_get(device_ip=device_ip, path=[get_mclag_if_path()])
+
+
+def del_mclag_mem_portchnl(device_ip: str):
+    return send_gnmi_set(get_gnmi_del_req(get_mclag_if_path()), device_ip)
+
+
 def config_mclag_gateway_mac(device_ip: str, mclag_gateway_mac: str):
     mclag_gateway_mac_json = {
         "openconfig-mclag:mclag-gateway-macs": {
             "mclag-gateway-mac": [
-            {
-                "gateway-mac": mclag_gateway_mac,
-                "config": {
-                "gateway-mac": mclag_gateway_mac
+                {
+                    "gateway-mac": mclag_gateway_mac,
+                    "config": {"gateway-mac": mclag_gateway_mac},
                 }
-            }
             ]
         }
-        }
-    
-    
+    }
+
     return send_gnmi_set(
         create_req_for_update(
             [create_gnmi_update(get_mclag_gateway_mac_path(), mclag_gateway_mac_json)]
