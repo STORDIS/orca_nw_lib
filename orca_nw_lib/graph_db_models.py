@@ -1,4 +1,4 @@
-from neomodel import BooleanProperty,ArrayProperty,StructuredNode, StringProperty, IntegerProperty,  RelationshipTo, RelationshipFrom
+from neomodel import BooleanProperty,ArrayProperty,StructuredNode, StringProperty, IntegerProperty,  RelationshipTo, Relationship
 
 
 class Device(StructuredNode):
@@ -100,6 +100,7 @@ class Interface(StructuredNode):
     last_chng=StringProperty()
     mac_addr=StringProperty()
     subInterfaces=RelationshipTo('SubInterface','HAS')
+    lldp_neighbour=RelationshipTo('Interface','LLDP_NBR')
 
     ##counters
     in_bits_per_second = in_broadcast_pkts = in_discards = in_errors = in_multicast_pkts = in_octets =\

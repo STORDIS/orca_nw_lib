@@ -23,11 +23,20 @@ def insert_topology_in_db(topology):
             device.save()
         # create its neighbor
         for nbr in neighbors:
-            if Device.nodes.get_or_none(mac=nbr.mac) is None:
-                nbr.save()
-            Device.nodes.get(mac=device.mac).neighbor.connect(
-                Device.nodes.get(mac=nbr.mac)
-            )
+            nbr_device=nbr.get('nbr_device')
+            if Device.nodes.get_or_none(mac=nbr_device.mac) is None:
+                nbr_device.save()
+
+
+def create_lldp_relations(topology):
+    for device, neighbors in topology.items():
+        for nbr in neighbors:
+            local_intfc= getInterfaceOfDevice(device.mgt_ip,nbr.get('local_port'))
+            
+            nbr_device=nbr.get('nbr_device')
+            nbr_intfc=getInterfaceOfDevice(nbr_device.mgt_ip,nbr.get('nbr_port'))
+            local_intfc.lldp_neighbour.connect(nbr_intfc)
+
 
 
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):

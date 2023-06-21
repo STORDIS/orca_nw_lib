@@ -8,11 +8,9 @@ from orca_nw_lib.discovery import discover_all
 
 # import sys
 # sys.path.append('../orca_nw_lib')
-# from orca_nw_lib.interfaces import config_interface
-# config_interface('10.10.130.12', 'Ethernet0', speed=Speed.SPEED_10GB)
+# discover_all()
 
 from orca_nw_lib.constants import network
-from orca_nw_lib.discovery import discover_all
 from orca_nw_lib.graph_db_utils import (
     getAllDevicesIP,
     getAllInterfacesNameOfDevice,

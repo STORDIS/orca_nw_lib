@@ -1,5 +1,6 @@
 import enum
 import ipaddress
+from orca_nw_lib.lldp import getLLDPNeighbors
 
 from orca_nw_lib.portgroup import createPortGroupGraphObjects
 from .device import createDeviceGraphObject
@@ -10,6 +11,7 @@ from .mclag import createMclagGraphObjects
 from .port_chnl import createPortChnlGraphObject
 from .utils import get_logging, get_orca_config
 from .constants import network
+from .lldp import getLLDPNeighbors
 
 _logger = get_logging().getLogger(__name__)
 
@@ -46,58 +48,6 @@ def is_lldp_enabled(device_ip):
         raise e
 
 
-def get_neighbours(device_ip):
-    """
-    Returns a list of IP addresses of LLDP neighbors of the device_ip provided in prameters
-    """
-    neighbors = []
-    # if is_lldp_enabled(device_ip):
-    if 1:
-        path_lldp_intfs = Path(
-            target="openconfig",
-            origin="openconfig-lldp",
-            elem=[
-                PathElem(
-                    name="lldp",
-                ),
-                PathElem(
-                    name="interfaces",
-                ),
-                PathElem(
-                    name="interface",
-                ),
-            ],
-        )
-        path_system_state = Path(
-            target="openconfig",
-            origin="openconfig-system",
-            elem=[
-                PathElem(
-                    name="system",
-                ),
-                PathElem(
-                    name="state",
-                ),
-            ],
-        )
-        try:
-            resp = send_gnmi_get(device_ip, [path_lldp_intfs, path_system_state])
-
-            for intfs in resp.get("openconfig-lldp:interface") or []:
-                if intfs.get("neighbors") or []:
-                    if not intfs.get("neighbors").get("neighbor"):
-                        _logger.error(f"can find neighbor in {intfs}")
-
-                    for nbr in intfs.get("neighbors").get("neighbor") or []:
-                        nbr_addr = nbr.get("state").get("management-address")
-                        if not nbr_addr:
-                            _logger.error(f"can find neighbor addr in {nbr}")
-                        neighbors.append(nbr_addr.split(",")[0])
-        except TimeoutError as te:
-            raise te
-    return neighbors
-
-
 topology = {}
 
 
@@ -105,16 +55,24 @@ def read_lldp_topo(ip):
     try:
         device = createDeviceGraphObject(ip)
         if device not in topology.keys():
-            nbrs = get_neighbours(ip)
-            topology[device] = [createDeviceGraphObject(nbr_ip) for nbr_ip in nbrs]
+            nbrs = getLLDPNeighbors(ip)
+            topology[device] = [
+                {
+                    "nbr_device": createDeviceGraphObject(nbr.get("nbr_ip")),
+                    "nbr_port": nbr.get("nbr_port"),
+                    "local_port": nbr.get("local_port"),
+                }
+                for nbr in nbrs
+            ]
             for nbr in nbrs or []:
-                read_lldp_topo(nbr)
+                read_lldp_topo(nbr.get("nbr_ip"))
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
 
 
 from orca_nw_lib.graph_db_utils import (
     clean_db,
+    create_lldp_relations,
     getAllDevices,
     insert_device_interfaces_in_db,
     insert_device_mclag_in_db,
@@ -185,10 +143,16 @@ def discover_topology():
     return True
 
 
+def create_lldp_rel():
+    _logger.info("Creating LLDP relations.")
+    create_lldp_relations(topology)
+
+
 def discover_all():
     clean_db()
     if discover_topology():
         discover_interfaces()
+        create_lldp_rel()
         discover_port_chnl()
         discover_mclag()
         discover_port_groups()
