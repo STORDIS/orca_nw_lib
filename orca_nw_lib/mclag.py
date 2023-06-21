@@ -7,7 +7,7 @@ from .gnmi_util import (
     send_gnmi_set,
 )
 from .graph_db_models import MCLAG
-from .graph_db_utils import getAllMCLAGsDevice, getMCLAGOfDevice
+from .graph_db_utils import getMclagOfDevice, getMCLAGOfDevice
 
 
 def getMCLAGsFromGraph(device_ip: str, domain_id=None):
@@ -17,7 +17,7 @@ def getMCLAGsFromGraph(device_ip: str, domain_id=None):
         if mclag:
             op_dict.append(mclag.__properties__)
     else:
-        mclags = getAllMCLAGsDevice(device_ip)
+        mclags = getMclagOfDevice(device_ip)
         for mclag in mclags or []:
             op_dict.append(mclag.__properties__)
     return op_dict
@@ -47,10 +47,10 @@ def createMclagGraphObjects(device_ip: str) -> dict:
         )
         intfc_list = []
         for mclag_intfc in mclag_intfc_list or []:
-            if mclag_obj.domain_id == mclag_intfc.get("config").get("mclag-id"):
+            if mclag_obj.domain_id == mclag_intfc.get("config").get("mclag-domain-id"):
                 intfc_list.append(mclag_intfc.get("name"))
 
-        mclag_obj.gateway_macs = [(gw.get("gateway-mac")) for gw in mclag_gateway_macs]
+        mclag_obj.gateway_macs = [(gw.get("gateway-mac")) for gw in mclag_gateway_macs or []]
 
         mclags_obj_list[mclag_obj] = intfc_list
 

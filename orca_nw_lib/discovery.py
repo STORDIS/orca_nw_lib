@@ -73,6 +73,7 @@ def read_lldp_topo(ip):
 from orca_nw_lib.graph_db_utils import (
     clean_db,
     create_lldp_relations,
+    create_mclag_peerlink_relations,
     getAllDevices,
     insert_device_interfaces_in_db,
     insert_device_mclag_in_db,
@@ -147,6 +148,9 @@ def create_lldp_rel():
     _logger.info("Creating LLDP relations.")
     create_lldp_relations(topology)
 
+def create_mclag_peer_link_rel():
+    _logger.info("Creating MCLAG peer-link relations.")
+    create_mclag_peerlink_relations()
 
 def discover_all():
     clean_db()
@@ -155,6 +159,7 @@ def discover_all():
         create_lldp_rel()
         discover_port_chnl()
         discover_mclag()
+        create_mclag_peer_link_rel()
         discover_port_groups()
         return True
     return False

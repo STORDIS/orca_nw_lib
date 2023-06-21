@@ -41,6 +41,8 @@ class PortChannel(StructuredNode):
     oper_sts_reason=StringProperty()
     
     members=RelationshipTo('Interface','HAS MEMBER')
+    peer_link=RelationshipTo('PortChannel','peer_link')
+    
        
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -71,6 +73,10 @@ class MCLAG(StructuredNode):
     
     intfc_members=RelationshipTo('Interface','HAS MEMBER')
     portChnl_member=RelationshipTo('PortChannel','HAS MEMBER')
+    peer_link_node=RelationshipTo('PortChannel','PEER_LINK')
+    
+    
+    
        
     def __eq__(self, other):
         if isinstance(other, self.__class__):

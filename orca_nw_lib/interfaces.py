@@ -31,7 +31,8 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
         intfc_counters = intfc_state.get("counters", {})
         type = intfc.get("config").get("type")
 
-        if "ether" or "loopback" in type.lower():
+        if ("ether" or "loopback" in type.lower()) and 'PortChannel' not in intfc_state.get("name"):
+            # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
                 name=intfc_state.get("name"),
                 enabled=intfc_state.get("enabled"),

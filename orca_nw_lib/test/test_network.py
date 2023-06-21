@@ -1,20 +1,18 @@
-import re
 import sys
 from orca_nw_lib.common import Speed
 
-from orca_nw_lib.utils import get_orca_config, get_logging, ping_ok
+from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
 
 
-# import sys
-# sys.path.append('../orca_nw_lib')
-# discover_all()
+import sys
+sys.path.append("../orca_nw_lib")
+discover_all()
 
 from orca_nw_lib.constants import network
 from orca_nw_lib.graph_db_utils import (
     getAllDevicesIP,
     getAllInterfacesNameOfDevice,
-    getAllInterfacesOfDevice,
 )
 import unittest
 from orca_nw_lib.mclag import (
@@ -23,9 +21,9 @@ from orca_nw_lib.mclag import (
     config_mclag_mem_portchnl,
     del_mclag_gateway_mac,
     del_mclag_mem_portchnl,
+    get_mclag_config,
     get_mclag_domain,
     del_mclag,
-    get_mclag_config,
     get_mclag_gateway_mac,
     get_mclag_mem_portchnl,
 )
@@ -35,7 +33,6 @@ from orca_nw_lib.interfaces import (
     config_interface,
     get_interface_config,
     get_interface_speed,
-    get_interface_status,
 )
 from orca_nw_lib.port_chnl import (
     add_port_chnl,
@@ -229,11 +226,7 @@ class MclagTests(unittest.TestCase):
     domain_id = 1
     mem_port_chnl = "PortChannel101"
     mem_port_chnl_2 = "PortChannel102"
-    
-
     dut_ip = None
-    ethernet1 = "Ethernet4"
-    ethernet2 = "Ethernet8"
 
     @classmethod
     def setUpClass(cls):
@@ -351,24 +344,24 @@ class MclagTests(unittest.TestCase):
 
         del_port_chnl(self.dut_ip, self.mem_port_chnl)
         del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
-        
+
         add_port_chnl(self.dut_ip, self.mem_port_chnl)
         add_port_chnl(self.dut_ip, self.mem_port_chnl_2)
-        
+
         assert (
             get_port_chnl(self.dut_ip, self.mem_port_chnl)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.mem_port_chnl
         )
-        
+
         assert (
             get_port_chnl(self.dut_ip, self.mem_port_chnl_2)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.mem_port_chnl_2
         )
-        
+
         config_mclag_mem_portchnl(self.dut_ip, self.domain_id, self.mem_port_chnl)
         config_mclag_mem_portchnl(self.dut_ip, self.domain_id, self.mem_port_chnl_2)
 
@@ -378,14 +371,14 @@ class MclagTests(unittest.TestCase):
             .get("name")
             == self.mem_port_chnl
         )
-        
+
         assert (
             get_mclag_mem_portchnl(self.dut_ip)
             .get("openconfig-mclag:interface")[1]
             .get("name")
             == self.mem_port_chnl_2
         )
-        
+
         del_mclag_mem_portchnl(self.dut_ip)
 
         assert not get_mclag_mem_portchnl(self.dut_ip)
