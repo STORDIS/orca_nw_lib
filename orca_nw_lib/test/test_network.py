@@ -420,14 +420,13 @@ class SubscriptiosTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         gnmi_unsubscribe(cls.dut_ip)
-        
         return super().tearDownClass()
 
         
     def test_interface_config_update(self):
         sts=gnmi_subscribe(self.dut_ip,[get_intfc_config_path(self.ethernet)])
         assert sts
-        sleep(1)
+        sleep(3)
         enable= not getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled
         set_interface_config(
             self.dut_ip,

@@ -54,11 +54,11 @@ def handle_update(device_ip: str, paths: List[Path]):
             ],
             mode=SubscriptionList.Mode.Value("STREAM"),
             encoding=Encoding.Value("PROTO"),
-            updates_only=True,
         )
 
         sub_req = SubscribeRequest(subscribe=subscriptionlist)
         for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
+            print(resp)
             if not resp.sync_response:
                 for ele in resp.update.prefix.elem:
                     if ele.name == get_interface_base_path().elem[0].name:
