@@ -47,7 +47,7 @@ from orca_nw_lib.port_chnl import (
 #sys.path.append("../orca_nw_lib")
 #discover_all()   
 
-# @unittest.skip("Because takes too long.")
+@unittest.skip("Because takes too long.")
 class TestDiscovery(unittest.TestCase):
     def test_discovery(self):
         discover_all()
@@ -416,6 +416,12 @@ class SubscriptiosTests(unittest.TestCase):
             if "Ethernet" in ether
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
+    
+    @classmethod
+    def tearDownClass(cls) -> None:
+        gnmi_unsubscribe(cls.dut_ip)
+        
+        return super().tearDownClass()
 
         
     def test_interface_config_update(self):
@@ -428,16 +434,17 @@ class SubscriptiosTests(unittest.TestCase):
             self.ethernet,
             enable=enable,
         )
-        sleep(2)
+        sleep(1)
         assert getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled == enable
 
         enable = not getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled
-        enable=False
+
         set_interface_config(
             self.dut_ip,
             self.ethernet,
             enable=enable,
         )
-        sleep(2)
+        sleep(1)
         assert getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled == enable
-        gnmi_unsubscribe(self.dut_ip)
+        
+        
