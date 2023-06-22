@@ -137,7 +137,6 @@ def getAllInterfacesNameOfDevice(device_ip: str):
     intfcs = getAllInterfacesOfDevice(device_ip)
     return [intfc.name for intfc in intfcs] if intfcs else None
 
-
 def getInterfaceOfDevice(device_ip: str, interface_name: str) -> Interface:
     device = getDevice(device_ip)
     return (
@@ -146,6 +145,14 @@ def getInterfaceOfDevice(device_ip: str, interface_name: str) -> Interface:
         else None
     )
 
+def set_interface_enable(device_ip:str,if_name:str,enable:bool=None,mtu=None):
+    interface=getInterfaceOfDevice(device_ip,if_name)
+    if interface:
+        if enable is not None:
+            interface.enabled=enable
+        if mtu is not None :
+            interface.mtu=mtu
+    interface.save()
 
 def getAllPortChnlOfDevice(device_ip: str):
     device = getDevice(device_ip)

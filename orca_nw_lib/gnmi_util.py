@@ -1,4 +1,3 @@
-import enum
 import json
 import re
 import ssl
@@ -6,19 +5,12 @@ import sys
 from typing import List
 
 import grpc
+
 from .gnmi_pb2 import (
-    JSON,
-    CapabilityRequest,
-    Encoding,
     GetRequest,
     Path,
-    PathElem,
     JSON_IETF,
     SetRequest,
-    SubscribeRequest,
-    Subscription,
-    SubscriptionList,
-    SubscriptionMode,
     TypedValue,
     Update,
 )
@@ -166,26 +158,4 @@ def create_gnmi_path(path_arr: List[str]) -> List[Path]:
     return paths
 
 
-def subscribe_to_path(request):
-    yield request
-
-
-def gnmi_subscribe(device_ip: str, paths: List[Path]):
-    op = []
-    device_gnmi_stub = getGrpcStubs(device_ip)
-    try:
-        subscriptionlist = SubscriptionList(
-            subscription=[
-                Subscription(path=path, mode=SubscriptionMode.ON_CHANGE)
-                for path in paths
-            ],
-            mode=SubscriptionList.Mode.Value("STREAM"),
-            encoding=Encoding.Value("PROTO"),
-        )
-
-        sub_req = SubscribeRequest(subscribe=subscriptionlist)
-        for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
-            op.append(resp)
-    except Exception as e:
-        _logger.error(e)
-    return op
+    

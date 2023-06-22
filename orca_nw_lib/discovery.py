@@ -39,7 +39,7 @@ def is_lldp_enabled(device_ip):
                 if response.get("openconfig-lldp:enabled"):
                     return True
                 else:
-                    print(f"LLDP is disabled on {device_ip}")
+                    _logger.info(f"LLDP is disabled on {device_ip}")
                     return False
         else:
             _logger.info(f"Error occured while making request on {device_ip}.")

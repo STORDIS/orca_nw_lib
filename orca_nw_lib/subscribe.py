@@ -1,6 +1,6 @@
 from threading import Thread
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import gnmi_subscribe
+from orca_nw_lib.gnmi_sub import gnmi_subscribe
 from orca_nw_lib.graph_db_utils import getAllInterfacesNameOfDevice
 from orca_nw_lib.interfaces import get_intfc_config_path
 

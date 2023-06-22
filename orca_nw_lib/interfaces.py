@@ -102,6 +102,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
     return intfc_graph_obj_list
 
 
+    
 def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
 
@@ -123,10 +124,9 @@ def get_possible_speeds():
 def get_interface_base_path():
     return Path(
         target="openconfig",
-        origin="openconfig-interfaces",
         elem=[
             PathElem(
-                name="interfaces",
+                name="openconfig-interfaces:interfaces",
             )
         ],
     )
@@ -164,7 +164,7 @@ def get_intfc_enabled_path(intfc_name: str):
     return path
 
 
-def config_interface(
+def set_interface_config(
     device_ip: str,
     interface_name: str,
     enable: bool = None,
