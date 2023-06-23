@@ -108,7 +108,7 @@ def set_port_group_speed(device_ip: str, id: int, speed:Speed):
     return send_gnmi_set(
         create_req_for_update(
             [create_gnmi_update(get_port_group_speed_path(id), {
-  "openconfig-port-group:speed": str(speed)
+  "openconfig-port-group:speed": speed.get_gnmi_val()
 })]
         ),
         device_ip,

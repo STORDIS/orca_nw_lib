@@ -1,3 +1,4 @@
+from orca_nw_lib.common import Speed
 from orca_nw_lib.graph_db_models import Device, PortChannel, PortGroup
 from orca_nw_lib.graph_db_models import Interface
 
@@ -145,13 +146,15 @@ def getInterfaceOfDevice(device_ip: str, interface_name: str) -> Interface:
         else None
     )
 
-def set_interface_enable(device_ip:str,if_name:str,enable:bool=None,mtu=None):
+def set_interface_config(device_ip:str,if_name:str,enable:bool=None,mtu=None,speed:Speed=None):
     interface=getInterfaceOfDevice(device_ip,if_name)
     if interface:
         if enable is not None:
             interface.enabled=enable
         if mtu is not None :
             interface.mtu=mtu
+        if speed is not None:
+            interface.speed=str(speed)
     interface.save()
 
 def getAllPortChnlOfDevice(device_ip: str):

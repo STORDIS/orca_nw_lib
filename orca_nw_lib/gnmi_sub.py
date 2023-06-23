@@ -1,5 +1,6 @@
 from threading import Thread
 import threading
+from orca_nw_lib.common import Speed
 from orca_nw_lib.gnmi_pb2 import (
     Encoding,
     Path,
@@ -15,7 +16,7 @@ from orca_nw_lib.gnmi_util import _logger, getGrpcStubs
 
 
 from typing import List
-from orca_nw_lib.graph_db_utils import set_interface_enable
+from orca_nw_lib.graph_db_utils import set_interface_config
 
 from orca_nw_lib.interfaces import get_interface_base_path
 from orca_nw_lib.utils import get_logging
@@ -32,13 +33,17 @@ def handle_interface_config_update(device_ip:str,resp:SubscribeResponse):
     for ele in resp.update.prefix.elem:
         if ele.name == "interface":
             ether=ele.key.get('name')
+            break
     
     for u in resp.update.update:
         for ele in u.path.elem:
             if ele.name == "enabled" and ether:
-                set_interface_enable(device_ip, ether, enable=u.val.bool_val)
+                set_interface_config(device_ip, ether, enable=u.val.bool_val)
             if ele.name == "mtu" and ether:
-                set_interface_enable(device_ip, ether, mtu=u.val.uint_val)
+                set_interface_config(device_ip, ether, mtu=u.val.uint_val)
+            if ele.name == "port-speed":
+                set_interface_config(device_ip, ether, speed=Speed[u.val.string_val])
+                
 
 
 def handle_update(device_ip: str, paths: List[Path]):
@@ -54,11 +59,11 @@ def handle_update(device_ip: str, paths: List[Path]):
             ],
             mode=SubscriptionList.Mode.Value("STREAM"),
             encoding=Encoding.Value("PROTO"),
+            updates_only=True
         )
 
         sub_req = SubscribeRequest(subscribe=subscriptionlist)
         for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
-            print(resp)
             if not resp.sync_response:
                 for ele in resp.update.prefix.elem:
                     if ele.name == get_interface_base_path().elem[0].name:

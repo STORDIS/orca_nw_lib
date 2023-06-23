@@ -42,7 +42,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 .get("openconfig-if-ethernet-ext2:port-fec"),
                 speed=intfc.get("openconfig-if-ethernet:ethernet", {})
                 .get("config", {})
-                .get("port-speed"),
+                .get("port-speed").split(":")[1],
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
@@ -220,7 +220,7 @@ def set_interface_config(
             updates.append(
                 create_gnmi_update(
                     get_port_group_speed_path(pg_id),
-                    {"openconfig-port-group:speed": str(speed)},
+                    {"openconfig-port-group:speed": speed.get_gnmi_val()},
                 )
             )
             
@@ -228,7 +228,7 @@ def set_interface_config(
             updates.append(
                 create_gnmi_update(
                     get_intfc_speed_path(interface_name),
-                    {"openconfig-if-ethernet:port-speed": str(speed)},
+                    {"openconfig-if-ethernet:port-speed": speed.get_gnmi_val()},
                 )
             )
 

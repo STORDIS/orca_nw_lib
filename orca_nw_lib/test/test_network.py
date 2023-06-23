@@ -28,6 +28,7 @@ from orca_nw_lib.mclag import (
 
 
 from orca_nw_lib.interfaces import (
+    get_intfc_speed_path,
     set_interface_config,
     get_interface_config,
     get_interface_speed,
@@ -43,9 +44,6 @@ from orca_nw_lib.port_chnl import (
 )
 
 
-#import sys
-#sys.path.append("../orca_nw_lib")
-#discover_all()   
 
 @unittest.skip("Because takes too long.")
 class TestDiscovery(unittest.TestCase):
@@ -105,18 +103,18 @@ class InterfaceTests(unittest.TestCase):
         set_interface_config(self.dut_ip, self.ethernet, speed=speed_to_set)
         assert get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
-        ) == str(speed_to_set)
+        ) == speed_to_set.get_gnmi_val()
 
         speed_to_set = Speed.SPEED_25GB
         set_interface_config(self.dut_ip, self.ethernet, speed=speed_to_set)
         assert get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
-        ) == str(speed_to_set)
+        ) == speed_to_set.get_gnmi_val()
 
-        set_interface_config(self.dut_ip, self.ethernet, speed=speed_before_test)
+        set_interface_config(self.dut_ip, self.ethernet, speed=Speed[speed_before_test.split(":")[1]])
         assert get_interface_speed(self.dut_ip, self.ethernet).get(
             "openconfig-if-ethernet:port-speed"
-        ) == str(speed_before_test)
+        ) == speed_before_test
 
     def test_interface_enable(self):
         enable = False
@@ -410,24 +408,27 @@ class SubscriptiosTests(unittest.TestCase):
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIP()))
         cls.dut_ip = getAllDevicesIP()[0]
-        cls.ethernet = [
-            ether
-            for ether in getAllInterfacesNameOfDevice(cls.dut_ip)
-            if "Ethernet" in ether
-        ][0]
+        # cls.ethernet = [
+        #     ether
+        #     for ether in getAllInterfacesNameOfDevice(cls.dut_ip)
+        #     if "Ethernet" in ether
+        # ][0]
+        cls.ethernet="Ethernet0"
         assert cls.dut_ip is not None and cls.ethernet is not None
-    
+
     @classmethod
     def tearDownClass(cls) -> None:
         gnmi_unsubscribe(cls.dut_ip)
         return super().tearDownClass()
 
-        
     def test_interface_config_update(self):
-        sts=gnmi_subscribe(self.dut_ip,[get_intfc_config_path(self.ethernet)])
+        sts = gnmi_subscribe(
+            self.dut_ip,
+            [get_intfc_config_path(self.ethernet)],
+        )
         assert sts
         sleep(3)
-        enable= not getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled
+        enable = not getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled
         set_interface_config(
             self.dut_ip,
             self.ethernet,
@@ -445,5 +446,34 @@ class SubscriptiosTests(unittest.TestCase):
         )
         sleep(1)
         assert getInterfaceOfDevice(self.dut_ip, self.ethernet).enabled == enable
+
+    def test_interface_speed_update(self):
+        sts = gnmi_subscribe(
+            self.dut_ip,
+            [get_intfc_speed_path(self.ethernet)],
+        )
+        assert sts
+        sleep(2)
+        speed=Speed.SPEED_10GB
+        set_interface_config(
+            self.dut_ip,
+            self.ethernet,
+            speed=speed,
+        )
+        sleep(1)
+        assert getInterfaceOfDevice(self.dut_ip, self.ethernet).speed == str(speed)
+
+        speed=Speed.SPEED_25GB
+
+        set_interface_config(
+            self.dut_ip,
+            self.ethernet,
+            speed=speed,
+        )
+        sleep(2)
+        assert getInterfaceOfDevice(self.dut_ip, self.ethernet).speed == str(speed)
         
-        
+# st=SubscriptiosTests()
+# st.setUpClass()
+# st.test_interface_speed_update()
+# st.tearDownClass()

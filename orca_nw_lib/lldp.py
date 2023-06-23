@@ -1,15 +1,9 @@
 
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
-    create_req_for_update,
-    send_gnmi_set,
-    create_gnmi_update,
     send_gnmi_get,
 )
-from .graph_db_models import PortGroup
-from .graph_db_utils import getAllInterfacesOfDevice, getInterfaceOfDevice
 from .utils import get_logging
-from .common import Speed
 
 _logger = get_logging().getLogger(__name__)
 

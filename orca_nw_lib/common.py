@@ -10,5 +10,8 @@ class Speed(Enum):
     SPEED_50GB = auto()
     SPEED_100GB = auto()
 
-    def __str__(self):
+    def get_gnmi_val(self):
         return f"openconfig-if-ethernet:{self.name}"
+    
+    def __str__(self) -> str:
+        return self.name
