@@ -2,7 +2,7 @@ import json
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import send_gnmi_get
 from .graph_db_models import Device
-from .graph_db_utils import getAllDevices, getDevice
+from .graph_db_utils import getAllDevicesFromDB, getDeviceFromDB
 
 
 def createDeviceGraphObject(ip_addr:str):
@@ -25,11 +25,11 @@ def getDeviceDetailsFromGraph(mgt_ip=None):
     '''
     op_dict = []
     if mgt_ip:
-        device=getDevice(mgt_ip)
+        device=getDeviceFromDB(mgt_ip)
         if device:
             op_dict.append(device.__properties__) 
     else:
-        device_dict =getAllDevices()
+        device_dict =getAllDevicesFromDB()
         for device in device_dict or []:
             op_dict.append(device.__properties__)
     return op_dict

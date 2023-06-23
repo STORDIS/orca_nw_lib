@@ -7,17 +7,17 @@ from .gnmi_util import (
     send_gnmi_set,
 )
 from .graph_db_models import MCLAG
-from .graph_db_utils import getMclagOfDevice, getMCLAGOfDevice
+from .graph_db_utils import getMclagOfDeviceFromDB, getMCLAGOfDeviceFromDB
 
 
 def getMCLAGsFromGraph(device_ip: str, domain_id=None):
     op_dict = []
     if domain_id:
-        mclag = getMCLAGOfDevice(device_ip, domain_id)
+        mclag = getMCLAGOfDeviceFromDB(device_ip, domain_id)
         if mclag:
             op_dict.append(mclag.__properties__)
     else:
-        mclags = getMclagOfDevice(device_ip)
+        mclags = getMclagOfDeviceFromDB(device_ip)
         for mclag in mclags or []:
             op_dict.append(mclag.__properties__)
     return op_dict

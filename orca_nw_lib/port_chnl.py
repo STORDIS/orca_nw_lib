@@ -9,7 +9,7 @@ from .gnmi_util import (
     send_gnmi_set,
 )
 from .graph_db_models import PortChannel
-from .graph_db_utils import getAllPortChnlOfDevice, getPortChnlOfDevice
+from .graph_db_utils import getAllPortChnlOfDeviceFromDB, getPortChnlOfDeviceFromDB
 
 
 def createPortChnlGraphObject(device_ip: str):
@@ -50,10 +50,10 @@ def createPortChnlGraphObject(device_ip: str):
 def getPortChnlDetailsFromGraph(device_ip: str, port_chnl_name=None):
     op_dict = []
     if port_chnl_name:
-        port_chnl = getPortChnlOfDevice(device_ip, port_chnl_name)
+        port_chnl = getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)
         op_dict.append(port_chnl.__properties__)
     else:
-        port_chnl = getAllPortChnlOfDevice(device_ip)
+        port_chnl = getAllPortChnlOfDeviceFromDB(device_ip)
         for chnl in port_chnl or []:
             op_dict.append(chnl.__properties__)
     return op_dict

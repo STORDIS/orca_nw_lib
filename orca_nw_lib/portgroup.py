@@ -7,7 +7,7 @@ from .gnmi_util import (
     send_gnmi_get,
 )
 from .graph_db_models import PortGroup
-from .graph_db_utils import getAllInterfacesOfDevice, getInterfaceOfDevice
+from .graph_db_utils import getAllInterfacesOfDeviceFromDB, getInterfaceOfDeviceFromDB
 from .utils import get_logging
 from .common import Speed
 
@@ -49,11 +49,11 @@ def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
 
     if intfc_name:
-        intfc = getInterfaceOfDevice(device_ip, intfc_name)
+        intfc = getInterfaceOfDeviceFromDB(device_ip, intfc_name)
         if intfc:
             op_dict.append(intfc.__properties__)
     else:
-        interfaces = getAllInterfacesOfDevice(device_ip)
+        interfaces = getAllInterfacesOfDeviceFromDB(device_ip)
         for intfc in interfaces or []:
             op_dict.append(intfc.__properties__)
     return op_dict

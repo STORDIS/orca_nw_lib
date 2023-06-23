@@ -13,10 +13,10 @@ from .gnmi_util import (
 )
 from .graph_db_models import Interface, PortChannel, SubInterface
 from .graph_db_utils import (
-    getAllInterfacesOfDevice,
-    getInterfaceOfDevice,
-    getAllPortGroupsOfDevice,
-    getPortGroupIDOfDeviceInterface,
+    getAllInterfacesOfDeviceFromDB,
+    getInterfaceOfDeviceFromDB,
+    getAllPortGroupsOfDeviceFromDB,
+    getPortGroupIDOfDeviceInterfaceFromDB,
 )
 from .utils import get_logging
 
@@ -24,7 +24,7 @@ _logger = get_logging().getLogger(__name__)
 
 
 def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
-    interfaces_json = get_all_interfaces(device_ip)
+    interfaces_json = get_all_interfaces_from_device(device_ip)
     intfc_graph_obj_list = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface"):
         intfc_state = intfc.get("state", {})
@@ -107,11 +107,11 @@ def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
 
     if intfc_name:
-        intfc = getInterfaceOfDevice(device_ip, intfc_name)
+        intfc = getInterfaceOfDeviceFromDB(device_ip, intfc_name)
         if intfc:
             op_dict.append(intfc.__properties__)
     else:
-        interfaces = getAllInterfacesOfDevice(device_ip)
+        interfaces = getAllInterfacesOfDeviceFromDB(device_ip)
         for intfc in interfaces or []:
             op_dict.append(intfc.__properties__)
     return op_dict
@@ -164,7 +164,7 @@ def get_intfc_enabled_path(intfc_name: str):
     return path
 
 
-def set_interface_config(
+def set_interface_config_on_device(
     device_ip: str,
     interface_name: str,
     enable: bool = None,
@@ -215,8 +215,8 @@ def set_interface_config(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if getAllPortGroupsOfDevice(device_ip) and getPortGroupIDOfDeviceInterface(device_ip, interface_name):
-            pg_id = getPortGroupIDOfDeviceInterface(device_ip, interface_name)
+        if getAllPortGroupsOfDeviceFromDB(device_ip) and getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
+            pg_id = getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
                     get_port_group_speed_path(pg_id),
@@ -241,21 +241,23 @@ def set_interface_config(
         return None
 
 
-def get_all_interfaces(device_ip: str):
+def get_all_interfaces_from_device(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_all_interfaces_path()])
 
 
-def get_interface(device_ip: str, intfc_name: str):
+def get_interface_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_interface_path(intfc_name)])
 
 
-def get_interface_config(device_ip: str, intfc_name: str):
+def get_interface_config_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_config_path(intfc_name)])
 
 
-def get_interface_speed(device_ip: str, intfc_name: str):
+def get_interface_speed_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_speed_path(intfc_name)])
 
 
-def get_interface_status(device_ip: str, intfc_name: str):
+def get_interface_status_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_enabled_path(intfc_name)])
+
+
