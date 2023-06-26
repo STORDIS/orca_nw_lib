@@ -1,15 +1,15 @@
-from ast import List
-import json
-from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import (
+from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.gnmi_pb2 import Path, PathElem
+from orca_nw_lib.gnmi_util import (
+    create_gnmi_update,
     create_req_for_update,
     get_gnmi_del_req,
-    create_gnmi_update,
     send_gnmi_get,
     send_gnmi_set,
 )
-from .graph_db_models import PortChannel
-from .graph_db_utils import getAllPortChnlOfDeviceFromDB, getPortChnlOfDeviceFromDB
+from orca_nw_lib.graph_db_models import Device, PortChannel
+
+from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
 
 
 def createPortChnlGraphObject(device_ip: str):
@@ -45,6 +45,20 @@ def createPortChnlGraphObject(device_ip: str):
                 )
             ] = ifname_list
     return port_chnl_obj_list
+
+
+def getAllPortChnlOfDeviceFromDB(device_ip: str):
+    device = getDeviceFromDB(device_ip)
+    return getDeviceFromDB(device_ip).port_chnl.all() if device else None
+
+
+def getPortChnlOfDeviceFromDB(device_ip: str, port_chnl_name: str) -> PortChannel:
+    device = getDeviceFromDB(device_ip)
+    return (
+        getDeviceFromDB(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name)
+        if device
+        else None
+    )
 
 
 def getPortChnlDetailsFromGraph(device_ip: str, port_chnl_name=None):
@@ -125,7 +139,7 @@ def get_port_chnl_mem_path(chnl_name: str, ifname: str):
     return path
 
 
-def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames:list[str]):
+def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames: list[str]):
     port_chnl_add = {"sonic-portchannel:PORTCHANNEL_MEMBER_LIST": []}
     for intf in ifnames:
         port_chnl_add.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append(
@@ -170,3 +184,13 @@ def get_port_chnl(device_ip: str, chnl_name: str):
 
 def del_all_port_chnl(device_ip: str):
     return send_gnmi_set(get_gnmi_del_req(get_port_chnl_list_path()), device_ip)
+
+
+def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
+    for chnl, mem_list in portchnl_to_mem_list.items():
+        chnl.save()
+        device.port_chnl.connect(chnl)
+        for intf_name in mem_list:
+            intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
+            if intf_obj:
+                chnl.members.connect(intf_obj)

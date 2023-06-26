@@ -4,9 +4,8 @@ import subprocess
 import yaml
 import logging
 import logging.config
-from pathlib import Path
 import yaml
-from .constants import conn_timeout
+from orca_nw_lib.constants import conn_timeout
 
 _settings={}
 abspath = os.path.abspath(__file__)

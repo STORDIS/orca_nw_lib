@@ -5,17 +5,12 @@ import sys
 from typing import List
 
 import grpc
+from orca_nw_lib.gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
+from orca_nw_lib.gnmi_pb2_grpc import gNMIStub
 
-from .gnmi_pb2 import (
-    GetRequest,
-    Path,
-    JSON_IETF,
-    SetRequest,
-    TypedValue,
-    Update,
-)
-from .gnmi_pb2_grpc import gNMIStub
-from .utils import ping_ok, get_orca_config, get_logging
+from orca_nw_lib.utils import get_logging, get_orca_config, ping_ok
+
+
 from .constants import grpc_port, username, password, conn_timeout
 
 _logger = get_logging().getLogger(__name__)

@@ -1,24 +1,18 @@
-import json
 from typing import List
 
 from orca_nw_lib.common import Speed
-from orca_nw_lib.portgroup import get_port_group_speed_path, set_port_group_speed
-
-from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import (
-    create_req_for_update,
-    send_gnmi_set,
+from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.gnmi_pb2 import Path, PathElem
+from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
+    create_req_for_update,
     send_gnmi_get,
+    send_gnmi_set,
 )
-from .graph_db_models import Interface, PortChannel, SubInterface
-from .graph_db_utils import (
-    getAllInterfacesOfDeviceFromDB,
-    getInterfaceOfDeviceFromDB,
-    getAllPortGroupsOfDeviceFromDB,
-    getPortGroupIDOfDeviceInterfaceFromDB,
-)
-from .utils import get_logging
+from orca_nw_lib.graph_db_models import Device, Interface, SubInterface
+import orca_nw_lib.portgroup as pg
+from orca_nw_lib.utils import get_logging
+
 
 _logger = get_logging().getLogger(__name__)
 
@@ -31,7 +25,9 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
         intfc_counters = intfc_state.get("counters", {})
         type = intfc.get("config").get("type")
 
-        if ("ether" or "loopback" in type.lower()) and 'PortChannel' not in intfc_state.get("name"):
+        if (
+            "ether" or "loopback" in type.lower()
+        ) and "PortChannel" not in intfc_state.get("name"):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
                 name=intfc_state.get("name"),
@@ -42,7 +38,8 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 .get("openconfig-if-ethernet-ext2:port-fec"),
                 speed=intfc.get("openconfig-if-ethernet:ethernet", {})
                 .get("config", {})
-                .get("port-speed").split(":")[1],
+                .get("port-speed")
+                .split(":")[1],
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
@@ -102,7 +99,20 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
     return intfc_graph_obj_list
 
 
-    
+def getAllInterfacesOfDeviceFromDB(device_ip: str):
+    device = getDeviceFromDB(device_ip)
+    return device.interfaces.all() if device else None
+
+
+def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface:
+    device = getDeviceFromDB(device_ip)
+    return (
+        getDeviceFromDB(device_ip).interfaces.get_or_none(name=interface_name)
+        if device
+        else None
+    )
+
+
 def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
     op_dict = []
 
@@ -215,15 +225,17 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if getAllPortGroupsOfDeviceFromDB(device_ip) and getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
-            pg_id = getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
+        if pg.getAllPortGroupsOfDeviceFromDB(
+            device_ip
+        ) and pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
+            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
-                    get_port_group_speed_path(pg_id),
+                    pg.get_port_group_speed_path(pg_id),
                     {"openconfig-port-group:speed": speed.get_gnmi_val()},
                 )
             )
-            
+
         else:
             updates.append(
                 create_gnmi_update(
@@ -261,3 +273,29 @@ def get_interface_status_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_enabled_path(intfc_name)])
 
 
+def insert_device_interfaces_in_db(device: Device, interfaces: dict):
+    for intfc, sub_intfc in interfaces.items():
+        intfc.save()
+        device.interfaces.connect(intfc)
+        for sub_i in sub_intfc:
+            sub_i.save()
+            intfc.subInterfaces.connect(sub_i)
+
+
+def getAllInterfacesNameOfDeviceFromDB(device_ip: str):
+    intfcs = getAllInterfacesOfDeviceFromDB(device_ip)
+    return [intfc.name for intfc in intfcs] if intfcs else None
+
+
+def set_interface_config_in_db(
+    device_ip: str, if_name: str, enable: bool = None, mtu=None, speed: Speed = None
+):
+    interface = getInterfaceOfDeviceFromDB(device_ip, if_name)
+    if interface:
+        if enable is not None:
+            interface.enabled = enable
+        if mtu is not None:
+            interface.mtu = mtu
+        if speed is not None:
+            interface.speed = str(speed)
+    interface.save()

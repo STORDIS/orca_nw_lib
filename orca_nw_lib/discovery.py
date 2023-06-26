@@ -1,17 +1,16 @@
-import enum
 import ipaddress
-from orca_nw_lib.lldp import getLLDPNeighbors
+from orca_nw_lib.device import createDeviceGraphObject, getAllDevicesFromDB
+from orca_nw_lib.gnmi_pb2 import Path, PathElem
+from orca_nw_lib.gnmi_util import send_gnmi_get
+from orca_nw_lib.graph_db_models import Device
+from orca_nw_lib.interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
+from orca_nw_lib.lldp import create_lldp_relations_in_db, getLLDPNeighbors
+from orca_nw_lib.mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, insert_device_mclag_in_db
+from orca_nw_lib.port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
+from orca_nw_lib.portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
+from orca_nw_lib.utils import get_logging, get_orca_config
+from orca_nw_lib.constants import network
 
-from orca_nw_lib.portgroup import createPortGroupGraphObjects
-from .device import createDeviceGraphObject
-from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_get
-from .interfaces import createInterfaceGraphObjects
-from .mclag import createMclagGraphObjects
-from .port_chnl import createPortChnlGraphObject
-from .utils import get_logging, get_orca_config
-from .constants import network
-from .lldp import getLLDPNeighbors
 
 _logger = get_logging().getLogger(__name__)
 
@@ -72,14 +71,6 @@ def read_lldp_topo(ip):
 
 from orca_nw_lib.graph_db_utils import (
     clean_db,
-    create_lldp_relations,
-    create_mclag_peerlink_relations,
-    getAllDevicesFromDB,
-    insert_device_interfaces_in_db,
-    insert_device_mclag_in_db,
-    insert_device_port_chnl_in_db,
-    insert_device_port_groups_in_db,
-    insert_topology_in_db,
 )
 
 
@@ -115,6 +106,17 @@ def discover_mclag():
         insert_device_mclag_in_db(device, createMclagGraphObjects(device.mgt_ip))
 
 
+def insert_topology_in_db(topology):
+    for device, neighbors in topology.items():
+        if Device.nodes.get_or_none(mac=device.mac) is None:
+            device.save()
+        # create its neighbor
+        for nbr in neighbors:
+            nbr_device = nbr.get("nbr_device")
+            if Device.nodes.get_or_none(mac=nbr_device.mac) is None:
+                nbr_device.save()
+
+
 def discover_topology():
     _logger.info(
         "Network Discovery Started using network provided {0}".format(
@@ -127,11 +129,15 @@ def discover_topology():
             for ip in ips:
                 _logger.debug(f"Discovering device:{ip} and its neighbors.")
                 read_lldp_topo(str(ip))
+        import pprint 
         _logger.info(
-            "Discovered topology using network provided {0}: {1}".format(
-                get_orca_config().get(network), topology
+            "Discovered topology using network provided {0}: \n{1}".format(
+                get_orca_config().get(network), pprint.pformat(topology)
+
             )
         )
+        
+        
     except ValueError as ve:
         _logger.error(ve)
         return False
@@ -146,11 +152,11 @@ def discover_topology():
 
 def create_lldp_rel():
     _logger.info("Creating LLDP relations.")
-    create_lldp_relations(topology)
+    create_lldp_relations_in_db(topology)
 
 def create_mclag_peer_link_rel():
     _logger.info("Creating MCLAG peer-link relations.")
-    create_mclag_peerlink_relations()
+    create_mclag_peerlink_relations_in_db()
 
 def discover_all():
     clean_db()

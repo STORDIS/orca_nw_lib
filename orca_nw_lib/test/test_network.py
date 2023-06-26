@@ -1,15 +1,14 @@
 import sys
 from time import sleep
 from orca_nw_lib.common import Speed
+from orca_nw_lib.device import getAllDevicesIPFromDB
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
-from orca_nw_lib.graph_db_utils import (
-    getAllDevicesIPFromDB,
-    getAllInterfacesNameOfDeviceFromDB,
+from orca_nw_lib.interfaces import (
     getInterfaceOfDeviceFromDB,
 )
 import unittest
@@ -29,6 +28,7 @@ from orca_nw_lib.mclag import (
 
 from orca_nw_lib.interfaces import (
     get_intfc_speed_path,
+    getAllInterfacesNameOfDeviceFromDB,
     set_interface_config_on_device,
     get_interface_config_from_device,
     get_interface_speed_from_device,
@@ -43,8 +43,6 @@ from orca_nw_lib.port_chnl import (
     remove_port_chnl_member,
 )
 
-
-@unittest.skip("Because takes too long.")
 class TestDiscovery(unittest.TestCase):
     def test_discovery(self):
         discover_all()
@@ -52,6 +50,7 @@ class TestDiscovery(unittest.TestCase):
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
+
 
 
 class InterfaceTests(unittest.TestCase):
@@ -149,7 +148,77 @@ class InterfaceTests(unittest.TestCase):
         )
         assert config.get("enabled") == enable
 
+    def test_interface_config_subscription_update(self):
+        sts = gnmi_subscribe(
+            self.dut_ip,
+            [get_intfc_config_path(self.ethernet)],
+        )
+        assert sts
+        sleep(3)
+        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
+        set_interface_config_on_device(
+            self.dut_ip,
+            self.ethernet,
+            enable=enable,
+        )
+        sleep(1)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
 
+        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
+
+        set_interface_config_on_device(
+            self.dut_ip,
+            self.ethernet,
+            enable=enable,
+        )
+        sleep(1)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
+        gnmi_unsubscribe(self.dut_ip)
+
+    def test_interface_speed_subscription_update(self):
+        self.ethernet = "Ethernet0"
+        
+        sts = gnmi_subscribe(
+            self.dut_ip,
+            [get_intfc_speed_path(self.ethernet)],
+        )
+        assert sts
+        sleep(2)
+        speed = (
+            Speed.SPEED_10GB
+            if str(Speed.SPEED_25GB)
+            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
+                "openconfig-if-ethernet:port-speed"
+            )
+            else Speed.SPEED_25GB
+        )
+        set_interface_config_on_device(
+            self.dut_ip,
+            self.ethernet,
+            speed=speed,
+        )
+        sleep(2)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
+
+        speed = (
+            Speed.SPEED_10GB
+            if str(Speed.SPEED_25GB)
+            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
+                "openconfig-if-ethernet:port-speed"
+            )
+            else Speed.SPEED_25GB
+        )
+
+        set_interface_config_on_device(
+            self.dut_ip,
+            self.ethernet,
+            speed=speed,
+        )
+        sleep(2)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
+        gnmi_unsubscribe(self.dut_ip)
+        
+        
 class PortChannelTests(unittest.TestCase):
     dut_ip = None
     ethernet1 = "Ethernet4"
@@ -402,98 +471,6 @@ class MclagTests(unittest.TestCase):
 
         del_port_chnl(self.dut_ip, self.peer_link)
         assert not get_port_chnl(self.dut_ip, self.peer_link)
-
-
-class SubscriptiosTests(unittest.TestCase):
-    dut_ip = None
-    ethernet = None
-
-    @classmethod
-    def setUpClass(cls):
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
-        # cls.ethernet = [
-        #     ether
-        #     for ether in getAllInterfacesNameOfDevice(cls.dut_ip)
-        #     if "Ethernet" in ether
-        # ][0]
-        cls.ethernet = "Ethernet0"
-        assert cls.dut_ip is not None and cls.ethernet is not None
-
-
-    def test_interface_config_update(self):
-        sts = gnmi_subscribe(
-            self.dut_ip,
-            [get_intfc_config_path(self.ethernet)],
-        )
-        assert sts
-        sleep(3)
-        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        sleep(1)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
-
-        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
-
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        sleep(1)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
-        gnmi_unsubscribe(self.dut_ip)
-
-    def test_interface_speed_update(self):
-        sts = gnmi_subscribe(
-            self.dut_ip,
-            [get_intfc_speed_path(self.ethernet)],
-        )
-        assert sts
-        sleep(2)
-        speed = (
-            Speed.SPEED_10GB
-            if str(Speed.SPEED_25GB)
-            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
-            )
-            else Speed.SPEED_25GB
-        )
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            speed=speed,
-        )
-        sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
-
-        speed = (
-            Speed.SPEED_10GB
-            if str(Speed.SPEED_25GB)
-            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
-            )
-            else Speed.SPEED_25GB
-        )
-
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            speed=speed,
-        )
-        sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
-        gnmi_unsubscribe(self.dut_ip)
         
         
 # st=SubscriptiosTests()

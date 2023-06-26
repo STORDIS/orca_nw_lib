@@ -16,7 +16,7 @@ from orca_nw_lib.gnmi_util import _logger, getGrpcStubs
 
 
 from typing import List
-from orca_nw_lib.graph_db_utils import set_interface_config_in_db
+from orca_nw_lib.interfaces import set_interface_config_in_db
 
 from orca_nw_lib.interfaces import get_interface_base_path
 from orca_nw_lib.utils import get_logging
