@@ -30,11 +30,11 @@ class Device(StructuredNode):
     
 class PortChannel(StructuredNode):
     
-    lag_name=StringProperty(unique_index=True)
+    lag_name=StringProperty(unique_index=True) #name of port channel
     active=BooleanProperty()
     admin_sts=StringProperty()
     mtu=IntegerProperty()
-    name=StringProperty()
+    name=StringProperty() # name of protocol e.g. lacp
     fallback_operational=BooleanProperty()
     oper_sts=StringProperty()
     speed=StringProperty()

@@ -1,4 +1,3 @@
-import sys
 from time import sleep
 from orca_nw_lib.common import Speed
 from orca_nw_lib.device import getAllDevicesIPFromDB
@@ -27,21 +26,21 @@ from orca_nw_lib.mclag import (
 
 
 from orca_nw_lib.interfaces import (
-    get_intfc_speed_path,
     getAllInterfacesNameOfDeviceFromDB,
     set_interface_config_on_device,
     get_interface_config_from_device,
     get_interface_speed_from_device,
-    get_intfc_config_path,
 )
 from orca_nw_lib.port_chnl import (
-    add_port_chnl,
-    del_port_chnl,
-    get_port_chnl,
+    add_port_chnl_on_device,
+    del_port_chnl_from_device,
+    get_port_chnl_from_device,
     add_port_chnl_member,
     get_all_port_chnl_members,
+    getPortChnlOfDeviceFromDB,
     remove_port_chnl_member,
 )
+
 
 class TestDiscovery(unittest.TestCase):
     def test_discovery(self):
@@ -50,7 +49,6 @@ class TestDiscovery(unittest.TestCase):
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
-
 
 
 class InterfaceTests(unittest.TestCase):
@@ -94,9 +92,9 @@ class InterfaceTests(unittest.TestCase):
 
     def test_interface_speed(self):
         self.ethernet = "Ethernet0"
-        speed_before_test = get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-if-ethernet:port-speed"
-        )
+        speed_before_test = get_interface_speed_from_device(
+            self.dut_ip, self.ethernet
+        ).get("openconfig-if-ethernet:port-speed")
         speed_to_set = Speed.SPEED_10GB
         set_interface_config_on_device(self.dut_ip, self.ethernet, speed=speed_to_set)
         assert (
@@ -149,10 +147,7 @@ class InterfaceTests(unittest.TestCase):
         assert config.get("enabled") == enable
 
     def test_interface_config_subscription_update(self):
-        sts = gnmi_subscribe(
-            self.dut_ip,
-            [get_intfc_config_path(self.ethernet)],
-        )
+        sts = gnmi_subscribe(self.dut_ip)
         assert sts
         sleep(3)
         enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
@@ -177,11 +172,8 @@ class InterfaceTests(unittest.TestCase):
 
     def test_interface_speed_subscription_update(self):
         self.ethernet = "Ethernet0"
-        
-        sts = gnmi_subscribe(
-            self.dut_ip,
-            [get_intfc_speed_path(self.ethernet)],
-        )
+
+        sts = gnmi_subscribe(self.dut_ip)
         assert sts
         sleep(2)
         speed = (
@@ -198,7 +190,9 @@ class InterfaceTests(unittest.TestCase):
             speed=speed,
         )
         sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(
+            speed
+        )
 
         speed = (
             Speed.SPEED_10GB
@@ -215,10 +209,12 @@ class InterfaceTests(unittest.TestCase):
             speed=speed,
         )
         sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(speed)
+        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(
+            speed
+        )
         gnmi_unsubscribe(self.dut_ip)
-        
-        
+
+
 class PortChannelTests(unittest.TestCase):
     dut_ip = None
     ethernet1 = "Ethernet4"
@@ -238,19 +234,19 @@ class PortChannelTests(unittest.TestCase):
         assert cls.dut_ip is not None
 
     def test_add_port_chnl(self):
-        add_port_chnl(self.dut_ip, self.chnl_name)
+        add_port_chnl_on_device(self.dut_ip, self.chnl_name)
         assert (
-            get_port_chnl(self.dut_ip, self.chnl_name)
+            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.chnl_name
         )
-        del_port_chnl(self.dut_ip, self.chnl_name)
+        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
 
     def test_add_port_chnl_members(self):
-        add_port_chnl(self.dut_ip, self.chnl_name, "up")
+        add_port_chnl_on_device(self.dut_ip, self.chnl_name, "up")
         assert (
-            get_port_chnl(self.dut_ip, self.chnl_name)
+            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.chnl_name
@@ -265,12 +261,12 @@ class PortChannelTests(unittest.TestCase):
                 output_mem_infcs.append(item.get("ifname"))
 
         assert mem_infcs == output_mem_infcs
-        del_port_chnl(self.dut_ip, self.chnl_name)
+        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
 
     def test_remove_port_chnl_members(self):
-        add_port_chnl(self.dut_ip, self.chnl_name, "up")
+        add_port_chnl_on_device(self.dut_ip, self.chnl_name, "up")
         assert (
-            get_port_chnl(self.dut_ip, self.chnl_name)
+            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.chnl_name
@@ -296,7 +292,7 @@ class PortChannelTests(unittest.TestCase):
 
         assert "Ethernet4" not in output_mem_infcs
 
-        del_port_chnl(self.dut_ip, self.chnl_name)
+        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
 
 
 class MclagTests(unittest.TestCase):
@@ -322,10 +318,10 @@ class MclagTests(unittest.TestCase):
         assert cls.dut_ip is not None
 
     def test_mclag_domain(self):
-        del_port_chnl(self.dut_ip, self.peer_link)
-        add_port_chnl(self.dut_ip, self.peer_link)
+        del_port_chnl_from_device(self.dut_ip, self.peer_link)
+        add_port_chnl_on_device(self.dut_ip, self.peer_link)
         assert (
-            get_port_chnl(self.dut_ip, self.peer_link)
+            get_port_chnl_from_device(self.dut_ip, self.peer_link)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.peer_link
@@ -364,8 +360,8 @@ class MclagTests(unittest.TestCase):
         del_mclag(self.dut_ip)
         assert not get_mclag_config(self.dut_ip)
 
-        del_port_chnl(self.dut_ip, self.peer_link)
-        assert not get_port_chnl(self.dut_ip, self.peer_link)
+        del_port_chnl_from_device(self.dut_ip, self.peer_link)
+        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
 
     def test_maclag_gateway_mac(self):
         del_mclag_gateway_mac(self.dut_ip)
@@ -383,10 +379,10 @@ class MclagTests(unittest.TestCase):
         assert not get_mclag_gateway_mac(self.dut_ip)
 
     def test_mclag_mem_port_chnl(self):
-        del_port_chnl(self.dut_ip, self.peer_link)
-        add_port_chnl(self.dut_ip, self.peer_link)
+        del_port_chnl_from_device(self.dut_ip, self.peer_link)
+        add_port_chnl_on_device(self.dut_ip, self.peer_link)
         assert (
-            get_port_chnl(self.dut_ip, self.peer_link)
+            get_port_chnl_from_device(self.dut_ip, self.peer_link)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.peer_link
@@ -422,21 +418,21 @@ class MclagTests(unittest.TestCase):
             == self.peer_link
         )
 
-        del_port_chnl(self.dut_ip, self.mem_port_chnl)
-        del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+        del_port_chnl_from_device(self.dut_ip, self.mem_port_chnl)
+        del_port_chnl_from_device(self.dut_ip, self.mem_port_chnl_2)
 
-        add_port_chnl(self.dut_ip, self.mem_port_chnl)
-        add_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+        add_port_chnl_on_device(self.dut_ip, self.mem_port_chnl)
+        add_port_chnl_on_device(self.dut_ip, self.mem_port_chnl_2)
 
         assert (
-            get_port_chnl(self.dut_ip, self.mem_port_chnl)
+            get_port_chnl_from_device(self.dut_ip, self.mem_port_chnl)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.mem_port_chnl
         )
 
         assert (
-            get_port_chnl(self.dut_ip, self.mem_port_chnl_2)
+            get_port_chnl_from_device(self.dut_ip, self.mem_port_chnl_2)
             .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
             .get("name")
             == self.mem_port_chnl_2
@@ -463,17 +459,11 @@ class MclagTests(unittest.TestCase):
 
         assert not get_mclag_mem_portchnl(self.dut_ip)
 
-        del_port_chnl(self.dut_ip, self.mem_port_chnl)
-        assert not get_port_chnl(self.dut_ip, self.mem_port_chnl)
+        del_port_chnl_from_device(self.dut_ip, self.mem_port_chnl)
+        assert not get_port_chnl_from_device(self.dut_ip, self.mem_port_chnl)
 
         del_mclag(self.dut_ip)
         assert not get_mclag_config(self.dut_ip)
 
-        del_port_chnl(self.dut_ip, self.peer_link)
-        assert not get_port_chnl(self.dut_ip, self.peer_link)
-        
-        
-# st=SubscriptiosTests()
-# st.setUpClass()
-# st.test_interface_speed_update()
-# st.tearDownClass()
+        del_port_chnl_from_device(self.dut_ip, self.peer_link)
+        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)

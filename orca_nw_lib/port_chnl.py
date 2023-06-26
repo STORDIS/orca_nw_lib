@@ -96,7 +96,7 @@ def get_port_chnl_path(chnl_name: str):
     return path
 
 
-def add_port_chnl(
+def add_port_chnl_on_device(
     device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None
 ):
     port_chnl_add = {"sonic-portchannel:PORTCHANNEL_LIST": []}
@@ -163,7 +163,7 @@ def remove_port_chnl_member(device_ip: str, chnl_name: str, ifname: str):
     )
 
 
-def del_port_chnl(device_ip: str, chnl_name: str):
+def del_port_chnl_from_device(device_ip: str, chnl_name: str):
     return send_gnmi_set(get_gnmi_del_req(get_port_chnl_path(chnl_name)), device_ip)
 
 
@@ -178,7 +178,7 @@ def get_port_chnls_all(device_ip: str):
     return send_gnmi_get(device_ip, [path_intf_status_path])
 
 
-def get_port_chnl(device_ip: str, chnl_name: str):
+def get_port_chnl_from_device(device_ip: str, chnl_name: str):
     return send_gnmi_get(device_ip, [get_port_chnl_path(chnl_name)])
 
 

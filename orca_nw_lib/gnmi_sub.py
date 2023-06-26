@@ -4,21 +4,20 @@ from orca_nw_lib.common import Speed
 from orca_nw_lib.gnmi_pb2 import (
     Encoding,
     Path,
-    PathElem,
     SubscribeRequest,
     SubscribeResponse,
     Subscription,
     SubscriptionList,
     SubscriptionMode,
-    Update,
 )
 from orca_nw_lib.gnmi_util import _logger, getGrpcStubs
 
 
 from typing import List
-from orca_nw_lib.interfaces import set_interface_config_in_db
+from orca_nw_lib.interfaces import get_intfc_config_path, get_intfc_speed_path, getAllInterfacesNameOfDeviceFromDB, set_interface_config_in_db
 
 from orca_nw_lib.interfaces import get_interface_base_path
+from orca_nw_lib.port_chnl import get_port_chnl_mem_path
 from orca_nw_lib.utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
@@ -74,7 +73,9 @@ def handle_update(device_ip: str, paths: List[Path]):
         _logger.error(e)
 
 
-def gnmi_subscribe(device_ip: str, paths: List[Path]):
+def gnmi_subscribe(device_ip: str):
+    paths=[get_intfc_config_path(eth) for eth in getAllInterfacesNameOfDeviceFromDB(device_ip)]
+    paths += [get_intfc_speed_path(eth) for eth in getAllInterfacesNameOfDeviceFromDB(device_ip)]
     thread_name = f"subscription_{device_ip}"
     for thread in threading.enumerate():
         if thread.name == thread_name:
