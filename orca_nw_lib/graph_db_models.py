@@ -75,9 +75,6 @@ class MCLAG(StructuredNode):
     portChnl_member=RelationshipTo('PortChannel','HAS MEMBER')
     peer_link_node=RelationshipTo('PortChannel','PEER_LINK')
     
-    
-    
-       
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.domain_id == other.domain_id
@@ -87,7 +84,7 @@ class MCLAG(StructuredNode):
         return hash(self.domain_id)
     
     def __str__(self):
-        return self.domain_id
+        return str(self.domain_id)
 
 
 class SubInterface(StructuredNode):
