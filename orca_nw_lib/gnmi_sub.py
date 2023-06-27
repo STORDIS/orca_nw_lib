@@ -64,6 +64,10 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
 def handle_mclag_domain_update(device_ip, resp):
     if resp.update.update:
         _logger.debug(f'MCLAG domain update received on {device_ip} \n {resp}')
+        # TODO: not the best way to rediscover mc lag  but robust,
+        # May be selective update can be performed in DB, because info is avilable in update message.
+        # Challenges would be to create peerlinks and member chnl and rel to device, in that case.
+        
         insert_device_mclag_in_db(getDeviceFromDB(device_ip), createMclagGraphObjects(device_ip))
         create_mclag_peerlink_relations_in_db()
         
