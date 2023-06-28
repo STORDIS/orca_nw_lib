@@ -30,7 +30,13 @@ def delMCLAGOfDeviceFromDB(device_ip: str, domain_id: int):
     mclag= device.mclags.get_or_none(domain_id=domain_id) if device else None
     if mclag:
         mclag.delete()
-        
+
+def delMCLAGGatewayMacOfDeviceInDB(device_ip: str):
+    device = getDeviceFromDB(device_ip)
+    mclag= device.mclags.get_or_none() if device else None
+    if mclag:
+        mclag.gateway_macs=[]
+        mclag.save()
 
 def getMCLAGsFromGraph(device_ip: str, domain_id=None):
     op_dict = []
@@ -94,13 +100,6 @@ def get_mclag_if_path():
     path = get_mclag_path()
     path.elem.append(PathElem(name="interfaces"))
     path.elem.append(PathElem(name="interface"))
-    return path
-
-
-def get_mclag_if_path_test():
-    path = get_mclag_path()
-    path.elem.append(PathElem(name="interfaces"))
-    path.elem.append(PathElem(name="interface", key={"name": "Ethernet0"}))
     return path
 
 
