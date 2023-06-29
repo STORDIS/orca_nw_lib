@@ -102,6 +102,7 @@ def discover_topology():
 
             )
         )
+        _logger.info(f'Total devices discovered:{len(topology)}')
         
         
     except ValueError as ve:
@@ -126,6 +127,8 @@ def create_mclag_peer_link_rel():
 
 def discover_all():
     clean_db()
+    global topology
+    topology = {}
     if discover_topology():
         discover_interfaces()
         create_lldp_rel()
@@ -133,5 +136,7 @@ def discover_all():
         discover_mclag()
         create_mclag_peer_link_rel()
         discover_port_groups()
+        _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True
+    _logger.info("!! Discovery was Unsuccessful !!")
     return False

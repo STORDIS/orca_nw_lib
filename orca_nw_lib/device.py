@@ -24,7 +24,7 @@ def getDeviceFromDB(mgt_ip: str):
     return Device.nodes.get_or_none(mgt_ip=mgt_ip)
 
 
-def getDeviceDetailsFromGraph(mgt_ip=None):
+def getDeviceDetailsFromDB(mgt_ip=None):
     """
     Sample output :
         [{'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
