@@ -1,7 +1,5 @@
 import ipaddress
 from orca_nw_lib.device import createDeviceGraphObject, getAllDevicesFromDB
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import send_gnmi_get
 from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
 from orca_nw_lib.lldp import create_lldp_relations_in_db, getLLDPNeighbors
@@ -13,38 +11,6 @@ from orca_nw_lib.constants import network
 
 
 _logger = get_logging().getLogger(__name__)
-
-
-def is_lldp_enabled(device_ip):
-    path_lldp_state = Path(
-        target="openconfig",
-        origin="openconfig-lldp",
-        elem=[
-            PathElem(
-                name="lldp",
-            ),
-            PathElem(
-                name="state",
-            ),
-            PathElem(
-                name="enabled",
-            ),
-        ],
-    )
-    try:
-        response = send_gnmi_get(device_ip, path_lldp_state)
-        if response is not None:
-            for key in response:
-                if response.get("openconfig-lldp:enabled"):
-                    return True
-                else:
-                    _logger.info(f"LLDP is disabled on {device_ip}")
-                    return False
-        else:
-            _logger.info(f"Error occured while making request on {device_ip}.")
-            return False
-    except TimeoutError as e:
-        raise e
 
 
 topology = {}

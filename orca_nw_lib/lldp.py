@@ -62,3 +62,35 @@ def create_lldp_relations_in_db(topology):
                 nbr_device.mgt_ip, nbr.get("nbr_port")
             )
             local_intfc.lldp_neighbour.connect(nbr_intfc)
+
+
+def is_lldp_enabled(device_ip):
+    path_lldp_state = Path(
+        target="openconfig",
+        origin="openconfig-lldp",
+        elem=[
+            PathElem(
+                name="lldp",
+            ),
+            PathElem(
+                name="state",
+            ),
+            PathElem(
+                name="enabled",
+            ),
+        ],
+    )
+    try:
+        response = send_gnmi_get(device_ip, path_lldp_state)
+        if response is not None:
+            for key in response:
+                if response.get("openconfig-lldp:enabled"):
+                    return True
+                else:
+                    _logger.info(f"LLDP is disabled on {device_ip}")
+                    return False
+        else:
+            _logger.info(f"Error occured while making request on {device_ip}.")
+            return False
+    except TimeoutError as e:
+        raise e
