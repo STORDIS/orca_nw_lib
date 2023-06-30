@@ -20,7 +20,7 @@ _logger = get_logging().getLogger(__name__)
 def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
     interfaces_json = get_all_interfaces_from_device(device_ip)
     intfc_graph_obj_list = {}
-    for intfc in interfaces_json.get("openconfig-interfaces:interface"):
+    for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
         intfc_counters = intfc_state.get("counters", {})
         type = intfc.get("config").get("type")
@@ -36,10 +36,8 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 fec=intfc.get("openconfig-if-ethernet:ethernet", {})
                 .get("config", {})
                 .get("openconfig-if-ethernet-ext2:port-fec"),
-                speed=intfc.get("openconfig-if-ethernet:ethernet", {})
-                .get("config", {})
-                .get("port-speed")
-                .split(":")[1],
+                speed=s.split(":")[1] if (s := intfc.get(
+                    "openconfig-if-ethernet:ethernet", {}).get("config", {}).get("port-speed")) else None,
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
@@ -51,7 +49,8 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 in_errors=intfc_counters.get("in-errors"),
                 in_multicast_pkts=intfc_counters.get("in-multicast-pkts"),
                 in_octets=intfc_counters.get("in-octets"),
-                in_octets_per_second=intfc_counters.get("in-octets-per-second"),
+                in_octets_per_second=intfc_counters.get(
+                    "in-octets-per-second"),
                 in_pkts=intfc_counters.get("in-pkts"),
                 in_pkts_per_second=intfc_counters.get("in-pkts-per-second"),
                 in_unicast_pkts=intfc_counters.get("in-unicast-pkts"),
@@ -63,7 +62,8 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 out_errors=intfc_counters.get("out-errors"),
                 out_multicast_pkts=intfc_counters.get("out-multicast-pkts"),
                 out_octets=intfc_counters.get("out-octets"),
-                out_octets_per_second=intfc_counters.get("out-octets-per-second"),
+                out_octets_per_second=intfc_counters.get(
+                    "out-octets-per-second"),
                 out_pkts=intfc_counters.get("out-pkts"),
                 out_pkts_per_second=intfc_counters.get("out-pkts-per-second"),
                 out_unicast_pkts=intfc_counters.get("out-unicast-pkts"),
@@ -113,7 +113,7 @@ def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface
     )
 
 
-def getInterfacesDetailsFromGraph(device_ip: str, intfc_name=None):
+def getInterfacesDetailsFromDB(device_ip: str, intfc_name=None):
     op_dict = []
 
     if intfc_name:
@@ -228,7 +228,8 @@ def set_interface_config_on_device(
         if pg.getAllPortGroupsOfDeviceFromDB(
             device_ip
         ) and pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
-            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
+            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(
+                device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
                     pg.get_port_group_speed_path(pg_id),

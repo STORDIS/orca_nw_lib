@@ -19,26 +19,25 @@ def getMclagOfDeviceFromDB(device_ip: str):
 
 def getMCLAGOfDeviceFromDB(device_ip: str, domain_id: int) -> MCLAG:
     device = getDeviceFromDB(device_ip)
-    return (
-        device.mclags.get_or_none(domain_id=domain_id)
-        if device
-        else None
-    )
+    return device.mclags.get_or_none(domain_id=domain_id) if device else None
+
 
 def delMCLAGOfDeviceFromDB(device_ip: str, domain_id: int):
     device = getDeviceFromDB(device_ip)
-    mclag= device.mclags.get_or_none(domain_id=domain_id) if device else None
+    mclag = device.mclags.get_or_none(domain_id=domain_id) if device else None
     if mclag:
         mclag.delete()
 
+
 def delMCLAGGatewayMacOfDeviceInDB(device_ip: str):
     device = getDeviceFromDB(device_ip)
-    mclag= device.mclags.get_or_none() if device else None
+    mclag = device.mclags.get_or_none() if device else None
     if mclag:
-        mclag.gateway_macs=[]
+        mclag.gateway_macs = []
         mclag.save()
 
-def getMCLAGsFromGraph(device_ip: str, domain_id=None):
+
+def getMCLAGsFromDB(device_ip: str, domain_id=None):
     op_dict = []
     if domain_id:
         mclag = getMCLAGOfDeviceFromDB(device_ip, domain_id)
@@ -261,26 +260,26 @@ def create_mclag_peerlink_relations_in_db():
 
 def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
     for mclag, intfcs in mclag_to_intfc_list.items():
-        mclag_in_db=getMCLAGOfDeviceFromDB(device.mgt_ip,mclag.domain_id)
+        mclag_in_db = getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id)
         if not mclag_in_db:
             mclag.save()
             device.mclags.connect(mclag)
         else:
             ##Just update the properties of mclag in db
-            mclag_in_db.domain_id=mclag.domain_id
-            mclag_in_db.keepalive_interval=mclag.keepalive_interval
-            mclag_in_db.mclag_sys_mac=mclag.mclag_sys_mac
-            mclag_in_db.peer_addr=mclag.peer_addr
-            mclag_in_db.peer_link=mclag.peer_link
-            mclag_in_db.session_timeout=mclag.session_timeout
-            mclag_in_db.source_address=mclag.source_address
-            mclag_in_db.oper_status=mclag.oper_status
-            mclag_in_db.role=mclag.role
-            mclag_in_db.system_mac=mclag.system_mac
-            mclag_in_db.gateway_macs=mclag.gateway_macs
-            mclag_in_db.delay_restore=mclag.delay_restore
+            mclag_in_db.domain_id = mclag.domain_id
+            mclag_in_db.keepalive_interval = mclag.keepalive_interval
+            mclag_in_db.mclag_sys_mac = mclag.mclag_sys_mac
+            mclag_in_db.peer_addr = mclag.peer_addr
+            mclag_in_db.peer_link = mclag.peer_link
+            mclag_in_db.session_timeout = mclag.session_timeout
+            mclag_in_db.source_address = mclag.source_address
+            mclag_in_db.oper_status = mclag.oper_status
+            mclag_in_db.role = mclag.role
+            mclag_in_db.system_mac = mclag.system_mac
+            mclag_in_db.gateway_macs = mclag.gateway_macs
+            mclag_in_db.delay_restore = mclag.delay_restore
             mclag_in_db.save()
-            
+
         for intf_name in intfcs:
             intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
             if intf_obj:

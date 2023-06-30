@@ -3,7 +3,7 @@ version = "0.1"
 name = "orca_nw_lib"
 description = "APIs to interact with SONiC NW"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
-include = ["orca_nw_lib/github/**/*","orca_nw_lib/github.com/**/*"]
+include = ["orca_nw_lib/github/**/*", "orca_nw_lib/github.com/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -11,11 +11,9 @@ PyYAML = "^6.0"
 neo4j = "^5.4.0"
 requests = "^2.28.2"
 wget = "^3.2"
-autopep8 = "^2.0.1"
 GitPython = "^3.1.31"
 neomodel = "^5.0.0"
 protobuf = "^4.23.0"
 pyangbind = "^0.8.1"
 pytest = "^7.3.1"
 grpcio-tools = "^1.54.2"
-

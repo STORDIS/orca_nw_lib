@@ -26,7 +26,7 @@ def createPortChnlGraphObject(device_ip: str):
             .get("LAG_MEMBER_TABLE", {})
             .get("LAG_MEMBER_TABLE_LIST")
         )
-        for lag in lag_table_json_list:
+        for lag in lag_table_json_list or []:
             ifname_list = []
             for mem in lag_mem_table_json_list or []:
                 if lag.get("lagname") == mem.get("name"):
@@ -61,7 +61,7 @@ def getPortChnlOfDeviceFromDB(device_ip: str, port_chnl_name: str) -> PortChanne
     )
 
 
-def getPortChnlDetailsFromGraph(device_ip: str, port_chnl_name=None):
+def getPortChnlDetailsFromDB(device_ip: str, port_chnl_name=None):
     op_dict = []
     if port_chnl_name:
         port_chnl = getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)

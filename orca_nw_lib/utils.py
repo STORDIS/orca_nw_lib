@@ -40,5 +40,3 @@ def ping_ok(sHost) -> bool:
     except Exception:
         return False
     return True
-
-get_logging()
