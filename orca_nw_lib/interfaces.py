@@ -1,7 +1,7 @@
 from typing import List
 
 from orca_nw_lib.common import Speed
-from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
@@ -72,7 +72,6 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", {}):
                 sub_intf_obj = SubInterface()
-                sub_interface_ip_addresses = []
                 for addr in (
                     sub_intfc.get("openconfig-if-ip:ipv4", {})
                     .get("addresses", {})
@@ -80,15 +79,11 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                     or []
                 ):
                     if addr.get("ip"):
-                        sub_interface_ip_addresses.append(addr.get("ip"))
-                if sub_interface_ip_addresses:
-                    sub_intf_obj.ip_addresses = sub_interface_ip_addresses
+                        sub_intf_obj.ip_address=addr.get("ip")
                     sub_intf_obj_list.append(sub_intf_obj)
 
-                # sub_intf_obj.ip_addresses=sub_interface_ip_addresses if sub_intf_obj_list else []
-
             intfc_graph_obj_list[interface] = (
-                sub_intf_obj_list if sub_interface_ip_addresses else []
+                sub_intf_obj_list 
             )
         elif "lag" in type.lower():
             # its a port channel
@@ -111,7 +106,19 @@ def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface
         if device
         else None
     )
+    
 
+def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip:str) -> SubInterface:
+    for intf in getAllInterfacesOfDeviceFromDB(device_ip) or []:
+        if (si:=intf.subInterfaces.get_or_none(ip_address=sub_if_ip)):
+            return si
+
+def getSubInterfaceFromDB(sub_if_ip:str) -> SubInterface:
+    devices = getAllDevicesFromDB()
+    for device in devices:
+        if (si:=getSubInterfaceOfDeviceFromDB(device.mgt_ip,sub_if_ip)):
+            return si
+    
 
 def getInterfacesDetailsFromDB(device_ip: str, intfc_name=None):
     op_dict = []

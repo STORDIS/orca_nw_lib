@@ -232,9 +232,7 @@ def create_mclag_peerlink_relations_in_db():
     for local_dev in getAllDevicesFromDB() or []:
         # there is only 1 mclag per device possible so always fetch index 0
         mclag_local = (
-            getMclagOfDeviceFromDB(local_dev.mgt_ip)[0]
-            if getMclagOfDeviceFromDB(local_dev.mgt_ip)
-            else None
+            mcl[0] if (mcl := getMclagOfDeviceFromDB(local_dev.mgt_ip)) else None
         )
         if mclag_local:
             peer_link_local = mclag_local.peer_link
@@ -245,7 +243,7 @@ def create_mclag_peerlink_relations_in_db():
                 mclag_local.peer_link_node.connect(port_chnl_local)
 
             peer_addr = mclag_local.peer_addr
-            mclag_remote = getMclagOfDeviceFromDB(peer_addr)[0]
+            mclag_remote = mcl_r[0] if (mcl_r:= getMclagOfDeviceFromDB(peer_addr)) else None
             peer_link_remote = mclag_remote.peer_link if mclag_remote else None
             port_chnl_remote = getPortChnlOfDeviceFromDB(
                 local_dev.mgt_ip, peer_link_remote

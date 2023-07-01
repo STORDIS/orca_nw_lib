@@ -1,4 +1,4 @@
-network : ['192.168.77.144',] # device_ip(s) to start discovery with or subnet(s) separated by comma.
+network : ['10.10.130.11'] # device_ip(s) to start discovery with or subnet(s) separated by comma.
 username : admin
 password : YourPaSsWoRd
 grpc_port : 8080

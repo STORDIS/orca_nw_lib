@@ -39,7 +39,6 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl_from_device,
     add_port_chnl_member,
     get_all_port_chnl_members,
-    getPortChnlOfDeviceFromDB,
     remove_port_chnl_member,
 )
 

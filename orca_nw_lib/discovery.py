@@ -1,4 +1,5 @@
 import ipaddress
+from orca_nw_lib.bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
 from orca_nw_lib.device import createDeviceGraphObject, getAllDevicesFromDB
 from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
@@ -118,12 +119,22 @@ def discover_topology():
 
 
 def create_lldp_rel():
-    _logger.info("Creating LLDP relations.")
+    _logger.info("Discovering LLDP relations.")
     create_lldp_relations_in_db(topology)
 
 def create_mclag_peer_link_rel():
-    _logger.info("Creating MCLAG peer-link relations.")
+    _logger.info("Discovering MCLAG peer-link relations.")
     create_mclag_peerlink_relations_in_db()
+    
+def discover_bgp():
+    _logger.info("Discovering BGP Global List.")
+    for device in getAllDevicesFromDB():
+        _logger.info(f"Discovering BGP on device {device}.")
+        insert_device_bgp_in_db(device, createBGPGraphObjects(device.mgt_ip))
+
+def create_bgp_peer_link_rel():
+    _logger.info("Discovering BGP neighbor relations.")
+    connect_bgp_peers()
 
 def discover_all():
     clean_db()
@@ -136,6 +147,8 @@ def discover_all():
         discover_mclag()
         create_mclag_peer_link_rel()
         discover_port_groups()
+        discover_bgp()
+        create_bgp_peer_link_rel()
         _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True
     _logger.info("!! Discovery was Unsuccessful !!")
