@@ -16,6 +16,8 @@ from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
 from orca_nw_lib.interfaces import (
+    del_subinterface_from_device,
+    get_subinterface_from_device,
     getInterfaceOfDeviceFromDB,
 )
 import unittest
@@ -80,6 +82,10 @@ class InterfaceTests(unittest.TestCase):
             if "Ethernet" in ether
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
+    
+    @classmethod
+    def tearDownClass(cls) -> None:
+        gnmi_unsubscribe(cls.dut_ip)
 
     def test_interface_mtu(self):
         config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
@@ -154,6 +160,41 @@ class InterfaceTests(unittest.TestCase):
             "openconfig-interfaces:config"
         )
         assert config.get("enabled") == enable
+
+    def test_interface_ip(self):
+        pfx_len = 31
+        ip = "1.1.1."
+
+        for idx in range(0, 1):
+            del_subinterface_from_device(self.dut_ip, self.ethernet, idx)
+            for intf in (
+                get_subinterface_from_device(self.dut_ip, self.ethernet, idx).get(
+                    "openconfig-interfaces:subinterface"
+                )
+                or []
+            ):
+                assert not intf.get("openconfig-if-ip:ipv4")
+            set_interface_config_on_device(
+                self.dut_ip,
+                self.ethernet,
+                ip=f"{ip}{idx}",
+                ip_prefix_len=pfx_len,
+                index=idx,
+            )
+            sub_if_config = (
+                get_subinterface_from_device(self.dut_ip, self.ethernet, idx)
+                .get("openconfig-interfaces:subinterface")[idx]
+                .get("openconfig-if-ip:ipv4")
+                .get("addresses")
+                .get("address")[0]
+            )
+            assert sub_if_config.get("ip") == f"{ip}{idx}"
+            assert sub_if_config.get("config").get("prefix-length") == pfx_len
+            del_subinterface_from_device(self.dut_ip, self.ethernet, idx)
+            for intf in get_subinterface_from_device(
+                self.dut_ip, self.ethernet, idx
+            ).get("openconfig-interfaces:subinterface"):
+                assert not intf.get("openconfig-if-ip:ipv4")
 
     def test_interface_config_subscription_update(self):
         sts = gnmi_subscribe(self.dut_ip)

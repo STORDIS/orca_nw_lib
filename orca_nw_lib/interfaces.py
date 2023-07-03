@@ -6,6 +6,7 @@ from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
+    get_gnmi_del_req,
     send_gnmi_get,
     send_gnmi_set,
 )
@@ -36,8 +37,13 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 fec=intfc.get("openconfig-if-ethernet:ethernet", {})
                 .get("config", {})
                 .get("openconfig-if-ethernet-ext2:port-fec"),
-                speed=s.split(":")[1] if (s := intfc.get(
-                    "openconfig-if-ethernet:ethernet", {}).get("config", {}).get("port-speed")) else None,
+                speed=s.split(":")[1]
+                if (
+                    s := intfc.get("openconfig-if-ethernet:ethernet", {})
+                    .get("config", {})
+                    .get("port-speed")
+                )
+                else None,
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
@@ -49,8 +55,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 in_errors=intfc_counters.get("in-errors"),
                 in_multicast_pkts=intfc_counters.get("in-multicast-pkts"),
                 in_octets=intfc_counters.get("in-octets"),
-                in_octets_per_second=intfc_counters.get(
-                    "in-octets-per-second"),
+                in_octets_per_second=intfc_counters.get("in-octets-per-second"),
                 in_pkts=intfc_counters.get("in-pkts"),
                 in_pkts_per_second=intfc_counters.get("in-pkts-per-second"),
                 in_unicast_pkts=intfc_counters.get("in-unicast-pkts"),
@@ -62,8 +67,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 out_errors=intfc_counters.get("out-errors"),
                 out_multicast_pkts=intfc_counters.get("out-multicast-pkts"),
                 out_octets=intfc_counters.get("out-octets"),
-                out_octets_per_second=intfc_counters.get(
-                    "out-octets-per-second"),
+                out_octets_per_second=intfc_counters.get("out-octets-per-second"),
                 out_pkts=intfc_counters.get("out-pkts"),
                 out_pkts_per_second=intfc_counters.get("out-pkts-per-second"),
                 out_unicast_pkts=intfc_counters.get("out-unicast-pkts"),
@@ -79,12 +83,10 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                     or []
                 ):
                     if addr.get("ip"):
-                        sub_intf_obj.ip_address=addr.get("ip")
+                        sub_intf_obj.ip_address = addr.get("ip")
                     sub_intf_obj_list.append(sub_intf_obj)
 
-            intfc_graph_obj_list[interface] = (
-                sub_intf_obj_list 
-            )
+            intfc_graph_obj_list[interface] = sub_intf_obj_list
         elif "lag" in type.lower():
             # its a port channel
             pass
@@ -106,19 +108,20 @@ def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface
         if device
         else None
     )
-    
 
-def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip:str) -> SubInterface:
+
+def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip: str) -> SubInterface:
     for intf in getAllInterfacesOfDeviceFromDB(device_ip) or []:
-        if (si:=intf.subInterfaces.get_or_none(ip_address=sub_if_ip)):
+        if si := intf.subInterfaces.get_or_none(ip_address=sub_if_ip):
             return si
 
-def getSubInterfaceFromDB(sub_if_ip:str) -> SubInterface:
+
+def getSubInterfaceFromDB(sub_if_ip: str) -> SubInterface:
     devices = getAllDevicesFromDB()
     for device in devices:
-        if (si:=getSubInterfaceOfDeviceFromDB(device.mgt_ip,sub_if_ip)):
+        if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_if_ip):
             return si
-    
+
 
 def getInterfacesDetailsFromDB(device_ip: str, intfc_name=None):
     op_dict = []
@@ -152,6 +155,24 @@ def get_interface_base_path():
 def get_interface_path(intfc_name: str):
     path = get_interface_base_path()
     path.elem.append(PathElem(name="interface", key={"name": intfc_name}))
+    return path
+
+
+def get_sub_interface_base_path(intfc_name: str):
+    path = get_interface_path(intfc_name)
+    path.elem.append(PathElem(name="subinterfaces"))
+    return path
+
+
+def get_sub_interface_path(intfc_name: str):
+    path = get_sub_interface_base_path(intfc_name)
+    path.elem.append(PathElem(name="subinterface"))
+    return path
+
+
+def get_sub_interface_index_path(intfc_name: str, index: int):
+    path = get_sub_interface_base_path(intfc_name)
+    path.elem.append(PathElem(name="subinterface", key={"index": str(index)}))
     return path
 
 
@@ -189,6 +210,9 @@ def set_interface_config_on_device(
     loopback: bool = None,
     description: str = None,
     speed: Speed = None,
+    ip: str = None,
+    ip_prefix_len: int = 0,
+    index: int = 0,
 ):
     updates = []
 
@@ -235,8 +259,7 @@ def set_interface_config_on_device(
         if pg.getAllPortGroupsOfDeviceFromDB(
             device_ip
         ) and pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
-            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(
-                device_ip, interface_name)
+            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
                     pg.get_port_group_speed_path(pg_id),
@@ -248,9 +271,38 @@ def set_interface_config_on_device(
             updates.append(
                 create_gnmi_update(
                     get_intfc_speed_path(interface_name),
-                    {"openconfig-if-ethernet:port-speed": speed.get_gnmi_val()},
+                    {"port-speed": speed.get_gnmi_val()},
                 )
             )
+
+    if ip is not None:
+        ip_payload = {
+            "openconfig-interfaces:subinterface": [
+                {
+                    "config": {"index": index},
+                    "index": index,
+                    "openconfig-if-ip:ipv4": {
+                        "addresses": {
+                            "address": [
+                                {
+                                    "ip": ip,
+                                    "config": {
+                                        "prefix-length": ip_prefix_len,
+                                        "secondary": False,
+                                    },
+                                }
+                            ]
+                        }
+                    },
+                }
+            ]
+        }
+        updates.append(
+            create_gnmi_update(
+                get_sub_interface_path(interface_name),
+                ip_payload,
+            )
+        )
 
     if updates:
         return send_gnmi_set(
@@ -281,6 +333,10 @@ def get_interface_status_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_intfc_enabled_path(intfc_name)])
 
 
+def get_subinterface_from_device(device_ip: str, intfc_name: str):
+    return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(intfc_name)])
+
+
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):
     for intfc, sub_intfc in interfaces.items():
         intfc.save()
@@ -307,3 +363,19 @@ def set_interface_config_in_db(
         if speed is not None:
             interface.speed = str(speed)
     interface.save()
+
+
+def del_subinterface_from_device(device_ip: str, if_name: str, index: int):
+    return send_gnmi_set(
+        get_gnmi_del_req(get_sub_interface_index_path(if_name, index)), device_ip
+    )
+
+
+def get_all_subinterfaces_from_device(device_ip: str, if_name: str):
+    return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(if_name)])
+
+
+def get_subinterface_from_device(device_ip: str, if_name: str, index: int):
+    return send_gnmi_get(
+        device_ip=device_ip, path=[get_sub_interface_index_path(if_name, index)]
+    )
