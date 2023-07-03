@@ -1,4 +1,12 @@
 from time import sleep
+from orca_nw_lib.bgp import (
+    configBGPNeighbors,
+    configBgpGlobal,
+    del_bgp_global_from_device,
+    delAllBgpNeighbors,
+    get_bgp_global_of_vrf_from_device,
+    get_bgp_neighbor_from_device,
+)
 from orca_nw_lib.common import Speed
 from orca_nw_lib.device import getAllDevicesIPFromDB
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
@@ -576,3 +584,62 @@ class MclagTests(unittest.TestCase):
 
         del_port_chnl_from_device(self.dut_ip, self.peer_link)
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
+
+
+class BGPTests(unittest.TestCase):
+    vrf_name = "default"
+    dut_ip = ""
+    local_asn = 65000
+    remote_asn = 65001
+    nbr_ip = "1.1.1.0"
+
+    @classmethod
+    def setUpClass(cls):
+        if not set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIPFromDB())):
+            discover_all()
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIPFromDB()))
+        cls.dut_ip = getAllDevicesIPFromDB()[0]
+        cls.peer_address = getAllDevicesIPFromDB()[0]
+        assert cls.dut_ip is not None
+
+    def test_bgp_global_config(self):
+        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+        configBgpGlobal(
+            self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
+        )
+        for bgp_global in (
+            get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name).get(
+                "sonic-bgp-global:BGP_GLOBALS_LIST"
+            )
+            or []
+        ):
+            assert self.local_asn == bgp_global.get("local_asn")
+            assert self.dut_ip == bgp_global.get("router_id")
+            assert self.vrf_name == bgp_global.get("vrf_name")
+        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+
+    def test_bgp_nbr_config(self):
+        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+        configBgpGlobal(
+            self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
+        )
+        delAllBgpNeighbors(self.dut_ip)
+        assert not get_bgp_neighbor_from_device(self.dut_ip)
+        configBGPNeighbors(self.dut_ip, self.remote_asn, self.nbr_ip, self.vrf_name)
+        for nbr in get_bgp_neighbor_from_device(self.dut_ip).get(
+            "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
+        ):
+            assert self.remote_asn == nbr.get("asn")
+            assert self.nbr_ip == nbr.get("neighbor")
+            assert self.vrf_name == nbr.get("vrf_name")
+        delAllBgpNeighbors(self.dut_ip)
+        assert not get_bgp_neighbor_from_device(self.dut_ip)
+        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
