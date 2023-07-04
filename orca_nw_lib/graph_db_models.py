@@ -164,6 +164,8 @@ class BGP(StructuredNode):
     nbr_ips=ArrayProperty()
     
     neighbors = RelationshipTo('SubInterface', 'BGP_NEIGHBOR')
+    remote_asn_node = RelationshipTo('BGP', 'REMOTE_ASN')
+    
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

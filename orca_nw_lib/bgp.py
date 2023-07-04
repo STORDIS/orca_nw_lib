@@ -45,13 +45,33 @@ def connect_bgp_peers():
     for device in getAllDevicesFromDB():
         for bgp in device.bgp.all() or []:
             for nbr_ip in bgp.nbr_ips:
-                bgp.neighbors.connect(getSubInterfaceFromDB(nbr_ip))
+                bgp.neighbors.connect(si) if (si:=getSubInterfaceFromDB(nbr_ip)) else None
+            for remote_as in bgp.remote_asn:
+                [
+                    bgp.remote_asn_node.connect(rem_bgp)
+                    for rem_bgp in getBGPFromDB(remote_as)
+                ]
 
+def getBGPGlobalJsonFromDB(device_ip):
+    op_dict=[]
+    bgp_global=getBgpGlobalListOfDeviceFromDB(device_ip)
+    if bgp_global:
+        op_dict.append(bgp_global.__properties__)
+    return op_dict
 
 def getBgpGlobalListOfDeviceFromDB(device_ip) -> List[BGP]:
     device = getDeviceFromDB(device_ip)
     bgp_global_list = device.bgp.get_or_none() if device else None
     return bgp_global_list
+
+
+def getBGPFromDB(asn: int) -> List[BGP]:
+    bgp = []
+    for device in getAllDevicesFromDB():
+        for b in device.bgp.all() or []:
+            if b.local_asn == asn:
+                bgp.append(b)
+    return bgp
 
 
 def insert_device_bgp_in_db(device: Device, bgp_global_list: List[BGP]):
@@ -119,7 +139,7 @@ def get_bgp_neighbor_from_device(device_ip: str):
     return send_gnmi_get(device_ip, [get_bgp_neighbor_path()])
 
 
-def configBgpGlobal(device_ip: str, local_asn: int, router_id: str, vrf_name="default"):
+def configBgpGlobalOnDevice(device_ip: str, local_asn: int, router_id: str, vrf_name="default"):
     bgp_global_payload = {
         "sonic-bgp-global:BGP_GLOBALS_LIST": [
             {"local_asn": local_asn, "router_id": router_id, "vrf_name": vrf_name}
@@ -134,15 +154,18 @@ def configBgpGlobal(device_ip: str, local_asn: int, router_id: str, vrf_name="de
     )
 
 
-def configBGPNeighbors(
+def configBGPNeighborsOnDevice(
     device_ip: str, remote_asn: int, neighbor_ip: str, remote_vrf: str
 ):
     bgp_nbr_payload = {
-        "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST": [{
-        "asn": remote_asn,
-        "neighbor": neighbor_ip,
-        "vrf_name": remote_vrf,
-    }]}
+        "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST": [
+            {
+                "asn": remote_asn,
+                "neighbor": neighbor_ip,
+                "vrf_name": remote_vrf,
+            }
+        ]
+    }
 
     return send_gnmi_set(
         create_req_for_update(
@@ -151,10 +174,10 @@ def configBGPNeighbors(
         device_ip,
     )
 
-def delAllBgpNeighbors(device_ip:str):
-    return send_gnmi_set(
-        get_gnmi_del_req(get_bgp_neighbor_path()), device_ip
-    )
+
+def delAllBgpNeighborsFromDevice(device_ip: str):
+    return send_gnmi_set(get_gnmi_del_req(get_bgp_neighbor_path()), device_ip)
+
 
 def del_bgp_global_from_device(device_ip: str, vrf_name: str):
     return send_gnmi_set(

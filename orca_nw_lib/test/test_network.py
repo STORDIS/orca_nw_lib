@@ -1,9 +1,9 @@
 from time import sleep
 from orca_nw_lib.bgp import (
-    configBGPNeighbors,
-    configBgpGlobal,
+    configBGPNeighborsOnDevice,
+    configBgpGlobalOnDevice,
     del_bgp_global_from_device,
-    delAllBgpNeighbors,
+    delAllBgpNeighborsFromDevice,
     get_bgp_global_of_vrf_from_device,
     get_bgp_neighbor_from_device,
 )
@@ -82,7 +82,7 @@ class InterfaceTests(unittest.TestCase):
             if "Ethernet" in ether
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
-    
+
     @classmethod
     def tearDownClass(cls) -> None:
         gnmi_unsubscribe(cls.dut_ip)
@@ -166,7 +166,9 @@ class InterfaceTests(unittest.TestCase):
         ip = "1.1.1."
 
         for idx in range(0, 1):
-            del_subinterface_from_device(self.dut_ip, self.ethernet, idx)
+            ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error 
+            for ether in getAllInterfacesNameOfDeviceFromDB(self.dut_ip):
+                del_subinterface_from_device(self.dut_ip, ether, idx)
             for intf in (
                 get_subinterface_from_device(self.dut_ip, self.ethernet, idx).get(
                     "openconfig-interfaces:subinterface"
@@ -650,7 +652,7 @@ class BGPTests(unittest.TestCase):
     def test_bgp_global_config(self):
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
-        configBgpGlobal(
+        configBgpGlobalOnDevice(
             self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
         )
         for bgp_global in (
@@ -668,19 +670,19 @@ class BGPTests(unittest.TestCase):
     def test_bgp_nbr_config(self):
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
-        configBgpGlobal(
+        configBgpGlobalOnDevice(
             self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
         )
-        delAllBgpNeighbors(self.dut_ip)
+        delAllBgpNeighborsFromDevice(self.dut_ip)
         assert not get_bgp_neighbor_from_device(self.dut_ip)
-        configBGPNeighbors(self.dut_ip, self.remote_asn, self.nbr_ip, self.vrf_name)
+        configBGPNeighborsOnDevice(self.dut_ip, self.remote_asn, self.nbr_ip, self.vrf_name)
         for nbr in get_bgp_neighbor_from_device(self.dut_ip).get(
             "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
         ):
             assert self.remote_asn == nbr.get("asn")
             assert self.nbr_ip == nbr.get("neighbor")
             assert self.vrf_name == nbr.get("vrf_name")
-        delAllBgpNeighbors(self.dut_ip)
+        delAllBgpNeighborsFromDevice(self.dut_ip)
         assert not get_bgp_neighbor_from_device(self.dut_ip)
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
