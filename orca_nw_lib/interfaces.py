@@ -370,6 +370,10 @@ def del_subinterface_from_device(device_ip: str, if_name: str, index: int):
         get_gnmi_del_req(get_sub_interface_index_path(if_name, index)), device_ip
     )
 
+def del_all_subinterface_from_device(device_ip: str, if_name: str):
+    return send_gnmi_set(
+        get_gnmi_del_req(get_sub_interface_path(if_name)), device_ip
+    )
 
 def get_all_subinterfaces_from_device(device_ip: str, if_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(if_name)])

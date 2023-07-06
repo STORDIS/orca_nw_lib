@@ -166,7 +166,7 @@ class InterfaceTests(unittest.TestCase):
         ip = "1.1.1."
 
         for idx in range(0, 1):
-            ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error 
+            ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error
             for ether in getAllInterfacesNameOfDeviceFromDB(self.dut_ip):
                 del_subinterface_from_device(self.dut_ip, ether, idx)
             for intf in (
@@ -208,7 +208,7 @@ class InterfaceTests(unittest.TestCase):
             self.ethernet,
             enable=enable,
         )
-        sleep(1)
+        sleep(2)
         assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
 
         enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
@@ -632,9 +632,16 @@ class MclagTests(unittest.TestCase):
 class BGPTests(unittest.TestCase):
     vrf_name = "default"
     dut_ip = ""
-    local_asn = 65000
-    remote_asn = 65001
-    nbr_ip = "1.1.1.0"
+    dut_ip_2 = ""
+    dut_ip_3 = ""
+    asn0 = 65000
+    asn1 = 65001
+    asn2 = 65002
+    bgp_ip_0 = "1.1.1.0"
+    bgp_ip_1 = "1.1.1.1"
+    bgp_ip_2 = "1.1.1.2"
+    bgp_ip_3 = "1.1.1.3"
+    afi_safi = "ipv4_unicast"
 
     @classmethod
     def setUpClass(cls):
@@ -646,6 +653,8 @@ class BGPTests(unittest.TestCase):
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
         cls.dut_ip = getAllDevicesIPFromDB()[0]
+        cls.dut_ip_2 = getAllDevicesIPFromDB()[1]
+        cls.dut_ip_3 = getAllDevicesIPFromDB()[2]
         cls.peer_address = getAllDevicesIPFromDB()[0]
         assert cls.dut_ip is not None
 
@@ -653,7 +662,7 @@ class BGPTests(unittest.TestCase):
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
         configBgpGlobalOnDevice(
-            self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
+            self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
         )
         for bgp_global in (
             get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name).get(
@@ -661,7 +670,7 @@ class BGPTests(unittest.TestCase):
             )
             or []
         ):
-            assert self.local_asn == bgp_global.get("local_asn")
+            assert self.asn0 == bgp_global.get("local_asn")
             assert self.dut_ip == bgp_global.get("router_id")
             assert self.vrf_name == bgp_global.get("vrf_name")
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
@@ -671,16 +680,16 @@ class BGPTests(unittest.TestCase):
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
         configBgpGlobalOnDevice(
-            self.dut_ip, self.local_asn, self.dut_ip, vrf_name=self.vrf_name
+            self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
         )
         delAllBgpNeighborsFromDevice(self.dut_ip)
         assert not get_bgp_neighbor_from_device(self.dut_ip)
-        configBGPNeighborsOnDevice(self.dut_ip, self.remote_asn, self.nbr_ip, self.vrf_name)
+        configBGPNeighborsOnDevice(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
         for nbr in get_bgp_neighbor_from_device(self.dut_ip).get(
             "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
         ):
-            assert self.remote_asn == nbr.get("asn")
-            assert self.nbr_ip == nbr.get("neighbor")
+            assert self.asn1 == nbr.get("asn")
+            assert self.bgp_ip_0 == nbr.get("neighbor")
             assert self.vrf_name == nbr.get("vrf_name")
         delAllBgpNeighborsFromDevice(self.dut_ip)
         assert not get_bgp_neighbor_from_device(self.dut_ip)

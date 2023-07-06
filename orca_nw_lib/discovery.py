@@ -22,14 +22,22 @@ def read_lldp_topo(ip):
         device = createDeviceGraphObject(ip)
         if device not in topology.keys():
             nbrs = getLLDPNeighbors(ip)
-            topology[device] = [
-                {
+            temp_arr=[]
+            for nbr in nbrs:
+                nbr_device=createDeviceGraphObject(nbr.get("nbr_ip"))
+                # Following check prevents adding an empty device object in topology.
+                # with no mgt_ip any no other properties as well.
+                # This may happen if device is pingable but gnmi connection can not be established.
+                if nbr_device.mgt_intf and nbr_device.mgt_intf:
+                     temp_arr.append({
                     "nbr_device": createDeviceGraphObject(nbr.get("nbr_ip")),
                     "nbr_port": nbr.get("nbr_port"),
                     "local_port": nbr.get("local_port"),
-                }
-                for nbr in nbrs
-            ]
+                    })
+            
+            if temp_arr:
+                topology[device] = temp_arr
+            
             for nbr in nbrs or []:
                 read_lldp_topo(nbr.get("nbr_ip"))
     except Exception as te:

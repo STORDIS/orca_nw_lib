@@ -42,7 +42,7 @@ class PortChannel(StructuredNode):
     speed = StringProperty()
     oper_sts_reason = StringProperty()
 
-    members = RelationshipTo('Interface', 'HAS MEMBER')
+    members = RelationshipTo('Interface', 'HAS_MEMBER')
     peer_link = RelationshipTo('PortChannel', 'peer_link')
 
     def __eq__(self, other):
@@ -72,8 +72,8 @@ class MCLAG(StructuredNode):
     gateway_macs = ArrayProperty()
     delay_restore = IntegerProperty()
 
-    intfc_members = RelationshipTo('Interface', 'HAS MEMBER')
-    portChnl_member = RelationshipTo('PortChannel', 'HAS MEMBER')
+    intfc_members = RelationshipTo('Interface', 'MEM_IF')
+    portChnl_member = RelationshipTo('PortChannel', 'MEM_CHNL')
     peer_link_node = RelationshipTo('PortChannel', 'PEER_LINK')
 
     def __eq__(self, other):
@@ -142,7 +142,7 @@ class PortGroup(StructuredNode):
     speed = StringProperty()
     valid_speeds = ArrayProperty()
     default_speed = StringProperty()
-    memberInterfaces = RelationshipTo('Interface', 'MEMBER')
+    memberInterfaces = RelationshipTo('Interface', 'MEMBER_IF')
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
