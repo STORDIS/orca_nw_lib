@@ -35,8 +35,7 @@ def read_lldp_topo(ip):
                     "local_port": nbr.get("local_port"),
                     })
             
-            if temp_arr:
-                topology[device] = temp_arr
+            topology[device] = temp_arr
             
             for nbr in nbrs or []:
                 read_lldp_topo(nbr.get("nbr_ip"))
@@ -161,3 +160,5 @@ def discover_all():
         return True
     _logger.info("!! Discovery was Unsuccessful !!")
     return False
+
+discover_all()

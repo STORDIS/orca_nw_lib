@@ -60,6 +60,7 @@ class TestDiscovery(unittest.TestCase):
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
+        assert len(set(getAllDevicesIPFromDB())) >=3, "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
 
 
 class InterfaceTests(unittest.TestCase):
