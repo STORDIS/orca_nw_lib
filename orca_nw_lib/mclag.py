@@ -246,7 +246,7 @@ def create_mclag_peerlink_relations_in_db():
             mclag_remote = mcl_r[0] if (mcl_r:= getMclagOfDeviceFromDB(peer_addr)) else None
             peer_link_remote = mclag_remote.peer_link if mclag_remote else None
             port_chnl_remote = getPortChnlOfDeviceFromDB(
-                local_dev.mgt_ip, peer_link_remote
+                peer_addr, peer_link_remote
             )
             if port_chnl_remote:
                 mclag_remote.peer_link_node.connect(port_chnl_remote)
