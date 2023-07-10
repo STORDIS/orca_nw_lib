@@ -1,4 +1,7 @@
+import datetime
 from typing import List
+
+import pytz
 
 from orca_nw_lib.common import Speed
 from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
@@ -47,7 +50,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
-                last_chng=intfc_state.get("last-change"),
+                last_chng= ((lambda utc_date: f'{str(utc_date)} {utc_date.tzinfo}') (datetime.datetime.utcfromtimestamp(int(last_chng)).replace(tzinfo=pytz.utc) if (last_chng:=1688989316) else 0)),
                 mac_addr=intfc_state.get("mac-address"),
                 in_bits_per_second=intfc_counters.get("in-bits-per-second"),
                 in_broadcast_pkts=intfc_counters.get("in-broadcast-pkts"),
