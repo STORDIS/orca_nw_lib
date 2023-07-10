@@ -160,5 +160,3 @@ def discover_all():
         return True
     _logger.info("!! Discovery was Unsuccessful !!")
     return False
-
-discover_all()
