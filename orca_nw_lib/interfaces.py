@@ -3,7 +3,7 @@ from typing import List
 
 import pytz
 
-from orca_nw_lib.common import Speed
+from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
 from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
@@ -40,7 +40,7 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 fec=intfc.get("openconfig-if-ethernet:ethernet", {})
                 .get("config", {})
                 .get("openconfig-if-ethernet-ext2:port-fec"),
-                speed=s.split(":")[1]
+                speed=getSpeedStrFromOCStr(s)
                 if (
                     s := intfc.get("openconfig-if-ethernet:ethernet", {})
                     .get("config", {})
@@ -50,7 +50,15 @@ def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
-                last_chng= ((lambda utc_date: f'{str(utc_date)} {utc_date.tzinfo}') (datetime.datetime.utcfromtimestamp(int(last_chng)).replace(tzinfo=pytz.utc) if (last_chng:=1688989316) else 0)),
+                last_chng=(
+                    (lambda utc_date: f"{str(utc_date)} {utc_date.tzinfo}")(
+                        datetime.datetime.utcfromtimestamp(int(last_chng)).replace(
+                            tzinfo=pytz.utc
+                        )
+                        if (last_chng := 1688989316)
+                        else 0
+                    )
+                ),
                 mac_addr=intfc_state.get("mac-address"),
                 in_bits_per_second=intfc_counters.get("in-bits-per-second"),
                 in_broadcast_pkts=intfc_counters.get("in-broadcast-pkts"),
@@ -265,8 +273,8 @@ def set_interface_config_on_device(
             pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
-                    pg.get_port_group_speed_path(pg_id),
-                    {"openconfig-port-group:speed": speed.get_gnmi_val()},
+                    pg._get_port_group_speed_path(pg_id),
+                    {"openconfig-port-group:speed": speed.get_oc_val()},
                 )
             )
 
@@ -274,7 +282,7 @@ def set_interface_config_on_device(
             updates.append(
                 create_gnmi_update(
                     get_intfc_speed_path(interface_name),
-                    {"port-speed": speed.get_gnmi_val()},
+                    {"port-speed": speed.get_oc_val()},
                 )
             )
 
@@ -373,10 +381,10 @@ def del_subinterface_from_device(device_ip: str, if_name: str, index: int):
         get_gnmi_del_req(get_sub_interface_index_path(if_name, index)), device_ip
     )
 
+
 def del_all_subinterface_from_device(device_ip: str, if_name: str):
-    return send_gnmi_set(
-        get_gnmi_del_req(get_sub_interface_path(if_name)), device_ip
-    )
+    return send_gnmi_set(get_gnmi_del_req(get_sub_interface_path(if_name)), device_ip)
+
 
 def get_all_subinterfaces_from_device(device_ip: str, if_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(if_name)])

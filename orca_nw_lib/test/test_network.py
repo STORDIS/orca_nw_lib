@@ -60,7 +60,9 @@ class TestDiscovery(unittest.TestCase):
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
-        assert len(set(getAllDevicesIPFromDB())) >=3, "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
+        assert (
+            len(set(getAllDevicesIPFromDB())) >= 3
+        ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
 
 
 class InterfaceTests(unittest.TestCase):
@@ -117,7 +119,7 @@ class InterfaceTests(unittest.TestCase):
             get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
                 "openconfig-if-ethernet:port-speed"
             )
-            == speed_to_set.get_gnmi_val()
+            == speed_to_set.get_oc_val()
         )
 
         speed_to_set = Speed.SPEED_25GB
@@ -126,7 +128,7 @@ class InterfaceTests(unittest.TestCase):
             get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
                 "openconfig-if-ethernet:port-speed"
             )
-            == speed_to_set.get_gnmi_val()
+            == speed_to_set.get_oc_val()
         )
 
         set_interface_config_on_device(
