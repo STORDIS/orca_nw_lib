@@ -24,7 +24,9 @@ def createPortGroupGraphObjects(device_ip: str):
         default_speed = getSpeedStrFromOCStr(port_group_state.get("default-speed"))
         member_if_start = port_group_state.get("member-if-start")
         member_if_end = port_group_state.get("member-if-end")
-        valid_speeds = [getSpeedStrFromOCStr(s) for s in port_group_state.get("valid-speeds")]
+        valid_speeds = [
+            getSpeedStrFromOCStr(s) for s in port_group_state.get("valid-speeds")
+        ]
         speed = getSpeedStrFromOCStr(port_group_state.get("speed"))
         id = port_group_state.get("id")
 
@@ -137,6 +139,11 @@ def getPortGroupMemIFFromDB(device_ip: str, group_id) -> List[Interface]:
     return port_group_obj.memberInterfaces.all() if port_group_obj else None
 
 
+def getPortGroupMemIFNamesFromDB(device_ip: str, group_id) -> List[str]:
+    intfcs = getPortGroupMemIFFromDB(device_ip, group_id)
+    return [intf.name for intf in intfcs or []]
+
+
 def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = None):
     for pg, mem_intfcs in port_groups.items():
         pg.save()
@@ -149,19 +156,19 @@ def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = N
 
 def getJsonOfPortGroupMemIfFromDB(device_ip: str, group_id):
     op_dict = []
-    mem_intfcs=getPortGroupMemIFFromDB(device_ip, group_id)
-    if mem_intfcs :
+    mem_intfcs = getPortGroupMemIFFromDB(device_ip, group_id)
+    if mem_intfcs:
         for mem_if in mem_intfcs or []:
             op_dict.append(mem_if.__properties__)
     return op_dict
-    
-    
+
+
 def getJsonOfAllPortGroupsOfDeviceFromDB(device_ip: str):
     op_dict = []
-    port_groups=getAllPortGroupsOfDeviceFromDB(device_ip)
+    port_groups = getAllPortGroupsOfDeviceFromDB(device_ip)
     if port_groups:
         for pg in port_groups or []:
-            op_dict.append(pg.__properties__)
+            temp=pg.__properties__
+            temp['mem_intfs']=getPortGroupMemIFNamesFromDB(device_ip,pg.port_group_id)
+            op_dict.append(temp)
     return op_dict
-    
-            
