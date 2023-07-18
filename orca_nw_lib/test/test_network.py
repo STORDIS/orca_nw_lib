@@ -16,7 +16,8 @@ from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
 from orca_nw_lib.interfaces import (
-    del_subinterface_from_device,
+    del_all_subinterfaces_of_all_interfaces_from_device,
+    del_subinterface_of_interface_from_device,
     get_subinterface_from_device,
     getInterfaceOfDeviceFromDB,
 )
@@ -167,11 +168,12 @@ class InterfaceTests(unittest.TestCase):
     def test_interface_ip(self):
         pfx_len = 31
         ip = "1.1.1."
-
+        del_mclag_from_device(self.dut_ip)
+        del_all_port_chnl(self.dut_ip)
         for idx in range(0, 1):
             ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error
-            for ether in getAllInterfacesNameOfDeviceFromDB(self.dut_ip):
-                del_subinterface_from_device(self.dut_ip, ether, idx)
+
+            del_all_subinterfaces_of_all_interfaces_from_device(self.dut_ip)
             for intf in (
                 get_subinterface_from_device(self.dut_ip, self.ethernet, idx).get(
                     "openconfig-interfaces:subinterface"
@@ -195,7 +197,7 @@ class InterfaceTests(unittest.TestCase):
             )
             assert sub_if_config.get("ip") == f"{ip}{idx}"
             assert sub_if_config.get("config").get("prefix-length") == pfx_len
-            del_subinterface_from_device(self.dut_ip, self.ethernet, idx)
+            del_subinterface_of_interface_from_device(self.dut_ip, self.ethernet, idx)
             for intf in get_subinterface_from_device(
                 self.dut_ip, self.ethernet, idx
             ).get("openconfig-interfaces:subinterface"):
@@ -337,7 +339,7 @@ class PortChannelTests(unittest.TestCase):
 
         assert mem_infcs == output_mem_infcs
 
-        remove_port_chnl_member(self.dut_ip, self.chnl_name, "Ethernet4")
+        remove_port_chnl_member(self.dut_ip, self.chnl_name, self.ethernet1)
 
         output = get_all_port_chnl_members(self.dut_ip)
         output_mem_infcs = []
@@ -345,8 +347,10 @@ class PortChannelTests(unittest.TestCase):
             if item.get("name") == self.chnl_name:
                 output_mem_infcs.append(item.get("ifname"))
 
-        assert "Ethernet4" not in output_mem_infcs
-
+        assert self.ethernet1 not in output_mem_infcs
+        ## Before deleting port_channel remove all its members and mclags using this port-channel
+        del_mclag_from_device(self.dut_ip)
+        remove_port_chnl_member(self.dut_ip, self.chnl_name, self.ethernet2)
         del_port_chnl_from_device(self.dut_ip, self.chnl_name)
 
 
@@ -373,13 +377,16 @@ class MclagTests(unittest.TestCase):
         cls.peer_address = getAllDevicesIPFromDB()[0]
         assert cls.dut_ip is not None
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        gnmi_unsubscribe(cls.dut_ip)
+
     def test_mclag_gateway_mac_sub(self):
         gnmi_subscribe(self.dut_ip)
-        ## Sanity
+        ## For Sanity
         del_mclag_from_device(self.dut_ip)
-        sleep(3)
         assert not get_mclag_domain_from_device(self.dut_ip)
-        assert not getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id)
+
         del_all_port_chnl(self.dut_ip)
         ## assert negative for port channel in Db as well
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
@@ -392,7 +399,6 @@ class MclagTests(unittest.TestCase):
             .get("name")
             == self.peer_link
         )
-        sleep(3)
         config_mclag_domain_on_device(
             self.dut_ip,
             self.domain_id,
@@ -630,7 +636,6 @@ class MclagTests(unittest.TestCase):
 
         del_port_chnl_from_device(self.dut_ip, self.peer_link)
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
-
 
 class BGPTests(unittest.TestCase):
     vrf_name = "default"

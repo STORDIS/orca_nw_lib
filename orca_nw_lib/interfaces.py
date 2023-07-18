@@ -376,17 +376,20 @@ def set_interface_config_in_db(
     interface.save()
 
 
-def del_subinterface_from_device(device_ip: str, if_name: str, index: int):
+def del_subinterface_of_interface_from_device(device_ip: str, if_name: str, index: int):
     return send_gnmi_set(
         get_gnmi_del_req(get_sub_interface_index_path(if_name, index)), device_ip
     )
 
 
-def del_all_subinterface_from_device(device_ip: str, if_name: str):
+def del_all_subinterfaces_of_interface_from_device(device_ip: str, if_name: str):
     return send_gnmi_set(get_gnmi_del_req(get_sub_interface_path(if_name)), device_ip)
 
+def del_all_subinterfaces_of_all_interfaces_from_device(device_ip: str):
+    for ether in getAllInterfacesNameOfDeviceFromDB(device_ip):
+        del_all_subinterfaces_of_interface_from_device(device_ip, ether)
 
-def get_all_subinterfaces_from_device(device_ip: str, if_name: str):
+def get_all_subinterfaces_of_interface_from_device(device_ip: str, if_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(if_name)])
 
 
