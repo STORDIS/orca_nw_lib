@@ -407,7 +407,7 @@ class MclagTests(unittest.TestCase):
             self.peer_link,
             self.mclag_sys_mac,
         )
-
+        sleep(2)
         config_mclag_gateway_mac_on_device(self.dut_ip, self.mclag_gw_mac)
         sleep(2)
         assert (
