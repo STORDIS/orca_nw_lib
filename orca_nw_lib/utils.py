@@ -5,7 +5,7 @@ import yaml
 import logging
 import logging.config
 import yaml
-from orca_nw_lib.constants import conn_timeout
+from .constants import conn_timeout
 
 _settings={}
 abspath = os.path.abspath(__file__)

@@ -17,6 +17,7 @@ class Device(StructuredNode):
     mclags = RelationshipTo('MCLAG', 'HAS')
     port_groups = RelationshipTo('PortGroup', 'HAS')
     bgp = RelationshipTo('BGP', 'BGP_GLOBAL')
+    vlans = RelationshipTo('Vlan', 'HAS')
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -177,3 +178,24 @@ class BGP(StructuredNode):
 
     def __str__(self):
         return str(self.local_asn)
+
+
+class Vlan(StructuredNode):
+
+    vlanid = IntegerProperty()
+    name = StringProperty()
+    mtu = IntegerProperty()
+    admin_status = StringProperty()
+    oper_status = StringProperty()
+    memberInterfaces = RelationshipTo('Interface', 'MEMBER_IF')
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.vlanid == other.vlanid
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.vlanid)
+
+    def __str__(self):
+        return str(self.vlanid)

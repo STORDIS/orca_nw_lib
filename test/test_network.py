@@ -52,6 +52,7 @@ from orca_nw_lib.port_chnl import (
     get_all_port_chnl_members,
     remove_port_chnl_member,
 )
+from orca_nw_lib.vlan import getVlanDBObj
 
 
 class TestDiscovery(unittest.TestCase):
@@ -374,7 +375,7 @@ class MclagTests(unittest.TestCase):
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
         cls.dut_ip = getAllDevicesIPFromDB()[0]
-        cls.peer_address = getAllDevicesIPFromDB()[0]
+        cls.peer_address = getAllDevicesIPFromDB()[1]
         assert cls.dut_ip is not None
 
     @classmethod
@@ -637,6 +638,7 @@ class MclagTests(unittest.TestCase):
         del_port_chnl_from_device(self.dut_ip, self.peer_link)
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
 
+
 class BGPTests(unittest.TestCase):
     vrf_name = "default"
     dut_ip = ""
@@ -703,3 +705,22 @@ class BGPTests(unittest.TestCase):
         assert not get_bgp_neighbor_from_device(self.dut_ip)
         del_bgp_global_from_device(self.dut_ip, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+
+
+class VLANTests(unittest.TestCase):
+    dut_ip = ""
+
+    @classmethod
+    def setUpClass(cls):
+        if not set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIPFromDB())):
+            discover_all()
+        assert set(
+            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        ).issubset(set(getAllDevicesIPFromDB()))
+        cls.dut_ip = getAllDevicesIPFromDB()[0]
+        assert cls.dut_ip is not None
+
+    def test_vlan_config(self):
+        getVlanDBObj(self.dut_ip)

@@ -1,14 +1,15 @@
 import ipaddress
-from orca_nw_lib.bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
-from orca_nw_lib.device import createDeviceGraphObject, getAllDevicesFromDB
-from orca_nw_lib.graph_db_models import Device
-from orca_nw_lib.interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
-from orca_nw_lib.lldp import create_lldp_relations_in_db, getLLDPNeighbors
-from orca_nw_lib.mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, insert_device_mclag_in_db
-from orca_nw_lib.port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
-from orca_nw_lib.portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
-from orca_nw_lib.utils import get_logging, get_orca_config
-from orca_nw_lib.constants import network
+from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
+from .device import createDeviceGraphObject, getAllDevicesFromDB
+from .graph_db_models import Device
+from .interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
+from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
+from .mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, insert_device_mclag_in_db
+from .port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
+from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
+from .utils import get_logging, get_orca_config
+from .constants import network
+from .vlan import getVlanDBObj, insertVlanInDB
 
 
 _logger = get_logging().getLogger(__name__)
@@ -143,12 +144,19 @@ def create_bgp_peer_link_rel():
     _logger.info("Discovering BGP neighbor relations.")
     connect_bgp_peers()
 
+def discover_vlan():
+    _logger.info("Discovering VLAN.")
+    for device in getAllDevicesFromDB():
+        _logger.info(f"Discovering VLAN on device {device}.")
+        insertVlanInDB(device, getVlanDBObj(device.mgt_ip))
+
 def discover_all():
     clean_db()
     global topology
     topology = {}
     if discover_topology():
         discover_interfaces()
+        discover_vlan()
         create_lldp_rel()
         discover_port_chnl()
         discover_mclag()
@@ -156,6 +164,7 @@ def discover_all():
         discover_port_groups()
         discover_bgp()
         create_bgp_peer_link_rel()
+        
         _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True
     _logger.info("!! Discovery was Unsuccessful !!")

@@ -5,10 +5,10 @@ import sys
 from typing import List
 
 import grpc
-from orca_nw_lib.gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
-from orca_nw_lib.gnmi_pb2_grpc import gNMIStub
+from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
+from .gnmi_pb2_grpc import gNMIStub
 
-from orca_nw_lib.utils import get_logging, get_orca_config, ping_ok
+from .utils import get_logging, get_orca_config, ping_ok
 
 
 from .constants import grpc_port, username, password, conn_timeout
@@ -80,9 +80,11 @@ def send_gnmi_get(device_ip, path: list[Path]):
         )
         # resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
         # print(resp_cap)
-        for u in resp.notification[0].update:
-            op = u.val.json_ietf_val.decode("utf-8")
-            op = json.loads(op)
+        
+        for n in resp.notification:
+            for u in n.update:
+                op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
+            
     except Exception as e:
         _logger.error(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
