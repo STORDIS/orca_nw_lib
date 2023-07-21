@@ -7,7 +7,7 @@ from orca_nw_lib.bgp import (
     get_bgp_global_of_vrf_from_device,
     get_bgp_neighbor_from_device,
 )
-from orca_nw_lib.common import Speed
+from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.device import getAllDevicesIPFromDB
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 
@@ -52,7 +52,12 @@ from orca_nw_lib.port_chnl import (
     get_all_port_chnl_members,
     remove_port_chnl_member,
 )
-from orca_nw_lib.vlan import getVlanDBObj
+from orca_nw_lib.vlan import (
+    config_vlan_on_device,
+    del_vlan_from_device,
+    get_vlan_details_from_device,
+    getVlanDBObj,
+)
 
 
 class TestDiscovery(unittest.TestCase):
@@ -709,6 +714,10 @@ class BGPTests(unittest.TestCase):
 
 class VLANTests(unittest.TestCase):
     dut_ip = ""
+    vlan_name = "Vlan1"
+    vlan_id = 1
+    eth1 = ""
+    eth2 = ""
 
     @classmethod
     def setUpClass(cls):
@@ -720,7 +729,42 @@ class VLANTests(unittest.TestCase):
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
         cls.dut_ip = getAllDevicesIPFromDB()[0]
+        cls.eth1 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][0]
+        cls.eth2 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][1]
         assert cls.dut_ip is not None
 
     def test_vlan_config(self):
-        getVlanDBObj(self.dut_ip)
+        del_vlan_from_device(self.dut_ip, self.vlan_name)
+        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+        mem = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+
+        config_vlan_on_device(self.dut_ip, self.vlan_name, self.vlan_id,mem)
+        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
+            assert v.get("members") == [self.eth1, self.eth2]
+            assert v.get("name") == self.vlan_name
+            assert v.get("vlanid") == self.vlan_id
+        
+        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
+            if v.get('ifname') == self.eth1 :
+                assert v.get('name') == self.vlan_name
+                assert v.get('tagging_mode') == str(VlanTagMode.tagged)
+            elif v.get('ifname') == self.eth2 :
+                assert v.get('name') == self.vlan_name
+                assert v.get('tagging_mode') == str(VlanTagMode.untagged)
+                
+        del_vlan_from_device(self.dut_ip, self.vlan_name)
+        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+
+
+v = VLANTests()
+v.setUpClass()
+v.test_vlan_config()

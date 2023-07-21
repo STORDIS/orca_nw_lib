@@ -19,3 +19,19 @@ class Speed(Enum):
 
 def getSpeedStrFromOCStr(oc_str):
     return oc_str.split(":")[1]
+
+
+class VlanTagMode(str,Enum):
+    tagged = auto()
+    untagged = auto()
+    
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name
