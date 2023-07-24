@@ -1,3 +1,5 @@
+from ast import List
+from .device import getDeviceFromDB
 from .common import VlanTagMode
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
@@ -38,6 +40,43 @@ def getVlanDBObj(device_ip: str):
         break
 
     return vlans_obj_vs_mem
+
+def getJson(device_ip:str, v:Vlan):
+    temp = v.__properties__
+    temp["members"]=[mem.name for mem in get_vlan_mem_ifcs_from_db(device_ip, temp.get('name')) or []]
+    return temp
+
+def getJsonOfVLANDetailsFromDB(device_ip, vlan_name: str = None):
+    vlans = get_vlan_details_from_db(device_ip, vlan_name)
+    op_dict = []
+    try:
+        for v in vlans or []:
+            op_dict.append(getJson(device_ip,v))
+    except TypeError:
+        ## Its a single vlan object no need to iterate.
+        op_dict.append(getJson(device_ip,vlans))
+    return op_dict
+
+
+def get_vlan_details_from_db(device_ip, vlan_name: str):
+    device: Device = getDeviceFromDB(device_ip)
+    return (
+        device.vlans.all()
+        if not vlan_name
+        else device.vlans.get_or_none(name=vlan_name)
+    )
+
+
+def get_vlan_mem_ifcs_from_db(device_ip, vlan_name: str):
+    device: Device = getDeviceFromDB(device_ip)
+    # _logger.info(device)
+    # _logger.info(vlan_name)
+    # _logger.info(vv.name) if (vv:= device.vlans.get_or_none(name=vlan_name)) else None
+    return (
+        v.memberInterfaces.all()
+        if device and device.vlans and (v := device.vlans.get_or_none(name=vlan_name))
+        else None
+    )
 
 
 def insertVlanInDB(device: Device, vlans_obj_vs_mem):
@@ -125,15 +164,10 @@ def del_vlan_from_device(device_ip: str, vlan_list_name: str = None):
 def config_vlan_on_device(
     device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None
 ):
-    payload = {
-        "sonic-vlan:VLAN_LIST": [
-            {"name": vlan_name, "vlanid": vlan_id}
-        ]
-    }
+    payload = {"sonic-vlan:VLAN_LIST": [{"name": vlan_name, "vlanid": vlan_id}]}
     if mem_ifs:
-        payload.get("sonic-vlan:VLAN_LIST")[0]["members"]=list(mem_ifs.keys())
-    
-    
+        payload.get("sonic-vlan:VLAN_LIST")[0]["members"] = list(mem_ifs.keys())
+
     payload2 = {"sonic-vlan:VLAN_MEMBER_LIST": []}
     for m, tag in mem_ifs.items() if mem_ifs else []:
         payload2.get("sonic-vlan:VLAN_MEMBER_LIST").append(

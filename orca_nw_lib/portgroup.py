@@ -129,13 +129,13 @@ def getPortGroupIDOfDeviceInterfaceFromDB(device_ip: str, inertface_name: str):
     return None
 
 
-def getPortGroup(device_ip: str, group_id):
+def getPortGroupFromDB(device_ip: str, group_id):
     device: Device = getDeviceFromDB(device_ip)
     return device.port_groups.get_or_none(port_group_id=group_id) if device else None
 
 
 def getPortGroupMemIFFromDB(device_ip: str, group_id) -> List[Interface]:
-    port_group_obj = getPortGroup(device_ip, group_id)
+    port_group_obj = getPortGroupFromDB(device_ip, group_id)
     return port_group_obj.memberInterfaces.all() if port_group_obj else None
 
 

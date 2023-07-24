@@ -1,3 +1,4 @@
+from orca_nw_lib.common import VlanTagMode
 from orca_nw_lib.bgp import (
     configBGPNeighborAFOnDevice,
     configBGPNeighborsOnDevice,
@@ -43,6 +44,12 @@ from orca_nw_lib.port_chnl import (
     del_port_chnl_from_device,
     get_all_port_chnl_members,
     get_port_chnl_from_device,
+    remove_port_chnl_member,
+)
+from orca_nw_lib.vlan import (
+    config_vlan_on_device,
+    del_vlan_from_device,
+    get_vlan_details_from_device,
 )
 
 
@@ -69,6 +76,14 @@ class SampleConfig(unittest.TestCase):
     ethernet1 = None
     ethernet2 = None
     ethernet3 = None
+    ethernet4 = None
+    ethernet5 = None
+    ethernet6 = None
+    ethernet7 = None
+    vlan_name = "Vlan1"
+    vlan_name_2 = "Vlan2"
+    vlan_id = 1
+    vlan_id_2 = 2
 
     @classmethod
     def setUpClass(cls):
@@ -96,6 +111,10 @@ class SampleConfig(unittest.TestCase):
         cls.ethernet1 = all_interface[1]
         cls.ethernet2 = all_interface[2]
         cls.ethernet3 = all_interface[3]
+        cls.ethernet4 = all_interface[4]
+        cls.ethernet5 = all_interface[5]
+        cls.ethernet6 = all_interface[6]
+        cls.ethernet7 = all_interface[7]
 
         assert cls.dut_ip_1 is not None
 
@@ -520,3 +539,32 @@ class SampleConfig(unittest.TestCase):
             assert nbr_af.get("afi_safi") == self.afi_safi
             assert nbr_af.get("vrf_name") == self.vrf_name
         # TODO pfx are not being sent and received with above config, neighbours are connected though.
+
+    def test_vlan_config(self):
+        del_vlan_from_device(self.dut_ip_1)
+        assert not get_vlan_details_from_device(self.dut_ip_1, self.vlan_name)
+        mem = {self.ethernet4: VlanTagMode.tagged, self.ethernet5: VlanTagMode.untagged}
+        mem_2 = {
+            self.ethernet6: VlanTagMode.tagged,
+            self.ethernet7: VlanTagMode.untagged,
+        }
+
+        config_vlan_on_device(self.dut_ip_1, self.vlan_name, self.vlan_id, mem)
+        config_vlan_on_device(self.dut_ip_1, self.vlan_name_2, self.vlan_id_2, mem_2)
+
+        vlan_detail = get_vlan_details_from_device(self.dut_ip_1)
+        assert len(vlan_detail.get("sonic-vlan:VLAN_LIST")) == 2
+        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
+            assert v.get("members") == list(mem.keys()) or v.get("members") == list(
+                mem_2.keys()
+            )
+            assert v.get("name") == self.vlan_name or v.get("name") == self.vlan_name_2
+            assert v.get("vlanid") == self.vlan_id or v.get("vlanid") == self.vlan_id_2
+
+        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
+            if v.get("ifname") in [self.ethernet4, self.ethernet6]:
+                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
+            elif v.get("ifname") in [self.ethernet5, self.ethernet7]:
+                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
+            assert v.get("name") in [self.vlan_name, self.vlan_name_2]
+            
