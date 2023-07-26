@@ -127,7 +127,7 @@ def get_vlan_mem_path(vlan_name: str = None, intf_name: str = None):
     path.elem.append(PathElem(name="VLAN_MEMBER"))
     path.elem.append(
         PathElem(name="VLAN_MEMBER_LIST")
-    ) if not vlan_name and not intf_name else path.elem.append(
+    ) if not vlan_name or not intf_name else path.elem.append(
         PathElem(name="VLAN_MEMBER_LIST", key={"name": vlan_name, "ifname": intf_name})
     )
     return path
@@ -203,7 +203,7 @@ def add_vlan_mem_interface_on_device(
     )
 
 
-def del_vlan_mem_interface_on_device(device_ip: str, vlan_name: str, if_name: str):
+def del_vlan_mem_interface_on_device(device_ip: str, vlan_name: str, if_name: str=None):
     return send_gnmi_set(
         get_gnmi_del_req(get_vlan_mem_path(vlan_name, if_name)), device_ip
     )

@@ -811,6 +811,7 @@ class VLANTests(unittest.TestCase):
         del_vlan_from_device(self.dut_ip, self.vlan_name)
         assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
         mem = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+        del_vlan_mem_interface_on_device(self.dut_ip, self.vlan_name)
 
         config_vlan_on_device(self.dut_ip, self.vlan_name, self.vlan_id)
         vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
@@ -818,7 +819,6 @@ class VLANTests(unittest.TestCase):
             assert not v.get("members")
             assert v.get("name") == self.vlan_name
             assert v.get("vlanid") == self.vlan_id
-
         assert not vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST")
 
         add_vlan_mem_interface_on_device(self.dut_ip, self.vlan_name, mem)
