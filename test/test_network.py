@@ -72,7 +72,7 @@ class TestDiscovery(unittest.TestCase):
         ).issubset(set(getAllDevicesIPFromDB()))
         assert (
             len(set(getAllDevicesIPFromDB())) >= 3
-        ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
+        ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(getAllDevicesIPFromDB()))}"
 
 
 class InterfaceTests(unittest.TestCase):

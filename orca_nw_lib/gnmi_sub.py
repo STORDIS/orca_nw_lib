@@ -89,17 +89,11 @@ def handle_mclag_domain_update(device_ip, resp):
                     delMCLAGGatewayMacOfDeviceInDB(device_ip)
 
 
-def handle_update(device_ip: str, paths: List[Path]):
+def handle_update(device_ip: str, subscriptions: List[Subscription]):
     device_gnmi_stub = getGrpcStubs(device_ip)
     try:
         subscriptionlist = SubscriptionList(
-            subscription=[
-                Subscription(
-                    path=path,
-                    mode=SubscriptionMode.ON_CHANGE,
-                )
-                for path in paths
-            ],
+            subscription=subscriptions,
             mode=SubscriptionList.Mode.Value("STREAM"),
             encoding=Encoding.Value("PROTO"),
             updates_only=True,
@@ -123,16 +117,16 @@ def handle_update(device_ip: str, paths: List[Path]):
 
 
 def gnmi_subscribe(device_ip: str):
-    paths = [
-        get_intfc_config_path(eth)
-        for eth in getAllInterfacesNameOfDeviceFromDB(device_ip)
-    ]
-    paths += [
-        get_intfc_speed_path(eth)
-        for eth in getAllInterfacesNameOfDeviceFromDB(device_ip)
-    ]
-    paths.append(get_mclag_gateway_mac_path())
-    paths.append(get_mclag_domain_path())
+    subscriptions=[]
+    
+    for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
+       subscriptions.append(Subscription(path=get_intfc_config_path(eth),mode=SubscriptionMode.ON_CHANGE))
+        
+    for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
+       subscriptions.append(Subscription(path=get_intfc_speed_path(eth),mode=SubscriptionMode.ON_CHANGE))
+       
+    subscriptions.append(Subscription(path=get_mclag_gateway_mac_path(),mode=SubscriptionMode.ON_CHANGE))
+    subscriptions.append(Subscription(path=get_mclag_domain_path(),mode=SubscriptionMode.ON_CHANGE))
     thread_name = f"subscription_{device_ip}"
     for thread in threading.enumerate():
         if thread.name == thread_name:
@@ -140,7 +134,7 @@ def gnmi_subscribe(device_ip: str):
             return False
         else:
             thread = Thread(
-                name=thread_name, target=handle_update, args=(device_ip, paths)
+                name=thread_name, target=handle_update, args=(device_ip, subscriptions)
             )
             thread.start()
             return True
