@@ -186,11 +186,29 @@ def del_all_port_chnl(device_ip: str):
     return send_gnmi_set(get_gnmi_del_req(get_port_chnl_list_path()), device_ip)
 
 
+def copy_port_chnl_prop(target_obj: PortChannel, src_obj: PortChannel):
+    target_obj.lag_name = src_obj.lag_name
+    target_obj.active = src_obj.active
+    target_obj.admin_sts = src_obj.admin_sts
+    target_obj.mtu = src_obj.mtu
+    target_obj.name = src_obj.name  # name of protocol e.g. lacp
+    target_obj.fallback_operational = src_obj.fallback_operational
+    target_obj.oper_sts = src_obj.oper_sts
+    target_obj.speed = src_obj.speed
+    target_obj.oper_sts_reason = src_obj.oper_sts_reason
+
+
 def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
     for chnl, mem_list in portchnl_to_mem_list.items():
-        chnl.save()
-        device.port_chnl.connect(chnl)
+        if p_chnl := getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name):
+            copy_port_chnl_prop(p_chnl, chnl)
+            p_chnl.save()
+            device.port_chnl.connect(p_chnl)
+        else:
+            chnl.save()
+            device.port_chnl.connect(chnl)
+        saved_p_chnl=getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name)
         for intf_name in mem_list:
-            intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
-            if intf_obj:
-                chnl.members.connect(intf_obj)
+            saved_p_chnl.members.connect(intf_obj) if saved_p_chnl and (
+                intf_obj := getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
+            ) else None

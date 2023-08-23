@@ -256,32 +256,38 @@ def create_mclag_peerlink_relations_in_db():
             ) if port_chnl_local and port_chnl_remote else None
 
 
+def copy_mclag_obj_props(target_obj:MCLAG,src_obj:MCLAG):
+    target_obj.domain_id = src_obj.domain_id
+    target_obj.keepalive_interval = src_obj.keepalive_interval
+    target_obj.mclag_sys_mac = src_obj.mclag_sys_mac
+    target_obj.peer_addr = src_obj.peer_addr
+    target_obj.peer_link = src_obj.peer_link
+    target_obj.session_timeout = src_obj.session_timeout
+    target_obj.source_address = src_obj.source_address
+    target_obj.oper_status = src_obj.oper_status
+    target_obj.role = src_obj.role
+    target_obj.system_mac = src_obj.system_mac
+    target_obj.gateway_macs = src_obj.gateway_macs
+    target_obj.delay_restore = src_obj.delay_restore
+
 def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
     for mclag, intfcs in mclag_to_intfc_list.items():
-        mclag_in_db = getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id)
-        if not mclag_in_db:
+        
+        if mclag_in_db := getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id):
+            copy_mclag_obj_props(mclag_in_db,mclag)
+            mclag_in_db.save()
+            device.mclags.connect(mclag_in_db)
+        
+        else:
             mclag.save()
             device.mclags.connect(mclag)
-        else:
-            ##Just update the properties of mclag in db
-            mclag_in_db.domain_id = mclag.domain_id
-            mclag_in_db.keepalive_interval = mclag.keepalive_interval
-            mclag_in_db.mclag_sys_mac = mclag.mclag_sys_mac
-            mclag_in_db.peer_addr = mclag.peer_addr
-            mclag_in_db.peer_link = mclag.peer_link
-            mclag_in_db.session_timeout = mclag.session_timeout
-            mclag_in_db.source_address = mclag.source_address
-            mclag_in_db.oper_status = mclag.oper_status
-            mclag_in_db.role = mclag.role
-            mclag_in_db.system_mac = mclag.system_mac
-            mclag_in_db.gateway_macs = mclag.gateway_macs
-            mclag_in_db.delay_restore = mclag.delay_restore
-            mclag_in_db.save()
-
+        
+        saved_mclag=getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id)
+        
         for intf_name in intfcs:
             intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
             if intf_obj:
-                mclag.intfc_members.connect(intf_obj)
+                saved_mclag.intfc_members.connect(intf_obj)
             port_chnl_obj = getPortChnlOfDeviceFromDB(device.mgt_ip, intf_name)
             if port_chnl_obj:
-                mclag.portChnl_member.connect(port_chnl_obj)
+                saved_mclag.portChnl_member.connect(port_chnl_obj)

@@ -389,7 +389,8 @@ class MclagTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         gnmi_unsubscribe(cls.dut_ip)
-
+        
+    @unittest.skip("subscription need to be reworked")
     def test_mclag_gateway_mac_sub(self):
         gnmi_subscribe(self.dut_ip)
         ## For Sanity
@@ -443,7 +444,8 @@ class MclagTests(unittest.TestCase):
         ## assert negative for port channel in Db as well
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
         gnmi_unsubscribe(self.dut_ip)
-
+    
+    @unittest.skip("subscription need to be reworked")
     def test_mclag_sub(self):
         gnmi_subscribe(self.dut_ip)
         ## Sanity

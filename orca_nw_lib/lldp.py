@@ -53,15 +53,16 @@ def get_lldp_interfaces_from_device(device_ip: str):
 def create_lldp_relations_in_db(topology):
     for device, neighbors in topology.items():
         for nbr in neighbors:
-            local_intfc = getInterfaceOfDeviceFromDB(
-                device.mgt_ip, nbr.get("local_port")
-            )
-
             nbr_device = nbr.get("nbr_device")
-            nbr_intfc = getInterfaceOfDeviceFromDB(
-                nbr_device.mgt_ip, nbr.get("nbr_port")
-            )
-            local_intfc.lldp_neighbour.connect(nbr_intfc)
+            local_intfc.lldp_neighbour.connect(nbr_intfc) if (
+                local_intfc := getInterfaceOfDeviceFromDB(
+                    device.mgt_ip, nbr.get("local_port")
+                )
+            ) and (
+                nbr_intfc := getInterfaceOfDeviceFromDB(
+                    nbr_device.mgt_ip, nbr.get("nbr_port")
+                )
+            ) else None
 
 
 def is_lldp_enabled(device_ip):

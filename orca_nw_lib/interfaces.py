@@ -348,13 +348,40 @@ def get_subinterface_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(intfc_name)])
 
 
+def copy_intfc_object_props(target_intfc: Interface, source_intfc: Interface):
+    target_intfc.name = source_intfc.name
+    target_intfc.enabled = source_intfc.enabled
+    target_intfc.mtu = source_intfc.mtu
+    target_intfc.fec = source_intfc.fec
+    target_intfc.speed = source_intfc.speed
+    target_intfc.oper_sts = source_intfc.oper_sts
+    target_intfc.admin_sts = source_intfc.admin_sts
+    target_intfc.description = source_intfc.description
+    target_intfc.last_chng = source_intfc.last_chng
+    target_intfc.mac_addr = source_intfc.mac_addr
+
+
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):
     for intfc, sub_intfc in interfaces.items():
-        intfc.save()
-        device.interfaces.connect(intfc)
+        if i := getInterfaceOfDeviceFromDB(device.mgt_ip, intfc.name):
+            # Update existing node
+            copy_intfc_object_props(i, intfc)
+            i.save()
+            device.interfaces.connect(i)
+        else:
+            intfc.save()
+            device.interfaces.connect(intfc)
+
+        saved_i = getInterfaceOfDeviceFromDB(device.mgt_ip, intfc.name)
+
         for sub_i in sub_intfc:
-            sub_i.save()
-            intfc.subInterfaces.connect(sub_i)
+            if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_i.ip_address):
+                si.ip_address = sub_i.ip_address
+                si.save()
+                saved_i.subInterfaces.connect(si) if saved_i else None
+            else:
+                sub_i.save()
+                saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
 
 def getAllInterfacesNameOfDeviceFromDB(device_ip: str):
@@ -385,9 +412,11 @@ def del_subinterface_of_interface_from_device(device_ip: str, if_name: str, inde
 def del_all_subinterfaces_of_interface_from_device(device_ip: str, if_name: str):
     return send_gnmi_set(get_gnmi_del_req(get_sub_interface_path(if_name)), device_ip)
 
+
 def del_all_subinterfaces_of_all_interfaces_from_device(device_ip: str):
     for ether in getAllInterfacesNameOfDeviceFromDB(device_ip):
         del_all_subinterfaces_of_interface_from_device(device_ip, ether)
+
 
 def get_all_subinterfaces_of_interface_from_device(device_ip: str, if_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(if_name)])

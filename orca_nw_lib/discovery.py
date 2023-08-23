@@ -151,17 +151,17 @@ def discover_vlan():
         insertVlanInDB(device, getVlanDBObj(device.mgt_ip))
 
 def discover_all():
-    clean_db()
+    #clean_db()
     global topology
     topology = {}
     if discover_topology():
         discover_interfaces()
+        discover_port_groups()
         discover_vlan()
         create_lldp_rel()
         discover_port_chnl()
         discover_mclag()
         create_mclag_peer_link_rel()
-        discover_port_groups()
         discover_bgp()
         create_bgp_peer_link_rel()
         

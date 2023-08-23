@@ -41,20 +41,24 @@ def getVlanDBObj(device_ip: str):
 
     return vlans_obj_vs_mem
 
-def getJson(device_ip:str, v:Vlan):
+
+def getJson(device_ip: str, v: Vlan):
     temp = v.__properties__
-    temp["members"]=[mem.name for mem in get_vlan_mem_ifcs_from_db(device_ip, temp.get('name')) or []]
+    temp["members"] = [
+        mem.name for mem in get_vlan_mem_ifcs_from_db(device_ip, temp.get("name")) or []
+    ]
     return temp
+
 
 def getJsonOfVLANDetailsFromDB(device_ip, vlan_name: str = None):
     vlans = get_vlan_details_from_db(device_ip, vlan_name)
     op_dict = []
     try:
         for v in vlans or []:
-            op_dict.append(getJson(device_ip,v))
+            op_dict.append(getJson(device_ip, v))
     except TypeError:
         ## Its a single vlan object no need to iterate.
-        op_dict.append(getJson(device_ip,vlans))
+        op_dict.append(getJson(device_ip, vlans))
     return op_dict
 
 
@@ -79,13 +83,28 @@ def get_vlan_mem_ifcs_from_db(device_ip, vlan_name: str):
     )
 
 
+def copy_vlan_obj_prop(target_vlan_obj: Vlan, source_vlan_obj: Vlan):
+    target_vlan_obj.vlanid = source_vlan_obj.vlanid
+    target_vlan_obj.name = source_vlan_obj.name
+    target_vlan_obj.mtu = source_vlan_obj.mtu
+    target_vlan_obj.admin_status = source_vlan_obj.admin_status
+    target_vlan_obj.oper_status = source_vlan_obj.oper_status
+
+
 def insertVlanInDB(device: Device, vlans_obj_vs_mem):
     for vlan, members in vlans_obj_vs_mem.items():
-        vlan.save()
-        device.vlans.connect(vlan)
+        if v := get_vlan_details_from_db(device.mgt_ip, vlan.name):
+            # update existing vlan
+            copy_vlan_obj_prop(v, vlan)
+            v.save()
+            device.vlans.connect(v)
+        else:
+            vlan.save()
+            device.vlans.connect(vlan)
+
+        saved_vlan= get_vlan_details_from_db(device.mgt_ip, vlan.name)
         for mem in members:
-            intf = getInterfaceOfDeviceFromDB(device.mgt_ip, mem)
-            vlan.memberInterfaces.connect(intf) if intf else None
+            v.memberInterfaces.connect(intf) if saved_vlan and (intf := getInterfaceOfDeviceFromDB(device.mgt_ip, mem)) else None
 
 
 def get_sonic_vlan_base_path():
@@ -203,7 +222,9 @@ def add_vlan_mem_interface_on_device(
     )
 
 
-def del_vlan_mem_interface_on_device(device_ip: str, vlan_name: str, if_name: str=None):
+def del_vlan_mem_interface_on_device(
+    device_ip: str, vlan_name: str, if_name: str = None
+):
     return send_gnmi_set(
         get_gnmi_del_req(get_vlan_mem_path(vlan_name, if_name)), device_ip
     )

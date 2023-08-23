@@ -78,10 +78,23 @@ def getBGPFromDB(asn: int) -> List[BGP]:
     return bgp
 
 
+def copy_bgp_object_prop(target_obj: BGP, src_obj: BGP):
+    target_obj.local_asn = src_obj.local_asn
+    target_obj.vrf_name = src_obj.vrf_name
+    target_obj.router_id = src_obj.router_id
+    target_obj.remote_asn = src_obj.remote_asn
+    target_obj.nbr_ips = src_obj.nbr_ips
+
+
 def insert_device_bgp_in_db(device: Device, bgp_global_list: List[BGP]):
     for bgp in bgp_global_list:
-        bgp.save()
-        device.bgp.connect(bgp)
+        if b := getBGPFromDB(bgp.local_asn):
+            copy_bgp_object_prop(b[0], bgp)
+            b[0].save()
+            device.bgp.connect(b[0])
+        else:
+            bgp.save()
+            device.bgp.connect(bgp)
 
 
 def get_bgp_neighbor_base_path():
@@ -234,7 +247,7 @@ def configBGPNeighborsOnDevice(
                 "asn": remote_asn,
                 "neighbor": neighbor_ip,
                 "vrf_name": remote_vrf,
-                #"admin_status": admin_status,
+                # "admin_status": admin_status,
             }
         ]
     }

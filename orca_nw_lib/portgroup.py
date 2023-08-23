@@ -144,14 +144,31 @@ def getPortGroupMemIFNamesFromDB(device_ip: str, group_id) -> List[str]:
     return [intf.name for intf in intfcs or []]
 
 
+def copy_portgr_obj_prop(target_obj: PortGroup, src_obj: PortGroup):
+    target_obj.port_group_id = src_obj.port_group_id
+    target_obj.speed = src_obj.speed
+    target_obj.valid_speeds = src_obj.valid_speeds
+    target_obj.default_speed = src_obj.default_speed
+
+
 def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = None):
     for pg, mem_intfcs in port_groups.items():
-        pg.save()
-        device.port_groups.connect(pg)
+        if p := getPortGroupFromDB(device.mgt_ip, pg.port_group_id):
+            copy_portgr_obj_prop(p, pg)
+            p.save()
+            device.port_groups.connect(p)
+        else:
+            pg.save()
+            device.port_groups.connect(pg)
+
+        saved_pg = getPortGroupFromDB(device.mgt_ip, pg.port_group_id)
+        
         for if_name in mem_intfcs:
-            intf = orca_interfaces.getInterfaceOfDeviceFromDB(device.mgt_ip, if_name)
-            if intf:
-                pg.memberInterfaces.connect(intf)
+            saved_pg.memberInterfaces.connect(intf) if (
+                intf := orca_interfaces.getInterfaceOfDeviceFromDB(
+                    device.mgt_ip, if_name
+                )
+            ) and saved_pg else None
 
 
 def getJsonOfPortGroupMemIfFromDB(device_ip: str, group_id):
@@ -168,7 +185,9 @@ def getJsonOfAllPortGroupsOfDeviceFromDB(device_ip: str):
     port_groups = getAllPortGroupsOfDeviceFromDB(device_ip)
     if port_groups:
         for pg in port_groups or []:
-            temp=pg.__properties__
-            temp['mem_intfs']=getPortGroupMemIFNamesFromDB(device_ip,pg.port_group_id)
+            temp = pg.__properties__
+            temp["mem_intfs"] = getPortGroupMemIFNamesFromDB(
+                device_ip, pg.port_group_id
+            )
             op_dict.append(temp)
     return op_dict
