@@ -34,7 +34,6 @@ from orca_nw_lib.mclag import (
     del_mclag_from_device,
     get_mclag_gateway_mac_from_device,
     get_mclag_mem_portchnl_on_device,
-    getMCLAGsFromDB,
     getMclagGwMacOfDeviceFromDB,
     getMclagOfDeviceFromDB,
 )
@@ -62,20 +61,7 @@ from orca_nw_lib.vlan import (
     del_vlan_from_device,
     del_vlan_mem_interface_on_device,
     get_vlan_details_from_device,
-    getVlanDBObj,
 )
-
-
-class TestDiscovery(unittest.TestCase):
-    def test_discovery(self):
-        discover_all()
-        # Not the best way to test but atleast check for if all pingable ips from settings are present in DB
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        assert (
-            len(set(getAllDevicesIPFromDB())) >= 3
-        ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(getAllDevicesIPFromDB()))}"
 
 
 class InterfaceTests(unittest.TestCase):
@@ -591,6 +577,9 @@ class BGPTests(unittest.TestCase):
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(getAllDevicesIPFromDB()))
+        assert (
+            len(set(getAllDevicesIPFromDB())) >= 3
+        ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(getAllDevicesIPFromDB()))}"
         cls.dut_ip = getAllDevicesIPFromDB()[0]
         cls.dut_ip_2 = getAllDevicesIPFromDB()[1]
         cls.dut_ip_3 = getAllDevicesIPFromDB()[2]

@@ -56,7 +56,7 @@ from orca_nw_lib.vlan import (
 )
 
 
-class SampleConfig(unittest.TestCase):
+class SampleConfigDiscovery(unittest.TestCase):
     vrf_name = "default"
     dut_ip_1 = None
     dut_ip_2 = None
@@ -126,11 +126,12 @@ class SampleConfig(unittest.TestCase):
         ## Once all config test cases are done discovefr all again,
         ## Because, currently not all the nodes in DB are updated in real time.
         discover_all()
+        #TODO: assert more on the nodes and relations discovered.
         assert (
             len(set(getAllDevicesIPFromDB())) >= 3
         ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
 
-    def test_port_channel_config(self):
+    def test_create_port_channel_config(self):
         del_port_chnl_from_device(self.dut_ip_1, self.port_chnl_103)
         del_port_chnl_from_device(self.dut_ip_2, self.port_chnl_103)
         del_port_chnl_from_device(self.dut_ip_3, self.port_chnl_103)
@@ -149,7 +150,7 @@ class SampleConfig(unittest.TestCase):
             if item.get("name") == self.port_chnl_103:
                 assert item.get("ifname") in mem_infcs
 
-    def test_mclag_configuration(self):
+    def test_create_mclag_configuration(self):
         ## On device -1 mclag config
         del_mclag_from_device(self.dut_ip_1)
         del_port_chnl_from_device(self.dut_ip_1, self.peer_link_chnl_100)
@@ -275,7 +276,7 @@ class SampleConfig(unittest.TestCase):
             == gw_mac
         )
         
-    def test_bgp_config(self):
+    def test_create_bgp_config(self):
         del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)
         pfxLen = 31
@@ -556,7 +557,7 @@ class SampleConfig(unittest.TestCase):
             assert nbr_af.get("vrf_name") == self.vrf_name
         # TODO pfx are not being sent and received with above config, neighbours are connected though.
 
-    def test_vlan_config(self):
+    def test_create_vlan_config(self):
         del_vlan_from_device(self.dut_ip_1)
         assert not get_vlan_details_from_device(self.dut_ip_1, self.vlan_name)
         mem = {self.ethernet4: VlanTagMode.tagged, self.ethernet5: VlanTagMode.untagged}
