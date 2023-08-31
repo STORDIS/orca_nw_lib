@@ -125,8 +125,6 @@ def gnmi_subscribe(device_ip: str):
     for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
        subscriptions.append(Subscription(path=get_intfc_speed_path(eth),mode=SubscriptionMode.ON_CHANGE))
        
-    subscriptions.append(Subscription(path=get_mclag_gateway_mac_path(),mode=SubscriptionMode.ON_CHANGE))
-    subscriptions.append(Subscription(path=get_mclag_domain_path(),mode=SubscriptionMode.ON_CHANGE))
     thread_name = f"subscription_{device_ip}"
     for thread in threading.enumerate():
         if thread.name == thread_name:

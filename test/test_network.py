@@ -10,9 +10,10 @@ from orca_nw_lib.bgp import (
 from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.device import getAllDevicesIPFromDB
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
+from orca_nw_lib.graph_db_models import MCLAG, MCLAG_GW_MAC
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
-from orca_nw_lib.discovery import discover_all
+from orca_nw_lib.discovery import discover_all, discover_mclag, discover_mclag_gw_macs
 
 from orca_nw_lib.constants import network
 from orca_nw_lib.interfaces import (
@@ -33,7 +34,9 @@ from orca_nw_lib.mclag import (
     del_mclag_from_device,
     get_mclag_gateway_mac_from_device,
     get_mclag_mem_portchnl_on_device,
-    getMCLAGOfDeviceFromDB,
+    getMCLAGsFromDB,
+    getMclagGwMacOfDeviceFromDB,
+    getMclagOfDeviceFromDB,
 )
 
 
@@ -386,113 +389,6 @@ class MclagTests(unittest.TestCase):
         cls.peer_address = getAllDevicesIPFromDB()[1]
         assert cls.dut_ip is not None
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        gnmi_unsubscribe(cls.dut_ip)
-        
-    @unittest.skip("subscription need to be reworked")
-    def test_mclag_gateway_mac_sub(self):
-        gnmi_subscribe(self.dut_ip)
-        ## For Sanity
-        del_mclag_from_device(self.dut_ip)
-        assert not get_mclag_domain_from_device(self.dut_ip)
-
-        del_all_port_chnl(self.dut_ip)
-        ## assert negative for port channel in Db as well
-        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
-
-        add_port_chnl_on_device(self.dut_ip, self.peer_link)
-        assert (
-            # TODO: when implemented for port channel get port channel object from DB
-            get_port_chnl_from_device(self.dut_ip, self.peer_link)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.peer_link
-        )
-        config_mclag_domain_on_device(
-            self.dut_ip,
-            self.domain_id,
-            self.dut_ip,
-            self.peer_address,
-            self.peer_link,
-            self.mclag_sys_mac,
-        )
-        sleep(2)
-        config_mclag_gateway_mac_on_device(self.dut_ip, self.mclag_gw_mac)
-        sleep(2)
-        assert (
-            getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id).gateway_macs[0]
-            == self.mclag_gw_mac
-        )
-
-        del_mclag_gateway_mac_from_device(self.dut_ip)
-        sleep(2)
-        assert not getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id).gateway_macs
-
-        config_mclag_gateway_mac_on_device(self.dut_ip, self.mclag_gw_mac)
-        sleep(2)
-        assert (
-            getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id).gateway_macs[0]
-            == self.mclag_gw_mac
-        )
-
-        del_mclag_from_device(self.dut_ip)
-        sleep(2)
-        assert not get_mclag_domain_from_device(self.dut_ip)
-        assert not getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id)
-        del_port_chnl_from_device(self.dut_ip, self.peer_link)
-        ## assert negative for port channel in Db as well
-        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
-        gnmi_unsubscribe(self.dut_ip)
-    
-    @unittest.skip("subscription need to be reworked")
-    def test_mclag_sub(self):
-        gnmi_subscribe(self.dut_ip)
-        ## Sanity
-        del_mclag_from_device(self.dut_ip)
-        sleep(3)
-        assert not get_mclag_domain_from_device(self.dut_ip)
-        assert not getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id)
-        del_all_port_chnl(self.dut_ip)
-        ## assert negative for port channel in Db as well
-        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
-
-        add_port_chnl_on_device(self.dut_ip, self.peer_link)
-        assert (
-            # TODO: when implemented for port channel get port channel object from DB
-            get_port_chnl_from_device(self.dut_ip, self.peer_link)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.peer_link
-        )
-        sleep(3)
-        config_mclag_domain_on_device(
-            self.dut_ip,
-            self.domain_id,
-            self.dut_ip,
-            self.peer_address,
-            self.peer_link,
-            self.mclag_sys_mac,
-        )
-        sleep(3)
-
-        mclag_saved_in_db = getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id)
-        assert mclag_saved_in_db.domain_id == self.domain_id
-        assert mclag_saved_in_db.source_address == self.dut_ip
-        assert mclag_saved_in_db.peer_addr == self.peer_address
-        assert mclag_saved_in_db.peer_link == self.peer_link
-        assert mclag_saved_in_db.mclag_sys_mac == self.mclag_sys_mac
-
-        sleep(2)
-        del_mclag_from_device(self.dut_ip)
-        sleep(2)
-        assert not get_mclag_domain_from_device(self.dut_ip)
-        assert not getMCLAGOfDeviceFromDB(self.dut_ip, self.domain_id)
-        del_port_chnl_from_device(self.dut_ip, self.peer_link)
-        ## assert negative for port channel in Db as well
-        assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
-        gnmi_unsubscribe(self.dut_ip)
-
     def test_mclag_domain(self):
         del_port_chnl_from_device(self.dut_ip, self.peer_link)
         add_port_chnl_on_device(self.dut_ip, self.peer_link)
@@ -503,6 +399,9 @@ class MclagTests(unittest.TestCase):
             == self.peer_link
         )
         del_mclag_from_device(self.dut_ip)
+        discover_mclag(self.dut_ip)
+        assert not get_mclag_domain_from_device(self.dut_ip)
+        assert not getMclagOfDeviceFromDB(self.dut_ip, self.domain_id)
         config_mclag_domain_on_device(
             self.dut_ip,
             self.domain_id,
@@ -532,9 +431,17 @@ class MclagTests(unittest.TestCase):
             resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
             == self.peer_link
         )
+        discover_mclag(self.dut_ip)
+        mlag: MCLAG = getMclagOfDeviceFromDB(self.dut_ip, self.domain_id)
+        assert mlag.domain_id == self.domain_id
+        assert mlag.peer_addr == self.peer_address
+        assert mlag.peer_link == self.peer_link
+        assert mlag.mclag_sys_mac == self.mclag_sys_mac
 
         del_mclag_from_device(self.dut_ip)
         assert not get_mclag_config_from_device(self.dut_ip)
+        discover_mclag(self.dut_ip)
+        assert not getMclagOfDeviceFromDB(self.dut_ip, self.domain_id)
 
         del_port_chnl_from_device(self.dut_ip, self.peer_link)
         assert not get_port_chnl_from_device(self.dut_ip, self.peer_link)
@@ -542,6 +449,9 @@ class MclagTests(unittest.TestCase):
     def test_maclag_gateway_mac(self):
         del_mclag_gateway_mac_from_device(self.dut_ip)
         assert not get_mclag_gateway_mac_from_device(self.dut_ip)
+        discover_mclag_gw_macs(self.dut_ip)
+        assert not getMclagGwMacOfDeviceFromDB(self.dut_ip)
+
         gw_mac = "aa:bb:aa:bb:aa:bb"
         config_mclag_gateway_mac_on_device(self.dut_ip, gw_mac)
         assert (
@@ -551,8 +461,17 @@ class MclagTests(unittest.TestCase):
             .get("gateway-mac")
             == gw_mac
         )
+
+        discover_mclag_gw_macs(self.dut_ip)
+        mclag_gw_mac: MCLAG_GW_MAC = getMclagGwMacOfDeviceFromDB(
+            self.dut_ip, mac=gw_mac
+        )
+        assert mclag_gw_mac.gateway_mac == gw_mac
+
         del_mclag_gateway_mac_from_device(self.dut_ip)
         assert not get_mclag_gateway_mac_from_device(self.dut_ip)
+        discover_mclag_gw_macs(self.dut_ip)
+        assert not getMclagGwMacOfDeviceFromDB(self.dut_ip)
 
     def test_mclag_mem_port_chnl(self):
         del_port_chnl_from_device(self.dut_ip, self.peer_link)

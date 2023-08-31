@@ -1,5 +1,5 @@
 from typing import List
-from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
+from orca_nw_lib.device import getDeviceFromDB
 
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
@@ -42,7 +42,7 @@ def createBGPGraphObjects(device_ip: str) -> List[BGP]:
 
 def connect_bgp_peers():
     # connect bgp node to subinterfaces
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         for bgp in device.bgp.all() or []:
             for nbr_ip in bgp.nbr_ips:
                 bgp.neighbors.connect(si) if (
@@ -71,7 +71,7 @@ def getBgpGlobalListOfDeviceFromDB(device_ip) -> List[BGP]:
 
 def getBGPFromDB(asn: int) -> List[BGP]:
     bgp = []
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         for b in device.bgp.all() or []:
             if b.local_asn == asn:
                 bgp.append(b)

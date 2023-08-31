@@ -104,7 +104,7 @@ def insertVlanInDB(device: Device, vlans_obj_vs_mem):
 
         saved_vlan= get_vlan_details_from_db(device.mgt_ip, vlan.name)
         for mem in members:
-            v.memberInterfaces.connect(intf) if saved_vlan and (intf := getInterfaceOfDeviceFromDB(device.mgt_ip, mem)) else None
+            saved_vlan.memberInterfaces.connect(intf) if saved_vlan and (intf := getInterfaceOfDeviceFromDB(device.mgt_ip, mem)) else None
 
 
 def get_sonic_vlan_base_path():

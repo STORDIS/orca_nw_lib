@@ -1,5 +1,6 @@
-from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
-from orca_nw_lib.graph_db_models import Device, MCLAG
+from typing import List
+from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.graph_db_models import MCLAG_GW_MAC, Device, MCLAG
 from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
 from orca_nw_lib.port_chnl import getPortChnlOfDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
@@ -12,14 +13,27 @@ from orca_nw_lib.gnmi_util import (
 )
 
 
-def getMclagOfDeviceFromDB(device_ip: str):
+def getMclagOfDeviceFromDB(device_ip: str, domain_id: int = None):
     device = getDeviceFromDB(device_ip)
-    return device.mclags.all() if device else None
+    if domain_id:
+        return device.mclags.get_or_none(domain_id=domain_id) if device else None
+    else:
+        return device.mclags.all() if device else None
 
 
-def getMCLAGOfDeviceFromDB(device_ip: str, domain_id: int) -> MCLAG:
+def getMclagGwMacOfDeviceFromDB(device_ip: str, mac: str = None):
     device = getDeviceFromDB(device_ip)
-    return device.mclags.get_or_none(domain_id=domain_id) if device else None
+    if mac:
+        return device.mclag_gw_macs.get_or_none(gateway_mac=mac) if device else None
+    else:
+        return device.mclag_gw_macs.all() if device else None
+
+
+def delMclagGwMacOfDeviceFromDB(device_ip: str, mac: str = None):
+    device = getDeviceFromDB(device_ip)
+    gw_mac = device.mclag_gw_macs.get_or_none(gateway_mac=mac) if device else None
+    if gw_mac:
+        gw_mac.delete()
 
 
 def delMCLAGOfDeviceFromDB(device_ip: str, domain_id: int):
@@ -40,7 +54,7 @@ def delMCLAGGatewayMacOfDeviceInDB(device_ip: str):
 def getMCLAGsFromDB(device_ip: str, domain_id=None):
     op_dict = []
     if domain_id:
-        mclag = getMCLAGOfDeviceFromDB(device_ip, domain_id)
+        mclag = getMclagOfDeviceFromDB(device_ip, domain_id)
         if mclag:
             op_dict.append(mclag.__properties__)
     else:
@@ -56,7 +70,6 @@ def createMclagGraphObjects(device_ip: str) -> dict:
     mclag = mclag_config.get("openconfig-mclag:mclag", {})
     mclag_domains_dict_list = mclag.get("mclag-domains", {}).get("mclag-domain")
     mclag_intfc_list = mclag.get("interfaces", {}).get("interface")
-    mclag_gateway_macs = mclag.get("mclag-gateway-macs", {}).get("mclag-gateway-mac")
 
     for mclag_domain in mclag_domains_dict_list or []:
         mclag_obj = MCLAG(
@@ -77,13 +90,23 @@ def createMclagGraphObjects(device_ip: str) -> dict:
             if mclag_obj.domain_id == mclag_intfc.get("config").get("mclag-domain-id"):
                 intfc_list.append(mclag_intfc.get("name"))
 
-        mclag_obj.gateway_macs = [
-            (gw.get("gateway-mac")) for gw in mclag_gateway_macs or []
-        ]
-
         mclags_obj_list[mclag_obj] = intfc_list
 
     return mclags_obj_list
+
+
+def createMclagGwMacObj(device_ip: str)-> List[MCLAG_GW_MAC]:
+    mclag_gw_objs = []
+    resp=get_mclag_gateway_mac_from_device(device_ip)
+    
+    macs=oc_macs.get("mclag-gateway-mac") if (oc_macs:=resp.get("openconfig-mclag:mclag-gateway-macs")) else []
+    
+    for mac_data in macs:
+        gw_mac=mac_data.get("gateway-mac")
+        mclag_gw_objs.append(MCLAG_GW_MAC(gateway_mac=gw_mac))
+        
+    return mclag_gw_objs
+        
 
 
 def get_mclag_path():
@@ -229,7 +252,7 @@ def del_mclag_from_device(device_ip: str):
 
 
 def create_mclag_peerlink_relations_in_db():
-    for local_dev in getAllDevicesFromDB() or []:
+    for local_dev in getDeviceFromDB() or []:
         # there is only 1 mclag per device possible so always fetch index 0
         mclag_local = (
             mcl[0] if (mcl := getMclagOfDeviceFromDB(local_dev.mgt_ip)) else None
@@ -243,11 +266,11 @@ def create_mclag_peerlink_relations_in_db():
                 mclag_local.peer_link_node.connect(port_chnl_local)
 
             peer_addr = mclag_local.peer_addr
-            mclag_remote = mcl_r[0] if (mcl_r:= getMclagOfDeviceFromDB(peer_addr)) else None
-            peer_link_remote = mclag_remote.peer_link if mclag_remote else None
-            port_chnl_remote = getPortChnlOfDeviceFromDB(
-                peer_addr, peer_link_remote
+            mclag_remote = (
+                mcl_r[0] if (mcl_r := getMclagOfDeviceFromDB(peer_addr)) else None
             )
+            peer_link_remote = mclag_remote.peer_link if mclag_remote else None
+            port_chnl_remote = getPortChnlOfDeviceFromDB(peer_addr, peer_link_remote)
             if port_chnl_remote:
                 mclag_remote.peer_link_node.connect(port_chnl_remote)
 
@@ -256,7 +279,7 @@ def create_mclag_peerlink_relations_in_db():
             ) if port_chnl_local and port_chnl_remote else None
 
 
-def copy_mclag_obj_props(target_obj:MCLAG,src_obj:MCLAG):
+def copy_mclag_obj_props(target_obj: MCLAG, src_obj: MCLAG):
     target_obj.domain_id = src_obj.domain_id
     target_obj.keepalive_interval = src_obj.keepalive_interval
     target_obj.mclag_sys_mac = src_obj.mclag_sys_mac
@@ -267,23 +290,22 @@ def copy_mclag_obj_props(target_obj:MCLAG,src_obj:MCLAG):
     target_obj.oper_status = src_obj.oper_status
     target_obj.role = src_obj.role
     target_obj.system_mac = src_obj.system_mac
-    target_obj.gateway_macs = src_obj.gateway_macs
     target_obj.delay_restore = src_obj.delay_restore
+
 
 def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
     for mclag, intfcs in mclag_to_intfc_list.items():
-        
-        if mclag_in_db := getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id):
-            copy_mclag_obj_props(mclag_in_db,mclag)
+        if mclag_in_db := getMclagOfDeviceFromDB(device.mgt_ip, mclag.domain_id):
+            copy_mclag_obj_props(mclag_in_db, mclag)
             mclag_in_db.save()
             device.mclags.connect(mclag_in_db)
-        
+
         else:
             mclag.save()
             device.mclags.connect(mclag)
-        
-        saved_mclag=getMCLAGOfDeviceFromDB(device.mgt_ip, mclag.domain_id)
-        
+
+        saved_mclag = getMclagOfDeviceFromDB(device.mgt_ip, mclag.domain_id)
+
         for intf_name in intfcs:
             intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
             if intf_obj:
@@ -291,3 +313,32 @@ def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
             port_chnl_obj = getPortChnlOfDeviceFromDB(device.mgt_ip, intf_name)
             if port_chnl_obj:
                 saved_mclag.portChnl_member.connect(port_chnl_obj)
+
+    ## Handle the case when some or all mclags has been deleted from device but remained in DB
+    ## Remove all mclags which are in DB but not on device
+
+    for mcl_in_db in getMclagOfDeviceFromDB(device.mgt_ip):
+        if mcl_in_db not in mclag_to_intfc_list:
+            delMCLAGOfDeviceFromDB(device.mgt_ip, mcl_in_db.domain_id)
+
+
+def copy_mclag_gw_mac_props(target_obj:MCLAG_GW_MAC, src_obj:MCLAG_GW_MAC):
+    target_obj.gateway_mac=src_obj.gateway_mac
+
+def insert_device_mclag_gw_macs_in_db(device: Device, mclag_gw_macs:List[MCLAG_GW_MAC]):
+    for mclag_gw_mac in mclag_gw_macs:
+        if gw_mac_in_db := getMclagGwMacOfDeviceFromDB(device.mgt_ip, mclag_gw_mac.gateway_mac):
+            copy_mclag_gw_mac_props(gw_mac_in_db, mclag_gw_mac)
+            gw_mac_in_db.save()
+            device.mclag_gw_macs.connect(gw_mac_in_db)
+        else:
+            mclag_gw_mac.save()
+            device.mclag_gw_macs.connect(mclag_gw_mac)
+
+
+    ## Handle the case when some or all mclags gw macs has been deleted from device but remained in DB
+    ## Remove all mclags gw macs which are in DB but not on device
+
+    for gw_mac_in_db in getMclagGwMacOfDeviceFromDB(device.mgt_ip):
+        if gw_mac_in_db not in mclag_gw_macs:
+            delMclagGwMacOfDeviceFromDB(device.mgt_ip, gw_mac_in_db.gateway_mac)

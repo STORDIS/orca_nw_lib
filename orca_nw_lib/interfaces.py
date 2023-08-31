@@ -4,7 +4,7 @@ from typing import List
 import pytz
 
 from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
-from orca_nw_lib.device import getAllDevicesFromDB, getDeviceFromDB
+from orca_nw_lib.device import getDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
@@ -128,7 +128,7 @@ def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip: str) -> SubInterfac
 
 
 def getSubInterfaceFromDB(sub_if_ip: str) -> SubInterface:
-    devices = getAllDevicesFromDB()
+    devices = getDeviceFromDB()
     for device in devices:
         if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_if_ip):
             return si

@@ -28,9 +28,12 @@ from orca_nw_lib.interfaces import (
 import unittest
 from orca_nw_lib.mclag import (
     config_mclag_domain_on_device,
+    config_mclag_gateway_mac_on_device,
     config_mclag_mem_portchnl_on_device,
     del_mclag_from_device,
+    del_mclag_gateway_mac_from_device,
     get_mclag_domain_from_device,
+    get_mclag_gateway_mac_from_device,
 )
 
 
@@ -258,7 +261,20 @@ class SampleConfig(unittest.TestCase):
         config_mclag_mem_portchnl_on_device(
             self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
         )
-
+        
+        ## Create MCLAG GW mac
+        del_mclag_gateway_mac_from_device(self.dut_ip_1)
+        assert not get_mclag_gateway_mac_from_device(self.dut_ip_1)
+        gw_mac = "aa:bb:aa:bb:aa:bb"
+        config_mclag_gateway_mac_on_device(self.dut_ip_1, gw_mac)
+        assert (
+            get_mclag_gateway_mac_from_device(self.dut_ip_1)
+            .get("openconfig-mclag:mclag-gateway-macs")
+            .get("mclag-gateway-mac")[0]
+            .get("gateway-mac")
+            == gw_mac
+        )
+        
     def test_bgp_config(self):
         del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)

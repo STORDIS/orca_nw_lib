@@ -1,8 +1,15 @@
-from neomodel import BooleanProperty, ArrayProperty, StructuredNode, StringProperty, IntegerProperty,  RelationshipTo, Relationship
+from neomodel import (
+    BooleanProperty,
+    ArrayProperty,
+    StructuredNode,
+    StringProperty,
+    IntegerProperty,
+    RelationshipTo,
+    Relationship,
+)
 
 
 class Device(StructuredNode):
-
     img_name = StringProperty()
     mgt_intf = StringProperty()
     mgt_ip = StringProperty()
@@ -11,13 +18,14 @@ class Device(StructuredNode):
     platform = StringProperty()
     type = StringProperty()
 
-    neighbor = RelationshipTo('Device', 'LLDP')
-    interfaces = RelationshipTo('Interface', 'HAS')
-    port_chnl = RelationshipTo('PortChannel', 'HAS')
-    mclags = RelationshipTo('MCLAG', 'HAS')
-    port_groups = RelationshipTo('PortGroup', 'HAS')
-    bgp = RelationshipTo('BGP', 'BGP_GLOBAL')
-    vlans = RelationshipTo('Vlan', 'HAS')
+    neighbor = RelationshipTo("Device", "LLDP")
+    interfaces = RelationshipTo("Interface", "HAS")
+    port_chnl = RelationshipTo("PortChannel", "HAS")
+    mclags = RelationshipTo("MCLAG", "HAS")
+    port_groups = RelationshipTo("PortGroup", "HAS")
+    bgp = RelationshipTo("BGP", "BGP_GLOBAL")
+    vlans = RelationshipTo("Vlan", "HAS")
+    mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -32,7 +40,6 @@ class Device(StructuredNode):
 
 
 class PortChannel(StructuredNode):
-
     lag_name = StringProperty(unique_index=True)  # name of port channel
     active = BooleanProperty()
     admin_sts = StringProperty()
@@ -43,8 +50,8 @@ class PortChannel(StructuredNode):
     speed = StringProperty()
     oper_sts_reason = StringProperty()
 
-    members = RelationshipTo('Interface', 'HAS_MEMBER')
-    peer_link = RelationshipTo('PortChannel', 'peer_link')
+    members = RelationshipTo("Interface", "HAS_MEMBER")
+    peer_link = RelationshipTo("PortChannel", "peer_link")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -58,8 +65,22 @@ class PortChannel(StructuredNode):
         return self.lag_name
 
 
-class MCLAG(StructuredNode):
+class MCLAG_GW_MAC(StructuredNode):
+    gateway_mac = StringProperty()
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.gateway_mac == other.gateway_mac
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.gateway_mac)
+
+    def __str__(self):
+        return str(self.gateway_mac)
+
+
+class MCLAG(StructuredNode):
     domain_id = IntegerProperty()
     keepalive_interval = IntegerProperty()
     mclag_sys_mac = StringProperty()
@@ -70,12 +91,11 @@ class MCLAG(StructuredNode):
     oper_status = StringProperty()
     role = StringProperty()
     system_mac = StringProperty()
-    gateway_macs = ArrayProperty()
     delay_restore = IntegerProperty()
 
-    intfc_members = RelationshipTo('Interface', 'MEM_IF')
-    portChnl_member = RelationshipTo('PortChannel', 'MEM_CHNL')
-    peer_link_node = RelationshipTo('PortChannel', 'PEER_LINK')
+    intfc_members = RelationshipTo("Interface", "MEM_IF")
+    portChnl_member = RelationshipTo("PortChannel", "MEM_CHNL")
+    peer_link_node = RelationshipTo("PortChannel", "PEER_LINK")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -91,7 +111,7 @@ class MCLAG(StructuredNode):
 
 class SubInterface(StructuredNode):
     ip_address = StringProperty()
-    
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.local_asn == other.ip_address
@@ -105,7 +125,6 @@ class SubInterface(StructuredNode):
 
 
 class Interface(StructuredNode):
-
     name = StringProperty(unique_index=True)
     enabled = BooleanProperty()
     mtu = IntegerProperty()
@@ -116,14 +135,49 @@ class Interface(StructuredNode):
     description = StringProperty()
     last_chng = StringProperty()
     mac_addr = StringProperty()
-    subInterfaces = RelationshipTo('SubInterface', 'HAS')
-    lldp_neighbour = RelationshipTo('Interface', 'LLDP_NBR')
+    subInterfaces = RelationshipTo("SubInterface", "HAS")
+    lldp_neighbour = RelationshipTo("Interface", "LLDP_NBR")
 
     # counters
-    in_bits_per_second = in_broadcast_pkts = in_discards = in_errors = in_multicast_pkts = in_octets =\
-        in_octets_per_second = in_pkts = in_pkts_per_second = in_unicast_pkts = in_utilization = last_clear =\
-        out_bits_per_second = out_broadcast_pkts = out_discards = out_errors = out_multicast_pkts = out_octets =\
-        out_octets_per_second = out_pkts = out_pkts_per_second = out_unicast_pkts = out_utilization = StringProperty()
+    in_bits_per_second = (
+        in_broadcast_pkts
+    ) = (
+        in_discards
+    ) = (
+        in_errors
+    ) = (
+        in_multicast_pkts
+    ) = (
+        in_octets
+    ) = (
+        in_octets_per_second
+    ) = (
+        in_pkts
+    ) = (
+        in_pkts_per_second
+    ) = (
+        in_unicast_pkts
+    ) = (
+        in_utilization
+    ) = (
+        last_clear
+    ) = (
+        out_bits_per_second
+    ) = (
+        out_broadcast_pkts
+    ) = (
+        out_discards
+    ) = (
+        out_errors
+    ) = (
+        out_multicast_pkts
+    ) = (
+        out_octets
+    ) = (
+        out_octets_per_second
+    ) = (
+        out_pkts
+    ) = out_pkts_per_second = out_unicast_pkts = out_utilization = StringProperty()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -138,12 +192,11 @@ class Interface(StructuredNode):
 
 
 class PortGroup(StructuredNode):
-
     port_group_id = IntegerProperty()
     speed = StringProperty()
     valid_speeds = ArrayProperty()
     default_speed = StringProperty()
-    memberInterfaces = RelationshipTo('Interface', 'MEMBER_IF')
+    memberInterfaces = RelationshipTo("Interface", "MEMBER_IF")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -162,11 +215,10 @@ class BGP(StructuredNode):
     vrf_name = StringProperty()
     router_id = StringProperty()
     remote_asn = ArrayProperty()
-    nbr_ips=ArrayProperty()
-    
-    neighbors = RelationshipTo('SubInterface', 'BGP_NEIGHBOR')
-    remote_asn_node = RelationshipTo('BGP', 'REMOTE_ASN')
-    
+    nbr_ips = ArrayProperty()
+
+    neighbors = RelationshipTo("SubInterface", "BGP_NEIGHBOR")
+    remote_asn_node = RelationshipTo("BGP", "REMOTE_ASN")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -181,13 +233,12 @@ class BGP(StructuredNode):
 
 
 class Vlan(StructuredNode):
-
     vlanid = IntegerProperty()
     name = StringProperty()
     mtu = IntegerProperty()
     admin_status = StringProperty()
     oper_status = StringProperty()
-    memberInterfaces = RelationshipTo('Interface', 'MEMBER_IF')
+    memberInterfaces = RelationshipTo("Interface", "MEMBER_IF")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

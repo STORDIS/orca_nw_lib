@@ -1,10 +1,10 @@
 import ipaddress
 from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
-from .device import createDeviceGraphObject, getAllDevicesFromDB
+from .device import createDeviceGraphObject, getDeviceFromDB
 from .graph_db_models import Device
 from .interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
-from .mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, insert_device_mclag_in_db
+from .mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, createMclagGwMacObj, insert_device_mclag_gw_macs_in_db, insert_device_mclag_in_db
 from .port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
 from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config
@@ -51,14 +51,14 @@ from orca_nw_lib.graph_db_utils import (
 
 def discover_port_chnl():
     _logger.info("Port Channel Discovery Started.")
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         _logger.info(f"Discovering Port Channels of device {device}.")
         insert_device_port_chnl_in_db(device, createPortChnlGraphObject(device.mgt_ip))
 
 
 def discover_interfaces():
     _logger.info("Interface Discovery Started.")
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         _logger.info(f"Discovering interfaces of device {device}.")
         insert_device_interfaces_in_db(
             device, createInterfaceGraphObjects(device.mgt_ip)
@@ -67,18 +67,27 @@ def discover_interfaces():
 
 def discover_port_groups():
     _logger.info("Port-groups Discovery Started.")
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         _logger.info(f"Discovering port-groups of device {device}.")
         insert_device_port_groups_in_db(
             device, createPortGroupGraphObjects(device.mgt_ip)
         )
 
 
-def discover_mclag():
+def discover_mclag(device_ip:str=None):
     _logger.info("MCLAG Discovery Started.")
-    for device in getAllDevicesFromDB():
+    devices= [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    for device in devices:
         _logger.info(f"Discovering MCLAG on device {device}.")
         insert_device_mclag_in_db(device, createMclagGraphObjects(device.mgt_ip))
+
+
+def discover_mclag_gw_macs(device_ip:str=None):
+    _logger.info("MCLAG GW MAC Discovery Started.")
+    devices= [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    for device in devices:
+        _logger.info(f"Discovering MCLAG on device {device}.")
+        insert_device_mclag_gw_macs_in_db(device, createMclagGwMacObj(device.mgt_ip))
 
 
 def insert_topology_in_db(topology):
@@ -136,7 +145,7 @@ def create_mclag_peer_link_rel():
     
 def discover_bgp():
     _logger.info("Discovering BGP Global List.")
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         _logger.info(f"Discovering BGP on device {device}.")
         insert_device_bgp_in_db(device, createBGPGraphObjects(device.mgt_ip))
 
@@ -146,7 +155,7 @@ def create_bgp_peer_link_rel():
 
 def discover_vlan():
     _logger.info("Discovering VLAN.")
-    for device in getAllDevicesFromDB():
+    for device in getDeviceFromDB():
         _logger.info(f"Discovering VLAN on device {device}.")
         insertVlanInDB(device, getVlanDBObj(device.mgt_ip))
 
@@ -161,6 +170,7 @@ def discover_all():
         create_lldp_rel()
         discover_port_chnl()
         discover_mclag()
+        discover_mclag_gw_macs()
         create_mclag_peer_link_rel()
         discover_bgp()
         create_bgp_peer_link_rel()

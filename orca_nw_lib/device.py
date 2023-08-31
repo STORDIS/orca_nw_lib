@@ -16,12 +16,12 @@ def createDeviceGraphObject(ip_addr: str):
     )
 
 
-def getAllDevicesFromDB():
-    return Device.nodes.all()
-
-
-def getDeviceFromDB(mgt_ip: str):
-    return Device.nodes.get_or_none(mgt_ip=mgt_ip)
+def getDeviceFromDB(mgt_ip: str=None):
+    if mgt_ip:
+        return Device.nodes.get_or_none(mgt_ip=mgt_ip)
+    else:
+        return Device.nodes.all()
+        
 
 
 def getDeviceDetailsFromDB(mgt_ip=None):
@@ -37,7 +37,7 @@ def getDeviceDetailsFromDB(mgt_ip=None):
         if device:
             op_dict.append(device.__properties__)
     else:
-        device_dict = getAllDevicesFromDB()
+        device_dict = getDeviceFromDB()
         for device in device_dict or []:
             op_dict.append(device.__properties__)
     return op_dict
