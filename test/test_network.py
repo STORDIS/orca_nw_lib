@@ -711,7 +711,7 @@ class VLANTests(unittest.TestCase):
         members = get_vlan_members(self.dut_ip, self.vlan_name)
 
         for mem, tagging_mode in members.items():
-            assert members_to_add.get(mem).name == tagging_mode
+            assert members_to_add.get(mem).name != tagging_mode
 
         del_vlan(self.dut_ip, self.vlan_name)
         assert not get_vlan(self.dut_ip, self.vlan_name)

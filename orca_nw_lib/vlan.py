@@ -56,7 +56,7 @@ def getVlanDBObj(device_ip: str):
     return vlans_obj_vs_mem
 
 
-def getJson(device_ip: str, v: Vlan):
+def _getJson(device_ip: str, v: Vlan):
     temp = v.__properties__
     temp["members"] = [
         mem.name for mem in get_vlan_mem_ifcs_from_db(device_ip, temp.get("name")) or []
@@ -69,11 +69,11 @@ def get_vlan(device_ip, vlan_name: str = None):
     op_dict = []
     try:
         for v in vlans or []:
-            op_dict.append(getJson(device_ip, v))
+            op_dict.append(_getJson(device_ip, v))
         return op_dict
     except TypeError:
         ## Its a single vlan object no need to iterate.
-        return getJson(device_ip, vlans)
+        return _getJson(device_ip, vlans)
 
 
 def del_vlan(device_ip, vlan_name):
