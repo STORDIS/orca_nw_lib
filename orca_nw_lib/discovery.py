@@ -1,15 +1,22 @@
 import ipaddress
+
+from .vlan import discover_vlan
 from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
 from .device import createDeviceGraphObject, getDeviceFromDB
 from .graph_db_models import Device
-from .interfaces import insert_device_interfaces_in_db,createInterfaceGraphObjects
+from .interfaces import insert_device_interfaces_in_db, createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
-from .mclag import create_mclag_peerlink_relations_in_db, createMclagGraphObjects, createMclagGwMacObj, insert_device_mclag_gw_macs_in_db, insert_device_mclag_in_db
+from .mclag import (
+    create_mclag_peerlink_relations_in_db,
+    createMclagGraphObjects,
+    createMclagGwMacObj,
+    insert_device_mclag_gw_macs_in_db,
+    insert_device_mclag_in_db,
+)
 from .port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
 from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config
 from .constants import network
-from .vlan import getVlanDBObj, insertVlanInDB
 
 
 _logger = get_logging().getLogger(__name__)
@@ -23,30 +30,27 @@ def read_lldp_topo(ip):
         device = createDeviceGraphObject(ip)
         if device not in topology.keys():
             nbrs = getLLDPNeighbors(ip)
-            temp_arr=[]
+            temp_arr = []
             for nbr in nbrs:
-                nbr_device=createDeviceGraphObject(nbr.get("nbr_ip"))
+                nbr_device = createDeviceGraphObject(nbr.get("nbr_ip"))
                 # Following check prevents adding an empty device object in topology.
                 # with no mgt_ip any no other properties as well.
                 # This may happen if device is pingable but gnmi connection can not be established.
                 if nbr_device.mgt_intf and nbr_device.mgt_intf:
-                     temp_arr.append({
-                    "nbr_device": createDeviceGraphObject(nbr.get("nbr_ip")),
-                    "nbr_port": nbr.get("nbr_port"),
-                    "local_port": nbr.get("local_port"),
-                    })
-            
+                    temp_arr.append(
+                        {
+                            "nbr_device": createDeviceGraphObject(nbr.get("nbr_ip")),
+                            "nbr_port": nbr.get("nbr_port"),
+                            "local_port": nbr.get("local_port"),
+                        }
+                    )
+
             topology[device] = temp_arr
-            
+
             for nbr in nbrs or []:
                 read_lldp_topo(nbr.get("nbr_ip"))
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
-
-
-from orca_nw_lib.graph_db_utils import (
-    clean_db,
-)
 
 
 def discover_port_chnl():
@@ -74,17 +78,17 @@ def discover_port_groups():
         )
 
 
-def discover_mclag(device_ip:str=None):
+def discover_mclag(device_ip: str = None):
     _logger.info("MCLAG Discovery Started.")
-    devices= [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
     for device in devices:
         _logger.info(f"Discovering MCLAG on device {device}.")
         insert_device_mclag_in_db(device, createMclagGraphObjects(device.mgt_ip))
 
 
-def discover_mclag_gw_macs(device_ip:str=None):
+def discover_mclag_gw_macs(device_ip: str = None):
     _logger.info("MCLAG GW MAC Discovery Started.")
-    devices= [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
     for device in devices:
         _logger.info(f"Discovering MCLAG on device {device}.")
         insert_device_mclag_gw_macs_in_db(device, createMclagGwMacObj(device.mgt_ip))
@@ -113,16 +117,15 @@ def discover_topology():
             for ip in ips:
                 _logger.debug(f"Discovering device:{ip} and its neighbors.")
                 read_lldp_topo(str(ip))
-        import pprint 
+        import pprint
+
         _logger.info(
             "Discovered topology using network provided {0}: \n{1}".format(
                 get_orca_config().get(network), pprint.pformat(topology)
-
             )
         )
-        _logger.info(f'Total devices discovered:{len(topology)}')
-        
-        
+        _logger.info(f"Total devices discovered:{len(topology)}")
+
     except ValueError as ve:
         _logger.error(ve)
         return False
@@ -139,28 +142,26 @@ def create_lldp_rel():
     _logger.info("Discovering LLDP relations.")
     create_lldp_relations_in_db(topology)
 
+
 def create_mclag_peer_link_rel():
     _logger.info("Discovering MCLAG peer-link relations.")
     create_mclag_peerlink_relations_in_db()
-    
+
+
 def discover_bgp():
     _logger.info("Discovering BGP Global List.")
     for device in getDeviceFromDB():
         _logger.info(f"Discovering BGP on device {device}.")
         insert_device_bgp_in_db(device, createBGPGraphObjects(device.mgt_ip))
 
+
 def create_bgp_peer_link_rel():
     _logger.info("Discovering BGP neighbor relations.")
     connect_bgp_peers()
 
-def discover_vlan():
-    _logger.info("Discovering VLAN.")
-    for device in getDeviceFromDB():
-        _logger.info(f"Discovering VLAN on device {device}.")
-        insertVlanInDB(device, getVlanDBObj(device.mgt_ip))
 
 def discover_all():
-    #clean_db()
+    # clean_db()
     global topology
     topology = {}
     if discover_topology():
@@ -174,7 +175,7 @@ def discover_all():
         create_mclag_peer_link_rel()
         discover_bgp()
         create_bgp_peer_link_rel()
-        
+
         _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True
     _logger.info("!! Discovery was Unsuccessful !!")

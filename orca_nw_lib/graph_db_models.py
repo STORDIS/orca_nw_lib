@@ -2,6 +2,7 @@ from neomodel import (
     BooleanProperty,
     ArrayProperty,
     StructuredNode,
+    StructuredRel,
     StringProperty,
     IntegerProperty,
     RelationshipTo,
@@ -232,13 +233,19 @@ class BGP(StructuredNode):
         return str(self.local_asn)
 
 
+class VlanMemRel(StructuredRel):
+    tagging_mode = StringProperty()
+    
+
 class Vlan(StructuredNode):
     vlanid = IntegerProperty()
     name = StringProperty()
     mtu = IntegerProperty()
     admin_status = StringProperty()
     oper_status = StringProperty()
-    memberInterfaces = RelationshipTo("Interface", "MEMBER_IF")
+    autostate = StringProperty()
+    
+    memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

@@ -49,11 +49,10 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl_from_device,
     remove_port_chnl_member,
 )
-from orca_nw_lib.vlan import (
+from orca_nw_lib.vlan_gnmi import (
     config_vlan_on_device,
-    del_vlan_from_device,
-    get_vlan_details_from_device,
 )
+from orca_nw_lib.vlan_gnmi import del_vlan_from_device, get_vlan_details_from_device
 
 
 class SampleConfigDiscovery(unittest.TestCase):

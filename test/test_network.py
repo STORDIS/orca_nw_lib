@@ -55,6 +55,17 @@ from orca_nw_lib.port_chnl import (
     remove_port_chnl_member,
 )
 from orca_nw_lib.vlan import (
+    add_vlan_mem,
+    config_vlan,
+    config_vlan_mem_tagging,
+    del_vlan,
+    del_vlan_mem,
+    discover_vlan,
+    get_vlan,
+    get_vlan_members,
+)
+from orca_nw_lib.vlan_db import get_vlan_obj_from_db
+from orca_nw_lib.vlan_gnmi import (
     add_vlan_mem_interface_on_device,
     config_vlan_on_device,
     config_vlan_tagging_mode_on_device,
@@ -655,96 +666,70 @@ class VLANTests(unittest.TestCase):
         assert cls.dut_ip is not None
 
     def test_vlan_config(self):
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        mem = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)
 
-        config_vlan_on_device(self.dut_ip, self.vlan_name, self.vlan_id, mem)
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
-            assert v.get("members") == [self.eth1, self.eth2]
-            assert v.get("name") == self.vlan_name
-            assert v.get("vlanid") == self.vlan_id
+        members_to_add = {
+            self.eth1: VlanTagMode.tagged,
+            self.eth2: VlanTagMode.untagged,
+        }
+        config_vlan(self.dut_ip, self.vlan_name, self.vlan_id, members_to_add)
 
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.get("ifname") == self.eth1:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
-            elif v.get("ifname") == self.eth2:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
+        v = get_vlan(self.dut_ip, self.vlan_name)
+        assert v.get("name") == self.vlan_name
+        assert v.get("vlanid") == self.vlan_id
 
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+        members = get_vlan_members(self.dut_ip, self.vlan_name)
+
+        for mem, tagging_mode in members.items():
+            assert members_to_add.get(mem).name == tagging_mode
+
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)
 
     def test_vlan_tagging_mode(self):
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        mem = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)
 
-        config_vlan_on_device(self.dut_ip, self.vlan_name, self.vlan_id, mem)
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
-            assert v.get("members") == [self.eth1, self.eth2]
-            assert v.get("name") == self.vlan_name
-            assert v.get("vlanid") == self.vlan_id
-
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.get("ifname") == self.eth1:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
-            elif v.get("ifname") == self.eth2:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
+        members_to_add = {
+            self.eth1: VlanTagMode.tagged,
+            self.eth2: VlanTagMode.untagged,
+        }
+        config_vlan(self.dut_ip, self.vlan_name, self.vlan_id, members_to_add)
+        vlan_detail = get_vlan(self.dut_ip, self.vlan_name)
+        assert vlan_detail.get("name") == self.vlan_name
+        assert vlan_detail.get("vlanid") == self.vlan_id
 
         ## Toggle and test tagging mode
-        config_vlan_tagging_mode_on_device(
+        config_vlan_mem_tagging(
             self.dut_ip, self.vlan_name, self.eth1, VlanTagMode.untagged
         )
-        config_vlan_tagging_mode_on_device(
+        config_vlan_mem_tagging(
             self.dut_ip, self.vlan_name, self.eth2, VlanTagMode.tagged
         )
 
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.get("ifname") == self.eth1:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
-            elif v.get("ifname") == self.eth2:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
+        members = get_vlan_members(self.dut_ip, self.vlan_name)
 
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+        for mem, tagging_mode in members.items():
+            assert members_to_add.get(mem).name == tagging_mode
+
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)
 
     def test_vlan_mem_add_del(self):
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        mem = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
-        del_vlan_mem_interface_on_device(self.dut_ip, self.vlan_name)
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)
+        config_vlan(self.dut_ip, self.vlan_name, self.vlan_id)
+        members_to_add = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+        add_vlan_mem(self.dut_ip, self.vlan_name, members_to_add)
+        
+        members = get_vlan_members(self.dut_ip, self.vlan_name)
+        for mem in members:
+            assert mem in members_to_add
 
-        config_vlan_on_device(self.dut_ip, self.vlan_name, self.vlan_id)
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
-            assert not v.get("members")
-            assert v.get("name") == self.vlan_name
-            assert v.get("vlanid") == self.vlan_id
-        assert not vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST")
+        del_vlan_mem(self.dut_ip, self.vlan_name, self.eth1)
+        members = get_vlan_members(self.dut_ip, self.vlan_name)
+        assert self.vlan_name not in members
 
-        add_vlan_mem_interface_on_device(self.dut_ip, self.vlan_name, mem)
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.get("ifname") == self.eth1:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
-            elif v.get("ifname") == self.eth2:
-                assert v.get("name") == self.vlan_name
-                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
-
-        del_vlan_mem_interface_on_device(self.dut_ip, self.vlan_name, self.eth1)
-        vlan_detail = get_vlan_details_from_device(self.dut_ip, self.vlan_name)
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            assert v.get("ifname") != self.eth1
-
-        del_vlan_from_device(self.dut_ip, self.vlan_name)
-        assert not get_vlan_details_from_device(self.dut_ip, self.vlan_name)
+        del_vlan(self.dut_ip, self.vlan_name)
+        assert not get_vlan(self.dut_ip, self.vlan_name)

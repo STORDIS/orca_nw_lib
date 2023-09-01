@@ -1,10 +1,8 @@
 from threading import Thread
 import threading
 from orca_nw_lib.common import Speed
-from orca_nw_lib.device import getDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import (
     Encoding,
-    Path,
     SubscribeRequest,
     SubscribeResponse,
     Subscription,
@@ -23,16 +21,6 @@ from orca_nw_lib.interfaces import (
 )
 
 from orca_nw_lib.interfaces import get_interface_base_path
-from orca_nw_lib.mclag import (
-    create_mclag_peerlink_relations_in_db,
-    createMclagGraphObjects,
-    delMCLAGGatewayMacOfDeviceInDB,
-    delMCLAGOfDeviceFromDB,
-    get_mclag_domain_path,
-    get_mclag_gateway_mac_path,
-    get_mclag_path,
-    insert_device_mclag_in_db,
-)
 from orca_nw_lib.utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
@@ -62,46 +50,19 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
                 )
 
 
-def handle_mclag_domain_update(device_ip, resp):
-    if resp.update.update:
-        _logger.debug(f"MCLAG domain update received on {device_ip} \n {resp}")
-        # TODO: not the best way to rediscover mc lag  but robust,
-        # May be selective update can be performed in DB, because info is avilable in update message.
-        # Challenges would be to create peerlinks and member chnl and rel to device, in that case.
-
-        # Also subscription is not possible to MCLAG mem path, discovering mclag again discovers member interfaces.
-
-        insert_device_mclag_in_db(
-            getDeviceFromDB(device_ip), createMclagGraphObjects(device_ip)
-        )
-        create_mclag_peerlink_relations_in_db()
-
-    elif resp.update.delete:
-        _logger.debug(f"MCLAG domain delete received on {device_ip} \n {resp}")
-        domain_id = 0
-        for p in resp.update.delete:
-            for path_ele in p.elem:
-                if path_ele.name == "mclag-domain":
-                    domain_id = path_ele.key.get("domain-id")
-                    if domain_id:
-                        delMCLAGOfDeviceFromDB(device_ip, domain_id)
-                elif path_ele.name == "mclag-gateway-mac":
-                    delMCLAGGatewayMacOfDeviceInDB(device_ip)
-
-
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
     device_gnmi_stub = getGrpcStubs(device_ip)
-    try:
-        subscriptionlist = SubscriptionList(
-            subscription=subscriptions,
-            mode=SubscriptionList.Mode.Value("STREAM"),
-            encoding=Encoding.Value("PROTO"),
-            updates_only=True,
-        )
+    subscriptionlist = SubscriptionList(
+        subscription=subscriptions,
+        mode=SubscriptionList.Mode.Value("STREAM"),
+        encoding=Encoding.Value("PROTO"),
+        updates_only=True,
+    )
 
-        sub_req = SubscribeRequest(subscribe=subscriptionlist)
-        for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
-            _logger.debug(
+    sub_req = SubscribeRequest(subscribe=subscriptionlist)
+    for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
+        try:
+            _logger.info(
                 f"gnmi subscription notification received on {device_ip} \n{resp}"
             )
             if not resp.sync_response:
@@ -110,21 +71,27 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         ## Its an interface config update
                         handle_interface_config_update(device_ip, resp)
                         break
-                    if ele.name == get_mclag_path().elem[0].name:
-                        handle_mclag_domain_update(device_ip, resp)
-    except Exception as e:
-        _logger.error(e.with_traceback())
+        except Exception as e:
+            _logger.error(e)
 
 
 def gnmi_subscribe(device_ip: str):
-    subscriptions=[]
-    
+    subscriptions = []
+
     for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
-       subscriptions.append(Subscription(path=get_intfc_config_path(eth),mode=SubscriptionMode.ON_CHANGE))
-        
+        subscriptions.append(
+            Subscription(
+                path=get_intfc_config_path(eth), mode=SubscriptionMode.ON_CHANGE
+            )
+        )
+
     for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
-       subscriptions.append(Subscription(path=get_intfc_speed_path(eth),mode=SubscriptionMode.ON_CHANGE))
-       
+        subscriptions.append(
+            Subscription(
+                path=get_intfc_speed_path(eth), mode=SubscriptionMode.ON_CHANGE
+            )
+        )
+
     thread_name = f"subscription_{device_ip}"
     for thread in threading.enumerate():
         if thread.name == thread_name:
