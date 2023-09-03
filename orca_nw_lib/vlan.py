@@ -22,12 +22,12 @@ from .graph_db_models import Vlan
 _logger = get_logging().getLogger(__name__)
 
 
-def getVlanDBObj(device_ip: str):
+def getVlanDBObj(device_ip: str, vlan_name: str = None):
     """
     Function useful while discovery. Retrieve vlan information from device and return DB object with member information.
     Returns {<vlan_db_obj>: {'ifname': 'Ethernet64', 'name': 'Vlan1', 'tagging_mode': 'tagged'}}
     """
-    vlan_details = get_vlan_details_from_device(device_ip)
+    vlan_details = get_vlan_details_from_device(device_ip, vlan_name)
     vlans = []
     for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
         vlans.append(
@@ -78,19 +78,19 @@ def get_vlan(device_ip, vlan_name: str = None):
 
 def del_vlan(device_ip, vlan_name):
     del_vlan_from_device(device_ip, vlan_name)
-    discover_vlan(device_ip)
+    discover_vlan(device_ip, vlan_name)
 
 
 def config_vlan(
     device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None
 ):
     config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs)
-    discover_vlan(device_ip)
+    discover_vlan(device_ip, vlan_name)
 
 
 def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode]):
     add_vlan_mem_interface_on_device(device_ip, vlan_name, mem_ifs)
-    discover_vlan(device_ip)
+    discover_vlan(device_ip, vlan_name)
 
 
 def get_vlan_members(device_ip, vlan_name: str):
@@ -108,18 +108,17 @@ def config_vlan_mem_tagging(
     device_ip: str, vlan_name: str, if_name: str, tagging_mode: VlanTagMode
 ):
     config_vlan_tagging_mode_on_device(device_ip, vlan_name, if_name, tagging_mode)
-    # TODO: Instead of discovering all the vlans discover only specific vlans.
-    discover_vlan(device_ip)
+    discover_vlan(device_ip, vlan_name)
 
 
 def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
     del_vlan_mem_interface_on_device(device_ip, vlan_name, if_name)
-    discover_vlan(device_ip)
+    discover_vlan(device_ip, vlan_name)
 
 
-def discover_vlan(device_ip: str = None):
+def discover_vlan(device_ip: str = None, vlan_name: str = None):
     _logger.info("Discovering VLAN.")
     devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
     for device in devices:
         _logger.info(f"Discovering VLAN on device {device}.")
-        insertVlanInDB(device, getVlanDBObj(device.mgt_ip))
+        insertVlanInDB(device, getVlanDBObj(device.mgt_ip, vlan_name))
