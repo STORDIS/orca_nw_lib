@@ -1,10 +1,10 @@
 from typing import List
-from orca_nw_lib.device import getDeviceFromDB
-from orca_nw_lib.graph_db_models import MCLAG_GW_MAC, Device, MCLAG
-from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
-from orca_nw_lib.port_chnl import getPortChnlOfDeviceFromDB
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import (
+from .device import getDeviceFromDB
+from .graph_db_models import MCLAG_GW_MAC, Device, MCLAG
+from .interfaces import getInterfaceOfDeviceFromDB
+from .port_chnl_db import getPortChnlOfDeviceFromDB
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import (
     create_req_for_update,
     get_gnmi_del_req,
     create_gnmi_update,

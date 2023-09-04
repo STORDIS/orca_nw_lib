@@ -1,13 +1,13 @@
 from ast import List
-from orca_nw_lib.common import VlanTagMode
+from .common import VlanTagMode
 
-from orca_nw_lib.device import getDeviceFromDB
-from orca_nw_lib.vlan_db import (
+from .device import getDeviceFromDB
+from .vlan_db import (
     get_vlan_obj_from_db,
     get_vlan_mem_ifcs_from_db,
     insertVlanInDB,
 )
-from orca_nw_lib.vlan_gnmi import (
+from .vlan_gnmi import (
     add_vlan_mem_interface_on_device,
     config_vlan_on_device,
     config_vlan_tagging_mode_on_device,

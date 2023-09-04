@@ -11,6 +11,22 @@ from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.device import getAllDevicesIPFromDB
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 from orca_nw_lib.graph_db_models import MCLAG, MCLAG_GW_MAC
+from orca_nw_lib.port_chnl import (
+    add_port_chnl,
+    add_port_chnl_mem,
+    del_port_chnl,
+    del_port_chnl_mem,
+    get_port_chnl,
+    get_port_chnl_members,
+)
+from orca_nw_lib.port_chnl_gnmi import (
+    add_port_chnl_member,
+    del_all_port_chnl,
+    del_port_chnl_from_device,
+    get_all_port_chnl_members,
+    get_port_chnl_from_device,
+    remove_port_chnl_member,
+)
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all, discover_mclag, discover_mclag_gw_macs
@@ -45,14 +61,8 @@ from orca_nw_lib.interfaces import (
     get_interface_config_from_device,
     get_interface_speed_from_device,
 )
-from orca_nw_lib.port_chnl import (
+from orca_nw_lib.port_chnl_gnmi import (
     add_port_chnl_on_device,
-    del_all_port_chnl,
-    del_port_chnl_from_device,
-    get_port_chnl_from_device,
-    add_port_chnl_member,
-    get_all_port_chnl_members,
-    remove_port_chnl_member,
 )
 from orca_nw_lib.vlan import (
     add_vlan_mem,
@@ -60,18 +70,8 @@ from orca_nw_lib.vlan import (
     config_vlan_mem_tagging,
     del_vlan,
     del_vlan_mem,
-    discover_vlan,
     get_vlan,
     get_vlan_members,
-)
-from orca_nw_lib.vlan_db import get_vlan_obj_from_db
-from orca_nw_lib.vlan_gnmi import (
-    add_vlan_mem_interface_on_device,
-    config_vlan_on_device,
-    config_vlan_tagging_mode_on_device,
-    del_vlan_from_device,
-    del_vlan_mem_interface_on_device,
-    get_vlan_details_from_device,
 )
 
 
@@ -283,9 +283,12 @@ class InterfaceTests(unittest.TestCase):
 
 class PortChannelTests(unittest.TestCase):
     dut_ip = None
-    ethernet1 = "Ethernet4"
-    ethernet2 = "Ethernet8"
+    ethernet1 = ""
+    ethernet2 = ""
+    ethernet3 = ""
+    ethernet4 = ""
     chnl_name = "PortChannel101"
+    chnl_name_2 = "PortChannel102"
 
     @classmethod
     def setUpClass(cls):
@@ -298,69 +301,101 @@ class PortChannelTests(unittest.TestCase):
         ).issubset(set(getAllDevicesIPFromDB()))
         cls.dut_ip = getAllDevicesIPFromDB()[0]
         assert cls.dut_ip is not None
+        cls.ethernet1 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][0]
+        cls.ethernet2 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][1]
+        cls.ethernet3 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][2]
+        cls.ethernet4 = [
+            ether
+            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            if "Ethernet" in ether
+        ][3]
 
     def test_add_port_chnl(self):
-        add_port_chnl_on_device(self.dut_ip, self.chnl_name)
-        assert (
-            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.chnl_name
-        )
-        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
+        ## Cleanup PortChannels
+        del_port_chnl(self.dut_ip, self.chnl_name)
+        del_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert self.chnl_name and self.chnl_name_2 not in [
+            chnl.get("lag_name") for chnl in get_port_chnl(self.dut_ip)
+        ]
+        ## Add PortChannels
+        add_port_chnl(self.dut_ip, self.chnl_name)
+        add_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert self.chnl_name and self.chnl_name_2 in [
+            chnl.get("lag_name") for chnl in get_port_chnl(self.dut_ip)
+        ]
+        ## Cleanup PortChannels
+        del_port_chnl(self.dut_ip, self.chnl_name)
+        del_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert self.chnl_name and self.chnl_name_2 not in [
+            chnl.get("lag_name") for chnl in get_port_chnl(self.dut_ip)
+        ]
 
-    def test_add_port_chnl_members(self):
-        add_port_chnl_on_device(self.dut_ip, self.chnl_name, "up")
-        assert (
-            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.chnl_name
-        )
-
+    def test_add_del_port_chnl_members(self):
+        ## Cleanup PortChannel 1
         mem_infcs = [self.ethernet1, self.ethernet2]
-        add_port_chnl_member(self.dut_ip, self.chnl_name, mem_infcs)
-        output = get_all_port_chnl_members(self.dut_ip)
-        output_mem_infcs = []
-        for item in output.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST"):
-            if item.get("name") == self.chnl_name:
-                output_mem_infcs.append(item.get("ifname"))
+        for mem_name in mem_infcs:
+            del_port_chnl_mem(self.dut_ip, self.chnl_name, mem_name)
+        assert not get_port_chnl_members(self.dut_ip, self.chnl_name)
+        del_port_chnl(self.dut_ip, self.chnl_name)
+        assert not get_port_chnl(self.dut_ip, self.chnl_name)
 
-        assert mem_infcs == output_mem_infcs
-        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
+        ## Cleanup PortChannel 2
+        mem_infcs_2 = [self.ethernet3, self.ethernet4]
+        for mem_name in mem_infcs_2:
+            del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
+        assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
+        del_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
 
-    def test_remove_port_chnl_members(self):
-        add_port_chnl_on_device(self.dut_ip, self.chnl_name, "up")
-        assert (
-            get_port_chnl_from_device(self.dut_ip, self.chnl_name)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.chnl_name
-        )
+        ## Add PortChannel 1
+        add_port_chnl(self.dut_ip, self.chnl_name)
+        port_chnls = get_port_chnl(self.dut_ip, self.chnl_name)
+        assert port_chnls[0].get("lag_name") == self.chnl_name
 
+        add_port_chnl_mem(self.dut_ip, self.chnl_name, mem_infcs)
+        port_chnl_mem_json = get_port_chnl_members(self.dut_ip, self.chnl_name)
+        assert len(port_chnl_mem_json) == len(mem_infcs)
+        for member in port_chnl_mem_json:
+            assert member.get("name") in mem_infcs
+
+        ## Add PortChannel 2
+        add_port_chnl(self.dut_ip, self.chnl_name_2)
+        port_chnls = get_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert port_chnls[0].get("lag_name") == self.chnl_name_2
+
+        add_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_infcs_2)
+        port_chnl_mem_json = get_port_chnl_members(self.dut_ip, self.chnl_name_2)
+        assert len(port_chnl_mem_json) == len(mem_infcs_2)
+        for member in port_chnl_mem_json:
+            assert member.get("name") in mem_infcs_2
+
+        ## Cleanup PortChannel 1
         mem_infcs = [self.ethernet1, self.ethernet2]
-        add_port_chnl_member(self.dut_ip, self.chnl_name, mem_infcs)
-        output = get_all_port_chnl_members(self.dut_ip)
-        output_mem_infcs = []
-        for item in output.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST"):
-            if item.get("name") == self.chnl_name:
-                output_mem_infcs.append(item.get("ifname"))
+        for mem_name in mem_infcs:
+            del_port_chnl_mem(self.dut_ip, self.chnl_name, mem_name)
+        assert not get_port_chnl_members(self.dut_ip, self.chnl_name)
+        del_port_chnl(self.dut_ip, self.chnl_name)
+        assert not get_port_chnl(self.dut_ip, self.chnl_name)
 
-        assert mem_infcs == output_mem_infcs
-
-        remove_port_chnl_member(self.dut_ip, self.chnl_name, self.ethernet1)
-
-        output = get_all_port_chnl_members(self.dut_ip)
-        output_mem_infcs = []
-        for item in output.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST"):
-            if item.get("name") == self.chnl_name:
-                output_mem_infcs.append(item.get("ifname"))
-
-        assert self.ethernet1 not in output_mem_infcs
-        ## Before deleting port_channel remove all its members and mclags using this port-channel
-        del_mclag_from_device(self.dut_ip)
-        remove_port_chnl_member(self.dut_ip, self.chnl_name, self.ethernet2)
-        del_port_chnl_from_device(self.dut_ip, self.chnl_name)
+        ## Cleanup PortChannel 2
+        mem_infcs_2 = [self.ethernet3, self.ethernet4]
+        for mem_name in mem_infcs_2:
+            del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
+        assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
+        del_port_chnl(self.dut_ip, self.chnl_name_2)
+        assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
 
 
 class MclagTests(unittest.TestCase):
@@ -720,9 +755,12 @@ class VLANTests(unittest.TestCase):
         del_vlan(self.dut_ip, self.vlan_name)
         assert not get_vlan(self.dut_ip, self.vlan_name)
         config_vlan(self.dut_ip, self.vlan_name, self.vlan_id)
-        members_to_add = {self.eth1: VlanTagMode.tagged, self.eth2: VlanTagMode.untagged}
+        members_to_add = {
+            self.eth1: VlanTagMode.tagged,
+            self.eth2: VlanTagMode.untagged,
+        }
         add_vlan_mem(self.dut_ip, self.vlan_name, members_to_add)
-        
+
         members = get_vlan_members(self.dut_ip, self.vlan_name)
         for mem in members:
             assert mem in members_to_add

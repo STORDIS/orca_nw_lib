@@ -1,30 +1,34 @@
-from orca_nw_lib.device import getDeviceFromDB
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import (
-    create_gnmi_update,
-    create_req_for_update,
-    get_gnmi_del_req,
-    send_gnmi_get,
-    send_gnmi_set,
+from time import sleep
+from .port_chnl_db import (
+    getAllPortChnlOfDeviceFromDB,
+    getPortChnlOfDeviceFromDB,
 )
-from orca_nw_lib.graph_db_models import Device, PortChannel
+from .device import getDeviceFromDB
+from .graph_db_models import PortChannel
+from .port_chnl_db import (
+    get_port_chnl_members_from_db,
+    insert_device_port_chnl_in_db,
+)
 
-from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
+from .port_chnl_gnmi import (
+    add_port_chnl_member,
+    add_port_chnl_on_device,
+    del_port_chnl_from_device,
+    get_port_chnls_info_from_device,
+    remove_port_chnl_member,
+)
+from .utils import get_logging
+
+_logger = get_logging().getLogger(__name__)
 
 
-def createPortChnlGraphObject(device_ip: str):
-    port_chnl_json = get_port_chnls_all(device_ip)
+def createPortChnlGraphObject(device_ip: str, port_chnl_name: str = None):
+    port_chnl_json = get_port_chnls_info_from_device(device_ip, port_chnl_name)
     port_chnl_obj_list = {}
     if port_chnl_json:
-        lag_table_json_list = (
-            port_chnl_json.get("sonic-portchannel:sonic-portchannel")
-            .get("LAG_TABLE", {})
-            .get("LAG_TABLE_LIST")
-        )
-        lag_mem_table_json_list = (
-            port_chnl_json.get("sonic-portchannel:sonic-portchannel")
-            .get("LAG_MEMBER_TABLE", {})
-            .get("LAG_MEMBER_TABLE_LIST")
+        lag_table_json_list = port_chnl_json.get("sonic-portchannel:LAG_TABLE_LIST", {})
+        lag_mem_table_json_list = port_chnl_json.get(
+            "sonic-portchannel:LAG_MEMBER_TABLE_LIST", {}
         )
         for lag in lag_table_json_list or []:
             ifname_list = []
@@ -47,25 +51,22 @@ def createPortChnlGraphObject(device_ip: str):
     return port_chnl_obj_list
 
 
-def getAllPortChnlOfDeviceFromDB(device_ip: str):
-    device = getDeviceFromDB(device_ip)
-    return getDeviceFromDB(device_ip).port_chnl.all() if device else None
+def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
+    _logger.info("Port Channel Discovery Started.")
+    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    for device in devices:
+        _logger.info(f"Discovering Port Channels of device {device}.")
+        insert_device_port_chnl_in_db(
+            device, createPortChnlGraphObject(device.mgt_ip, port_chnl_name)
+        )
 
 
-def getPortChnlOfDeviceFromDB(device_ip: str, port_chnl_name: str) -> PortChannel:
-    device = getDeviceFromDB(device_ip)
-    return (
-        getDeviceFromDB(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name)
-        if device
-        else None
-    )
-
-
-def getPortChnlDetailsFromDB(device_ip: str, port_chnl_name=None):
+def get_port_chnl(device_ip: str, port_chnl_name=None):
     op_dict = []
     if port_chnl_name:
-        port_chnl = getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)
-        op_dict.append(port_chnl.__properties__)
+        op_dict.append(port_chnl.__properties__) if (
+            port_chnl := getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)
+        ) else None
     else:
         port_chnl = getAllPortChnlOfDeviceFromDB(device_ip)
         for chnl in port_chnl or []:
@@ -73,142 +74,45 @@ def getPortChnlDetailsFromDB(device_ip: str, port_chnl_name=None):
     return op_dict
 
 
-def get_port_chnl_base_path():
-    return Path(
-        target="openconfig",
-        origin="sonic-portchannel",
-        elem=[
-            PathElem(name="sonic-portchannel"),
-            PathElem(name="PORTCHANNEL"),
-        ],
-    )
-
-
-def get_port_chnl_list_path():
-    path = get_port_chnl_base_path()
-    path.elem.append(PathElem(name="PORTCHANNEL_LIST"))
-    return path
-
-
-def get_port_chnl_path(chnl_name: str):
-    path = get_port_chnl_base_path()
-    path.elem.append(PathElem(name="PORTCHANNEL_LIST", key={"name": chnl_name}))
-    return path
-
-
-def add_port_chnl_on_device(
+def add_port_chnl(
     device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None
 ):
-    port_chnl_add = {"sonic-portchannel:PORTCHANNEL_LIST": []}
-    port_chnl_item = {"name": chnl_name}
-    if admin_status is not None and admin_status in ["up", "down"]:
-        port_chnl_item["admin_status"] = admin_status
-    if mtu is not None:
-        port_chnl_item["mtu"] = mtu
-
-    port_chnl_add.get("sonic-portchannel:PORTCHANNEL_LIST").append(port_chnl_item)
-    return send_gnmi_set(
-        create_req_for_update(
-            [create_gnmi_update(get_port_chnl_list_path(), port_chnl_add)]
-        ),
-        device_ip,
-    )
+    add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
+    discover_port_chnl(device_ip)
 
 
-def get_port_chnl_mem_base_path():
-    return Path(
-        target="openconfig",
-        origin="sonic-portchannel",
-        elem=[PathElem(name="sonic-portchannel"), PathElem(name="PORTCHANNEL_MEMBER")],
-    )
+def del_port_chnl(device_ip: str, chnl_name: str):
+    del_port_chnl_from_device(device_ip, chnl_name)
+    discover_port_chnl(device_ip)
 
 
-def get_port_chnl_mem_list_path():
-    path = get_port_chnl_mem_base_path()
-    path.elem.append(PathElem(name="PORTCHANNEL_MEMBER_LIST"))
-    return path
+def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
+    add_port_chnl_member(device_ip, chnl_name, ifnames)
+    ## Note - A bit strange but despite of being single threaded process,
+    ## Need to keep a delay between creating channel members and getting them.
+    sleep(1)
+    discover_port_chnl(device_ip)
 
 
-def get_port_chnl_mem_path(chnl_name: str, ifname: str):
-    path = get_port_chnl_mem_base_path()
-    path.elem.append(
-        PathElem(
-            name="PORTCHANNEL_MEMBER_LIST", key={"name": chnl_name, "ifname": ifname}
+def del_port_chnl_mem(device_ip: str, chnl_name: str, ifname: str):
+    remove_port_chnl_member(device_ip, chnl_name, ifname)
+    discover_port_chnl(device_ip)
+
+
+def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = None):
+    if ifname:
+        return (
+            port_chnl_mem.__properties__
+            if (
+                port_chnl_mem := get_port_chnl_members_from_db(
+                    device_ip, port_chnl_name, ifname
+                )
+            )
+            else None
         )
-    )
-    return path
-
-
-def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames: list[str]):
-    port_chnl_add = {"sonic-portchannel:PORTCHANNEL_MEMBER_LIST": []}
-    for intf in ifnames:
-        port_chnl_add.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append(
-            {"name": chnl_name, "ifname": intf}
-        )
-    return send_gnmi_set(
-        create_req_for_update(
-            [create_gnmi_update(get_port_chnl_mem_list_path(), port_chnl_add)]
-        ),
-        device_ip,
-    )
-
-
-def get_all_port_chnl_members(device_ip: str):
-    return send_gnmi_get(device_ip, [get_port_chnl_mem_list_path()])
-
-
-def remove_port_chnl_member(device_ip: str, chnl_name: str, ifname: str):
-    return send_gnmi_set(
-        get_gnmi_del_req(get_port_chnl_mem_path(chnl_name, ifname)), device_ip
-    )
-
-
-def del_port_chnl_from_device(device_ip: str, chnl_name: str):
-    return send_gnmi_set(get_gnmi_del_req(get_port_chnl_path(chnl_name)), device_ip)
-
-
-def get_port_chnls_all(device_ip: str):
-    path_intf_status_path = Path(
-        target="openconfig",
-        origin="sonic-portchannel",
-        elem=[
-            PathElem(name="sonic-portchannel"),
-        ],
-    )
-    return send_gnmi_get(device_ip, [path_intf_status_path])
-
-
-def get_port_chnl_from_device(device_ip: str, chnl_name: str):
-    return send_gnmi_get(device_ip, [get_port_chnl_path(chnl_name)])
-
-
-def del_all_port_chnl(device_ip: str):
-    return send_gnmi_set(get_gnmi_del_req(get_port_chnl_list_path()), device_ip)
-
-
-def copy_port_chnl_prop(target_obj: PortChannel, src_obj: PortChannel):
-    target_obj.lag_name = src_obj.lag_name
-    target_obj.active = src_obj.active
-    target_obj.admin_sts = src_obj.admin_sts
-    target_obj.mtu = src_obj.mtu
-    target_obj.name = src_obj.name  # name of protocol e.g. lacp
-    target_obj.fallback_operational = src_obj.fallback_operational
-    target_obj.oper_sts = src_obj.oper_sts
-    target_obj.speed = src_obj.speed
-    target_obj.oper_sts_reason = src_obj.oper_sts_reason
-
-
-def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
-    for chnl, mem_list in portchnl_to_mem_list.items():
-        if p_chnl := getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name):
-            copy_port_chnl_prop(p_chnl, chnl)
-            p_chnl.save()
-            device.port_chnl.connect(p_chnl)
-        else:
-            chnl.save()
-            device.port_chnl.connect(chnl)
-        saved_p_chnl=getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name)
-        for intf_name in mem_list:
-            saved_p_chnl.members.connect(intf_obj) if saved_p_chnl and (
-                intf_obj := getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
-            ) else None
+    else:
+        op_dict = []
+        port_chnl_mems = get_port_chnl_members_from_db(device_ip, port_chnl_name)
+        for mem in port_chnl_mems or []:
+            op_dict.append(mem.__properties__)
+        return op_dict

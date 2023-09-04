@@ -1,5 +1,5 @@
 import ipaddress
-
+from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
 from .device import createDeviceGraphObject, getDeviceFromDB
@@ -13,7 +13,6 @@ from .mclag import (
     insert_device_mclag_gw_macs_in_db,
     insert_device_mclag_in_db,
 )
-from .port_chnl import createPortChnlGraphObject, insert_device_port_chnl_in_db
 from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config
 from .constants import network
@@ -51,13 +50,6 @@ def read_lldp_topo(ip):
                 read_lldp_topo(nbr.get("nbr_ip"))
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
-
-
-def discover_port_chnl():
-    _logger.info("Port Channel Discovery Started.")
-    for device in getDeviceFromDB():
-        _logger.info(f"Discovering Port Channels of device {device}.")
-        insert_device_port_chnl_in_db(device, createPortChnlGraphObject(device.mgt_ip))
 
 
 def discover_interfaces():
