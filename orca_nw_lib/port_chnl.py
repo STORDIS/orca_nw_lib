@@ -1,7 +1,9 @@
 from time import sleep
+from typing import List, Optional
+
 from .port_chnl_db import (
-    getAllPortChnlOfDeviceFromDB,
-    getPortChnlOfDeviceFromDB,
+    get_all_port_chnl_of_device_from_db,
+    get_port_chnl_of_device_from_db,
 )
 from .device import getDeviceFromDB
 from .graph_db_models import PortChannel
@@ -52,6 +54,17 @@ def createPortChnlGraphObject(device_ip: str, port_chnl_name: str = None):
 
 
 def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
+    """
+    Discover the port channel of a device.
+
+    Args:
+        device_ip (str): The IP address of the device. If None, all devices will be used.
+        port_chnl_name (str): The name of the port channel.
+        If None, all port channels will be discovered.
+
+    Returns:
+        None
+    """
     _logger.info("Port Channel Discovery Started.")
     devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
     for device in devices:
@@ -61,14 +74,31 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
         )
 
 
-def get_port_chnl(device_ip: str, port_chnl_name=None):
+def get_port_chnl(device_ip: str, port_chnl_name: Optional[str] = None) -> List[dict]:
+    """
+    Retrieves the port channel information for a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (Optional[str], optional): The name of the port channel. Defaults to None.
+
+    Returns:
+        List[dict]: A list of dictionaries containing the properties of the port channels.
+
+    Raises:
+        None
+
+    Examples:
+        >>> get_port_chnl("192.168.0.1", "PortChannel1")
+        [{'property1': 'value1', 'property2': 'value2'},
+        {'property1': 'value3', 'property2': 'value4'}]
+    """
     op_dict = []
     if port_chnl_name:
-        op_dict.append(port_chnl.__properties__) if (
-            port_chnl := getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)
-        ) else None
+        if port_chnl := get_port_chnl_of_device_from_db(device_ip, port_chnl_name):
+            op_dict.append(port_chnl.__properties__)
     else:
-        port_chnl = getAllPortChnlOfDeviceFromDB(device_ip)
+        port_chnl = get_all_port_chnl_of_device_from_db(device_ip)
         for chnl in port_chnl or []:
             op_dict.append(chnl.__properties__)
     return op_dict
@@ -77,16 +107,54 @@ def get_port_chnl(device_ip: str, port_chnl_name=None):
 def add_port_chnl(
     device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None
 ):
+    """
+    Adds a port channel to a device,
+    and triggers the discovery of the port channel on the device to keep database up to date.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+        admin_status (str, optional): The administrative status of the port channel.
+        Defaults to None.
+        mtu (int, optional): The maximum transmission unit (MTU) size of the port channel.
+        Defaults to None.
+
+    Returns:
+        None
+    """
     add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
     discover_port_chnl(device_ip)
 
 
 def del_port_chnl(device_ip: str, chnl_name: str):
+    """
+    Deletes a port channel from a device,
+    and triggers the discovery of the port channel on the device to keep database up to date.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel to delete.
+
+    Returns:
+        None
+    """
     del_port_chnl_from_device(device_ip, chnl_name)
     discover_port_chnl(device_ip)
 
 
 def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
+    """
+    Adds channel members to a port channel on the specified device,
+    and triggers the discovery of the port channel on the device to keep database up to date.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the channel to add the members to.
+        ifnames (list[str]): A list of interface names to add as members.
+
+    Returns:
+        None
+    """
     add_port_chnl_member(device_ip, chnl_name, ifnames)
     ## Note - A bit strange but despite of being single threaded process,
     ## Need to keep a delay between creating channel members and getting them.

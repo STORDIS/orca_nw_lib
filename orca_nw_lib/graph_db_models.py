@@ -6,7 +6,6 @@ from neomodel import (
     StringProperty,
     IntegerProperty,
     RelationshipTo,
-    Relationship,
 )
 
 
@@ -36,8 +35,11 @@ class Device(StructuredNode):
     def __hash__(self):
         return hash((self.mgt_ip, self.mac))
 
-    def __str__(self):
-        return self.mgt_ip
+    def __str__(self) -> str:
+        """
+        Return the management IP address as a string representation of the object.
+        """
+        return str(self.mgt_ip)
 
 
 class PortChannel(StructuredNode):
@@ -62,8 +64,11 @@ class PortChannel(StructuredNode):
     def __hash__(self):
         return hash(self.lag_name)
 
-    def __str__(self):
-        return self.lag_name
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the object.
+        """
+        return str(self.lag_name)
 
 
 class MCLAG_GW_MAC(StructuredNode):
@@ -115,14 +120,14 @@ class SubInterface(StructuredNode):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.local_asn == other.ip_address
+            return self.ip_address == other.ip_address
         return NotImplemented
 
     def __hash__(self):
         return hash(self.ip_address)
 
     def __str__(self):
-        return self.ip_address
+        return str(self.ip_address)
 
 
 class Interface(StructuredNode):
@@ -189,7 +194,7 @@ class Interface(StructuredNode):
         return hash(self.name)
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 
 class PortGroup(StructuredNode):
@@ -208,7 +213,7 @@ class PortGroup(StructuredNode):
         return hash(self.port_group_id)
 
     def __str__(self):
-        return self.port_group_id
+        return str(self.port_group_id)
 
 
 class BGP(StructuredNode):
@@ -235,7 +240,7 @@ class BGP(StructuredNode):
 
 class VlanMemRel(StructuredRel):
     tagging_mode = StringProperty()
-    
+
 
 class Vlan(StructuredNode):
     vlanid = IntegerProperty()
@@ -244,7 +249,7 @@ class Vlan(StructuredNode):
     admin_status = StringProperty()
     oper_status = StringProperty()
     autostate = StringProperty()
-    
+
     memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
 
     def __eq__(self, other):

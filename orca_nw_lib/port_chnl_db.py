@@ -4,35 +4,73 @@ from .graph_db_models import Device, Interface, PortChannel
 from .interfaces import getInterfaceOfDeviceFromDB
 
 
-def getPortChnlOfDeviceFromDB(device_ip: str, port_chnl_name: str) -> PortChannel:
+def get_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str) -> PortChannel:
+    """
+    Get the port channel of a device from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (str): The name of the port channel.
+
+    Returns:
+        PortChannel: The port channel object if found, None otherwise.
+    """
+
     device = getDeviceFromDB(device_ip)
-    return (
-        getDeviceFromDB(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name)
-        if device
-        else None
-    )
+    return device.port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
 
 
-def delPortChnlOfDeviceFromDB(device_ip: str, port_chnl_name: str):
+def del_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str):
+    """
+    Deletes the specified port channel of a device from the database.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (str): The name of the port channel.
+
+    Returns:
+        None
+    """
     device = getDeviceFromDB(device_ip)
-    chnl = (
-        getDeviceFromDB(device_ip).port_chnl.get_or_none(lag_name=port_chnl_name)
-        if device
-        else None
-    )
+    chnl = device.port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
     if chnl:
         chnl.delete()
 
 
-def getAllPortChnlOfDeviceFromDB(device_ip: str) -> List[PortChannel]:
+def get_all_port_chnl_of_device_from_db(device_ip: str) -> List[PortChannel]:
+    """
+    Retrieve all port channels associated with a device from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        List[PortChannel]: A list of port channel objects associated with the device.
+    """
     device = getDeviceFromDB(device_ip)
-    return getDeviceFromDB(device_ip).port_chnl.all() if device else None
+    return device.port_chnl.all() if device else None
 
 
 def get_port_chnl_members_from_db(
     device_ip: str, port_chnl_name: str, if_name: str = None
 ) -> Interface | List[Interface]:
-    chnl = getPortChnlOfDeviceFromDB(device_ip, port_chnl_name)
+    """
+    Retrieves the members of a port channel from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (str): The name of the port channel.
+        if_name (str, optional): The name of the interface. Defaults to None.
+
+    Returns:
+        Union[Interface, List[Interface]]: If `if_name` is provided and
+        a matching port channel is found,
+        returns the specified interface. If `if_name` is not provided and
+        a matching port channel is found,returns a list of all interface members.
+        If no matching port channel is found, returns None.
+    """
+
+    chnl = get_port_chnl_of_device_from_db(device_ip, port_chnl_name)
     return (
         chnl.members.get_or_none(if_name)
         if if_name and chnl
@@ -43,6 +81,16 @@ def get_port_chnl_members_from_db(
 
 
 def copy_port_chnl_prop(target_obj: PortChannel, src_obj: PortChannel):
+    """
+    Copy the properties of a source PortChannel object to a target PortChannel object.
+
+    Args:
+        target_obj (PortChannel): The target PortChannel object to copy the properties to.
+        src_obj (PortChannel): The source PortChannel object to copy the properties from.
+
+    Returns:
+        None
+    """
     target_obj.lag_name = src_obj.lag_name
     target_obj.active = src_obj.active
     target_obj.admin_sts = src_obj.admin_sts
@@ -55,25 +103,40 @@ def copy_port_chnl_prop(target_obj: PortChannel, src_obj: PortChannel):
 
 
 def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
+    """
+    Inserts device port channels into the database.
+
+    Args:
+        device (Device): The device object.
+        portchnl_to_mem_list (dict): A dictionary mapping port channels
+        to a list of member interfaces.
+
+    Returns:
+        None
+
+    Raises:
+        None
+
+    """
     for chnl, mem_list in portchnl_to_mem_list.items():
-        if p_chnl := getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name):
+        if p_chnl := get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name):
             copy_port_chnl_prop(p_chnl, chnl)
             p_chnl.save()
             device.port_chnl.connect(p_chnl)
         else:
             chnl.save()
             device.port_chnl.connect(chnl)
-        saved_p_chnl = getPortChnlOfDeviceFromDB(device.mgt_ip, chnl.lag_name)
+        saved_p_chnl = get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name)
         for intf_name in mem_list:
-            saved_p_chnl.members.connect(intf_obj) if saved_p_chnl and (
-                intf_obj := getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
-            ) else None
+            intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
+            if saved_p_chnl and intf_obj:
+                saved_p_chnl.members.connect(intf_obj)
 
     ## Handle the case when some or all port_chnl has been deleted from device but remained in DB
     ## Remove all port_chnl which are in DB but not on device
-    for chnl_in_db in getAllPortChnlOfDeviceFromDB(device.mgt_ip):
+    for chnl_in_db in get_all_port_chnl_of_device_from_db(device.mgt_ip):
         if chnl_in_db not in portchnl_to_mem_list:
-            delPortChnlOfDeviceFromDB(device.mgt_ip, chnl_in_db.lag_name)
+            del_port_chnl_of_device_from_db(device.mgt_ip, chnl_in_db.lag_name)
         ## Also disconnect interfaces if not a member of channel
         chnl_members_on_device = portchnl_to_mem_list.get(chnl_in_db)
         for mem in chnl_in_db.members.all() or []:

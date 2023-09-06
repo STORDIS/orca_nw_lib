@@ -46,9 +46,12 @@ def get_lag_member_table_list_path() -> Path:
 def get_lag_table_list_path(chnl_name: str = None) -> Path:
     path = get_port_chnl_root_path()
     path.elem.append(PathElem(name="LAG_TABLE"))
-    path.elem.append(
-        PathElem(name="LAG_TABLE_LIST", key={"lagname": chnl_name})
-    ) if chnl_name else path.elem.append(PathElem(name="LAG_TABLE_LIST"))
+
+    if chnl_name:
+        path.elem.append(PathElem(name="LAG_TABLE_LIST", key={"lagname": chnl_name}))
+    else:
+        path.elem.append(PathElem(name="LAG_TABLE_LIST"))
+
     return path
 
 
@@ -72,7 +75,7 @@ def get_lag_member_table_list(device_ip: str):
 
 
 def get_lag_table_list(device_ip: str, chnl_name: str = None):
-    return send_gnmi_get(device_ip, [get_lag_table_list_path()])
+    return send_gnmi_get(device_ip, [get_lag_table_list_path(chnl_name)])
 
 
 def get_port_chnl_mem_list_path():

@@ -2,7 +2,7 @@ from typing import List
 from .device import getDeviceFromDB
 from .graph_db_models import MCLAG_GW_MAC, Device, MCLAG
 from .interfaces import getInterfaceOfDeviceFromDB
-from .port_chnl_db import getPortChnlOfDeviceFromDB
+from .port_chnl_db import get_port_chnl_of_device_from_db
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_req_for_update,
@@ -259,7 +259,7 @@ def create_mclag_peerlink_relations_in_db():
         )
         if mclag_local:
             peer_link_local = mclag_local.peer_link
-            port_chnl_local = getPortChnlOfDeviceFromDB(
+            port_chnl_local = get_port_chnl_of_device_from_db(
                 local_dev.mgt_ip, peer_link_local
             )
             if port_chnl_local:
@@ -270,7 +270,7 @@ def create_mclag_peerlink_relations_in_db():
                 mcl_r[0] if (mcl_r := getMclagOfDeviceFromDB(peer_addr)) else None
             )
             peer_link_remote = mclag_remote.peer_link if mclag_remote else None
-            port_chnl_remote = getPortChnlOfDeviceFromDB(peer_addr, peer_link_remote)
+            port_chnl_remote = get_port_chnl_of_device_from_db(peer_addr, peer_link_remote)
             if port_chnl_remote:
                 mclag_remote.peer_link_node.connect(port_chnl_remote)
 
@@ -310,7 +310,7 @@ def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
             intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
             if intf_obj:
                 saved_mclag.intfc_members.connect(intf_obj)
-            port_chnl_obj = getPortChnlOfDeviceFromDB(device.mgt_ip, intf_name)
+            port_chnl_obj = get_port_chnl_of_device_from_db(device.mgt_ip, intf_name)
             if port_chnl_obj:
                 saved_mclag.portChnl_member.connect(port_chnl_obj)
 
