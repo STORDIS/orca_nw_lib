@@ -11,7 +11,7 @@ from orca_nw_lib.gnmi_util import (
 )
 from orca_nw_lib.graph_db_models import BGP, Device
 from orca_nw_lib.interfaces import getSubInterfaceFromDB
-from orca_nw_lib.mclag import get_mclag_gateway_mac_path
+from orca_nw_lib.mclag_gnmi import get_mclag_gateway_mac_path
 from orca_nw_lib.utils import get_logging
 
 

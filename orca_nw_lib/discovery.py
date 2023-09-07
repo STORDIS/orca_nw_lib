@@ -1,4 +1,8 @@
 import ipaddress
+
+from .mclag import discover_mclag, discover_mclag_gw_macs
+from .mclag_db import create_mclag_peer_link_rel
+
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
@@ -6,13 +10,6 @@ from .device import createDeviceGraphObject, getDeviceFromDB
 from .graph_db_models import Device
 from .interfaces import insert_device_interfaces_in_db, createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
-from .mclag import (
-    create_mclag_peerlink_relations_in_db,
-    createMclagGraphObjects,
-    createMclagGwMacObj,
-    insert_device_mclag_gw_macs_in_db,
-    insert_device_mclag_in_db,
-)
 from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config
 from .constants import network
@@ -70,22 +67,6 @@ def discover_port_groups():
         )
 
 
-def discover_mclag(device_ip: str = None):
-    _logger.info("MCLAG Discovery Started.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
-    for device in devices:
-        _logger.info(f"Discovering MCLAG on device {device}.")
-        insert_device_mclag_in_db(device, createMclagGraphObjects(device.mgt_ip))
-
-
-def discover_mclag_gw_macs(device_ip: str = None):
-    _logger.info("MCLAG GW MAC Discovery Started.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
-    for device in devices:
-        _logger.info(f"Discovering MCLAG on device {device}.")
-        insert_device_mclag_gw_macs_in_db(device, createMclagGwMacObj(device.mgt_ip))
-
-
 def insert_topology_in_db(topology):
     for device, neighbors in topology.items():
         if Device.nodes.get_or_none(mac=device.mac) is None:
@@ -135,11 +116,6 @@ def create_lldp_rel():
     create_lldp_relations_in_db(topology)
 
 
-def create_mclag_peer_link_rel():
-    _logger.info("Discovering MCLAG peer-link relations.")
-    create_mclag_peerlink_relations_in_db()
-
-
 def discover_bgp():
     _logger.info("Discovering BGP Global List.")
     for device in getDeviceFromDB():
@@ -164,7 +140,6 @@ def discover_all():
         discover_port_chnl()
         discover_mclag()
         discover_mclag_gw_macs()
-        create_mclag_peer_link_rel()
         discover_bgp()
         create_bgp_peer_link_rel()
 

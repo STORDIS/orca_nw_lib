@@ -14,6 +14,7 @@ from orca_nw_lib.bgp import (
     getAllNeighborAfListFromDevice,
 )
 from orca_nw_lib.device import getAllDevicesIPFromDB
+from orca_nw_lib.mclag_gnmi import config_mclag_domain_on_device, config_mclag_gateway_mac_on_device, config_mclag_member_on_device, del_mclag_gateway_mac_from_device, get_mclag_domain_from_device, get_mclag_gateway_mac_from_device
 from orca_nw_lib.port_chnl_gnmi import add_port_chnl_member, del_port_chnl_from_device, get_all_port_chnl_members, get_port_chnl_from_device, remove_port_chnl_member
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
@@ -27,14 +28,8 @@ from orca_nw_lib.interfaces import (
     getAllInterfacesNameOfDeviceFromDB,
 )
 import unittest
-from orca_nw_lib.mclag import (
-    config_mclag_domain_on_device,
-    config_mclag_gateway_mac_on_device,
-    config_mclag_mem_portchnl_on_device,
+from orca_nw_lib.mclag_gnmi import (
     del_mclag_from_device,
-    del_mclag_gateway_mac_from_device,
-    get_mclag_domain_from_device,
-    get_mclag_gateway_mac_from_device,
 )
 
 
@@ -195,10 +190,10 @@ class SampleConfigDiscovery(unittest.TestCase):
         add_port_chnl_on_device(self.dut_ip_1, self.mem_port_chnl_101)
         add_port_chnl_on_device(self.dut_ip_1, self.mem_port_chnl_102)
 
-        config_mclag_mem_portchnl_on_device(
+        config_mclag_member_on_device(
             self.dut_ip_1, self.domain_id, self.mem_port_chnl_101
         )
-        config_mclag_mem_portchnl_on_device(
+        config_mclag_member_on_device(
             self.dut_ip_1, self.domain_id, self.mem_port_chnl_102
         )
 
@@ -251,10 +246,10 @@ class SampleConfigDiscovery(unittest.TestCase):
         add_port_chnl_on_device(self.dut_ip_2, self.mem_port_chnl_101)
         add_port_chnl_on_device(self.dut_ip_2, self.mem_port_chnl_102)
 
-        config_mclag_mem_portchnl_on_device(
+        config_mclag_member_on_device(
             self.dut_ip_2, self.domain_id, self.mem_port_chnl_101
         )
-        config_mclag_mem_portchnl_on_device(
+        config_mclag_member_on_device(
             self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
         )
         
