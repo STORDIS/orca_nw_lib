@@ -1,19 +1,9 @@
+from orca_nw_lib.bgp_gnmi import config_bgp_neighbor_af_on_device, config_bgp_neighbors_on_device, config_bgp_global_af_on_device, config_bgp_global_on_device, del_all_bgp_global_af_from_device, del_all_bgp_neighbors_from_device, del_all_neighbor_af_from_device, get_bgp_global_of_vrf_from_device, get_bgp_neighbor_from_device, get_all_bgp_af_list_from_device, get_all_neighbor_af_list_from_device
 from orca_nw_lib.common import VlanTagMode
-from orca_nw_lib.bgp import (
-    configBGPNeighborAFOnDevice,
-    configBGPNeighborsOnDevice,
-    configBgpGlobalAFOnDevice,
-    configBgpGlobalOnDevice,
+from orca_nw_lib.bgp_gnmi import (
     del_bgp_global_from_device,
-    delAllBgpGlobalAFFromDevice,
-    delAllBgpNeighborsFromDevice,
-    delAllNeighborAFFromDevice,
-    get_bgp_global_of_vrf_from_device,
-    get_bgp_neighbor_from_device,
-    getAllBgpAfListFromDevice,
-    getAllNeighborAfListFromDevice,
 )
-from orca_nw_lib.device import getAllDevicesIPFromDB
+from orca_nw_lib.device import get_all_devices_ip_from_db
 from orca_nw_lib.mclag_gnmi import config_mclag_domain_on_device, config_mclag_gateway_mac_on_device, config_mclag_member_on_device, del_mclag_gateway_mac_from_device, get_mclag_domain_from_device, get_mclag_gateway_mac_from_device
 from orca_nw_lib.port_chnl_gnmi import add_port_chnl_member, del_port_chnl_from_device, get_all_port_chnl_members, get_port_chnl_from_device, remove_port_chnl_member
 
@@ -82,15 +72,15 @@ class SampleConfigDiscovery(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
+        ).issubset(set(get_all_devices_ip_from_db()))
         assert (
-            len(set(getAllDevicesIPFromDB())) >= 3
+            len(set(get_all_devices_ip_from_db())) >= 3
         ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
-        all_device_list = getAllDevicesIPFromDB()
+        all_device_list = get_all_devices_ip_from_db()
         cls.dut_ip_1 = all_device_list[0]
         cls.dut_ip_2 = all_device_list[1]
         cls.dut_ip_3 = all_device_list[2]
@@ -118,7 +108,7 @@ class SampleConfigDiscovery(unittest.TestCase):
         discover_all()
         #TODO: assert more on the nodes and relations discovered.
         assert (
-            len(set(getAllDevicesIPFromDB())) >= 3
+            len(set(get_all_devices_ip_from_db())) >= 3
         ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
 
     def test_create_port_channel_config(self):
@@ -386,7 +376,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)
-        configBgpGlobalOnDevice(
+        config_bgp_global_on_device(
             self.dut_ip_1, self.asn0, self.dut_ip_1, vrf_name=self.vrf_name
         )
         for bgp_global in (
@@ -403,7 +393,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         del_bgp_global_from_device(self.dut_ip_2, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_2, self.vrf_name)
-        configBgpGlobalOnDevice(
+        config_bgp_global_on_device(
             self.dut_ip_2, self.asn1, self.dut_ip_2, vrf_name=self.vrf_name
         )
 
@@ -421,7 +411,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         del_bgp_global_from_device(self.dut_ip_3, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_3, self.vrf_name)
-        configBgpGlobalOnDevice(
+        config_bgp_global_on_device(
             self.dut_ip_3, self.asn2, self.dut_ip_3, vrf_name=self.vrf_name
         )
 
@@ -437,13 +427,13 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         ############################ Config bgp AF on all nodes
         for dev in [self.dut_ip_2, self.dut_ip_1, self.dut_ip_3]:
-            delAllBgpGlobalAFFromDevice(dev)
-            assert not getAllBgpAfListFromDevice(dev)
+            del_all_bgp_global_af_from_device(dev)
+            assert not get_all_bgp_af_list_from_device(dev)
 
-            configBgpGlobalAFOnDevice(dev, self.afi_safi, self.vrf_name)
+            config_bgp_global_af_on_device(dev, self.afi_safi, self.vrf_name)
 
             for af in (
-                getAllBgpAfListFromDevice(dev).get(
+                get_all_bgp_af_list_from_device(dev).get(
                     "sonic-bgp-global:BGP_GLOBALS_AF_LIST"
                 )
                 or []
@@ -452,13 +442,13 @@ class SampleConfigDiscovery(unittest.TestCase):
                 assert af.get("vrf_name") == self.vrf_name
 
         ############################ Setup neighbor on Spine #######################
-        delAllBgpNeighborsFromDevice(self.dut_ip_1)
+        del_all_bgp_neighbors_from_device(self.dut_ip_1)
         assert not get_bgp_neighbor_from_device(self.dut_ip_1)
 
-        configBGPNeighborsOnDevice(
+        config_bgp_neighbors_on_device(
             self.dut_ip_1, self.asn1, self.bgp_ip_0, self.vrf_name
         )
-        configBGPNeighborsOnDevice(
+        config_bgp_neighbors_on_device(
             self.dut_ip_1, self.asn2, self.bgp_ip_3, self.vrf_name
         )
         for nbr in get_bgp_neighbor_from_device(self.dut_ip_1).get(
@@ -469,17 +459,17 @@ class SampleConfigDiscovery(unittest.TestCase):
             ) or (self.asn2 == nbr.get("asn") and self.bgp_ip_3 == nbr.get("neighbor"))
             assert self.vrf_name == nbr.get("vrf_name")
 
-        delAllNeighborAFFromDevice(self.dut_ip_1)
-        assert not getAllNeighborAfListFromDevice(self.dut_ip_1)
-        configBGPNeighborAFOnDevice(
+        del_all_neighbor_af_from_device(self.dut_ip_1)
+        assert not get_all_neighbor_af_list_from_device(self.dut_ip_1)
+        config_bgp_neighbor_af_on_device(
             self.dut_ip_1, self.afi_safi, self.bgp_ip_0, self.vrf_name, True
         )
-        configBGPNeighborAFOnDevice(
+        config_bgp_neighbor_af_on_device(
             self.dut_ip_1, self.afi_safi, self.bgp_ip_3, self.vrf_name, True
         )
 
         for nbr_af in (
-            getAllNeighborAfListFromDevice(self.dut_ip_1).get(
+            get_all_neighbor_af_list_from_device(self.dut_ip_1).get(
                 "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
             )
             or []
@@ -489,10 +479,10 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert nbr_af.get("vrf_name") == self.vrf_name
 
         ############################ Setup neighbor on Leaf-1 #######################
-        delAllBgpNeighborsFromDevice(self.dut_ip_2)
+        del_all_bgp_neighbors_from_device(self.dut_ip_2)
         assert not get_bgp_neighbor_from_device(self.dut_ip_2)
 
-        configBGPNeighborsOnDevice(
+        config_bgp_neighbors_on_device(
             self.dut_ip_2, self.asn0, self.bgp_ip_1, self.vrf_name
         )
         for nbr in get_bgp_neighbor_from_device(self.dut_ip_2).get(
@@ -501,14 +491,14 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert self.asn0 == nbr.get("asn") and self.bgp_ip_1 == nbr.get("neighbor")
             assert self.vrf_name == nbr.get("vrf_name")
 
-        delAllNeighborAFFromDevice(self.dut_ip_2)
-        assert not getAllNeighborAfListFromDevice(self.dut_ip_2)
-        configBGPNeighborAFOnDevice(
+        del_all_neighbor_af_from_device(self.dut_ip_2)
+        assert not get_all_neighbor_af_list_from_device(self.dut_ip_2)
+        config_bgp_neighbor_af_on_device(
             self.dut_ip_2, self.afi_safi, self.bgp_ip_1, self.vrf_name, True
         )
 
         for nbr_af in (
-            getAllNeighborAfListFromDevice(self.dut_ip_2).get(
+            get_all_neighbor_af_list_from_device(self.dut_ip_2).get(
                 "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
             )
             or []
@@ -518,10 +508,10 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert nbr_af.get("vrf_name") == self.vrf_name
 
         ############################ Setup neighbor on Leaf-2 #######################
-        delAllBgpNeighborsFromDevice(self.dut_ip_3)
+        del_all_bgp_neighbors_from_device(self.dut_ip_3)
         assert not get_bgp_neighbor_from_device(self.dut_ip_3)
 
-        configBGPNeighborsOnDevice(
+        config_bgp_neighbors_on_device(
             self.dut_ip_3, self.asn0, self.bgp_ip_2, self.vrf_name
         )
         for nbr in get_bgp_neighbor_from_device(self.dut_ip_3).get(
@@ -530,14 +520,14 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert self.asn0 == nbr.get("asn") and self.bgp_ip_2 == nbr.get("neighbor")
             assert self.vrf_name == nbr.get("vrf_name")
 
-        delAllNeighborAFFromDevice(self.dut_ip_3)
-        assert not getAllNeighborAfListFromDevice(self.dut_ip_3)
-        configBGPNeighborAFOnDevice(
+        del_all_neighbor_af_from_device(self.dut_ip_3)
+        assert not get_all_neighbor_af_list_from_device(self.dut_ip_3)
+        config_bgp_neighbor_af_on_device(
             self.dut_ip_3, self.afi_safi, self.bgp_ip_2, self.vrf_name, True
         )
 
         for nbr_af in (
-            getAllNeighborAfListFromDevice(self.dut_ip_3).get(
+            get_all_neighbor_af_list_from_device(self.dut_ip_3).get(
                 "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
             )
             or []

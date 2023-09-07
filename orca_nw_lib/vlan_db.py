@@ -1,17 +1,17 @@
-from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.device import get_device_from_db
 from orca_nw_lib.graph_db_models import Device, Vlan
 from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
 
 
 def del_vlan_from_db(device_ip, vlan_name: str = None):
-    device: Device = getDeviceFromDB(device_ip)
+    device: Device = get_device_from_db(device_ip)
     vlan = device.vlans.get_or_none(name=vlan_name) if device else None
     if vlan:
         vlan.delete()
 
 
 def get_vlan_obj_from_db(device_ip, vlan_name: str = None):
-    device: Device = getDeviceFromDB(device_ip)
+    device: Device = get_device_from_db(device_ip)
     return (
         device.vlans.all()
         if not vlan_name
@@ -20,7 +20,7 @@ def get_vlan_obj_from_db(device_ip, vlan_name: str = None):
 
 
 def get_vlan_mem_ifcs_from_db(device_ip, vlan_name: str):
-    device: Device = getDeviceFromDB(device_ip)
+    device: Device = get_device_from_db(device_ip)
     return (
         v.memberInterfaces.all()
         if device and device.vlans and (v := device.vlans.get_or_none(name=vlan_name))

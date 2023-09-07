@@ -1,10 +1,21 @@
+from typing import List, Optional
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import send_gnmi_get
 from orca_nw_lib.graph_db_models import Device
 
 
-def createDeviceGraphObject(ip_addr: str):
-    device_detail = getDeviceDetails(ip_addr)
+def create_device_graph_object(ip_addr: str) -> Device:
+    """
+    Create a Device object based on the given IP address.
+
+    Args:
+        ip_addr (str): The IP address of the device.
+
+    Returns:
+        Device: The Device object created with the device details.
+
+    """
+    device_detail = get_device_details(ip_addr)
     return Device(
         img_name=device_detail.get("img_name"),
         mgt_intf=device_detail.get("mgt_intf"),
@@ -16,40 +27,55 @@ def createDeviceGraphObject(ip_addr: str):
     )
 
 
-def getDeviceFromDB(mgt_ip: str=None):
+def get_device_from_db(mgt_ip: str = None):
     if mgt_ip:
         return Device.nodes.get_or_none(mgt_ip=mgt_ip)
-    else:
-        return Device.nodes.all()
-        
+    return Device.nodes.all()
 
 
-def getDeviceDetailsFromDB(mgt_ip=None):
+def get_device_details_from_db(mgt_ip: Optional[str] = None) -> List[dict]:
     """
-    Sample output :
-        [{'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
-        'hwsku': 'DellEMC-S5248f-P-25G-DPB', 'mac': '0c:72:05:74:00:08', 'platform': 'x86_64-kvm_x86_64-r0', 'type': 'LeafRouter'}]
+    Get the device details from the database.
 
+    Parameters:
+        mgt_ip (Optional[str]): The management IP address of the device. Defaults to None.
+
+    Returns:
+        List[dict]: A list of dictionaries containing the device details.
     """
-    op_dict = []
+    op_dict: List[dict] = []
+
     if mgt_ip:
-        device = getDeviceFromDB(mgt_ip)
+        device = get_device_from_db(mgt_ip)
         if device:
             op_dict.append(device.__properties__)
     else:
-        device_dict = getDeviceFromDB()
+        device_dict = get_device_from_db()
         for device in device_dict or []:
             op_dict.append(device.__properties__)
+
     return op_dict
 
 
-def getDeviceDetails(device_ip: str):
+def get_device_details(device_ip: str):
     """
-    Sample output :
-        {'img_name': 'SONiC-OS-4.0.5-Enterprise_Base', 'mgt_intf': 'eth0', 'mgt_ip': '10.10.130.11/23',
-        'hwsku': 'DellEMC-S5248f-P-25G-DPB', 'mac': '0c:72:05:74:00:08', 'platform': 'x86_64-kvm_x86_64-r0', 'type': 'LeafRouter'}
+    Retrieves the details of a device based on its IP address.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        dict: A dictionary containing the following device details:
+              - "img_name" (str): The name of the device's image.
+              - "mgt_intf" (str): The management interface of the device.
+              - "mgt_ip" (str): The IP address of the management interface.
+              - "hwsku" (str): The hardware SKU of the device.
+              - "mac" (str): The MAC address of the device.
+              - "platform" (str): The platform of the device.
+              - "type" (str): The type of the device.
 
     """
+
     op_dict = {
         "img_name": "",
         "mgt_intf": "",
@@ -60,9 +86,9 @@ def getDeviceDetails(device_ip: str):
         "type": "",
     }
 
-    op1 = getDeviceImgName(device_ip)
-    op2 = getDeviceMgmtIntfcInfo(device_ip)
-    op3 = getDeviceMetadata(device_ip)
+    op1 = get_device_img_name(device_ip)
+    op2 = get_device_mgmt_intfc_info(device_ip)
+    op3 = get_device_meta_data(device_ip)
 
     if op1 is not None and op1:
         op_dict["img_name"] = op1.get("openconfig-image-management:current")
@@ -91,7 +117,7 @@ def getDeviceDetails(device_ip: str):
     return op_dict
 
 
-def getDeviceImgName(device_ip: str):
+def get_device_img_name(device_ip: str):
     """
     Sample output :
     {'openconfig-image-management:current': 'SONiC-OS-4.0.5-Enterprise_Advanced'}
@@ -122,7 +148,7 @@ def getDeviceImgName(device_ip: str):
     )
 
 
-def getDeviceMgmtIntfcInfo(device_ip: str):
+def get_device_mgmt_intfc_info(device_ip: str):
     """
     Sample Output :
     {'sonic-mgmt-interface:sonic-mgmt-interface': {'MGMT_INTF_TABLE': {'MGMT_INTF_TABLE_IPADDR_LIST': [
@@ -145,7 +171,7 @@ def getDeviceMgmtIntfcInfo(device_ip: str):
     )
 
 
-def getDeviceMetadata(device_ip: str):
+def get_device_meta_data(device_ip: str):
     """
     Sample Output :
     {'sonic-device-metadata:DEVICE_METADATA': {'DEVICE_METADATA_LIST': [{'default_config_profile': 'l3', 'hostname': 'sonic',
@@ -171,5 +197,5 @@ def getDeviceMetadata(device_ip: str):
     )
 
 
-def getAllDevicesIPFromDB():
+def get_all_devices_ip_from_db():
     return [device.mgt_ip for device in Device.nodes.all()]

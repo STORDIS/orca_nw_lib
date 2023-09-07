@@ -2,7 +2,7 @@ from typing import List
 
 from orca_nw_lib.utils import get_logging
 
-from .device import getDeviceFromDB
+from .device import get_device_from_db
 from .mclag_db import (
     create_mclag_peer_link_rel,
     get_mclag_gw_mac_of_device_from_db,
@@ -100,7 +100,7 @@ def create_mclag_gw_mac_obj(device_ip: str) -> List[MCLAG_GW_MAC]:
 
 def discover_mclag(device_ip: str = None):
     _logger.info("MCLAG Discovery Started.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
     for device in devices:
         _logger.info(f"Discovering MCLAG on device {device}.")
         insert_device_mclag_in_db(device, create_mclag_graph_objects(device.mgt_ip))
@@ -109,7 +109,7 @@ def discover_mclag(device_ip: str = None):
 
 def discover_mclag_gw_macs(device_ip: str = None):
     _logger.info("MCLAG GW MAC Discovery Started.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
     for device in devices:
         _logger.info(f"Discovering MCLAG on device {device}.")
         insert_device_mclag_gw_macs_in_db(

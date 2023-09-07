@@ -1,12 +1,13 @@
 import ipaddress
 
+from .bgp import discover_bgp
+
+
 from .mclag import discover_mclag, discover_mclag_gw_macs
-from .mclag_db import create_mclag_peer_link_rel
 
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
-from .bgp import connect_bgp_peers, createBGPGraphObjects, insert_device_bgp_in_db
-from .device import createDeviceGraphObject, getDeviceFromDB
+from .device import create_device_graph_object, get_device_from_db
 from .graph_db_models import Device
 from .interfaces import insert_device_interfaces_in_db, createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
@@ -23,19 +24,19 @@ topology = {}
 
 def read_lldp_topo(ip):
     try:
-        device = createDeviceGraphObject(ip)
+        device = create_device_graph_object(ip)
         if device not in topology.keys():
             nbrs = getLLDPNeighbors(ip)
             temp_arr = []
             for nbr in nbrs:
-                nbr_device = createDeviceGraphObject(nbr.get("nbr_ip"))
+                nbr_device = create_device_graph_object(nbr.get("nbr_ip"))
                 # Following check prevents adding an empty device object in topology.
                 # with no mgt_ip any no other properties as well.
                 # This may happen if device is pingable but gnmi connection can not be established.
                 if nbr_device.mgt_intf and nbr_device.mgt_intf:
                     temp_arr.append(
                         {
-                            "nbr_device": createDeviceGraphObject(nbr.get("nbr_ip")),
+                            "nbr_device": create_device_graph_object(nbr.get("nbr_ip")),
                             "nbr_port": nbr.get("nbr_port"),
                             "local_port": nbr.get("local_port"),
                         }
@@ -51,7 +52,7 @@ def read_lldp_topo(ip):
 
 def discover_interfaces():
     _logger.info("Interface Discovery Started.")
-    for device in getDeviceFromDB():
+    for device in get_device_from_db():
         _logger.info(f"Discovering interfaces of device {device}.")
         insert_device_interfaces_in_db(
             device, createInterfaceGraphObjects(device.mgt_ip)
@@ -60,7 +61,7 @@ def discover_interfaces():
 
 def discover_port_groups():
     _logger.info("Port-groups Discovery Started.")
-    for device in getDeviceFromDB():
+    for device in get_device_from_db():
         _logger.info(f"Discovering port-groups of device {device}.")
         insert_device_port_groups_in_db(
             device, createPortGroupGraphObjects(device.mgt_ip)
@@ -116,18 +117,6 @@ def create_lldp_rel():
     create_lldp_relations_in_db(topology)
 
 
-def discover_bgp():
-    _logger.info("Discovering BGP Global List.")
-    for device in getDeviceFromDB():
-        _logger.info(f"Discovering BGP on device {device}.")
-        insert_device_bgp_in_db(device, createBGPGraphObjects(device.mgt_ip))
-
-
-def create_bgp_peer_link_rel():
-    _logger.info("Discovering BGP neighbor relations.")
-    connect_bgp_peers()
-
-
 def discover_all():
     # clean_db()
     global topology
@@ -141,7 +130,6 @@ def discover_all():
         discover_mclag()
         discover_mclag_gw_macs()
         discover_bgp()
-        create_bgp_peer_link_rel()
 
         _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True

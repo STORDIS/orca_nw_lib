@@ -1,7 +1,7 @@
 from ast import List
 from .common import VlanTagMode
 
-from .device import getDeviceFromDB
+from .device import get_device_from_db
 from .vlan_db import (
     get_vlan_obj_from_db,
     get_vlan_mem_ifcs_from_db,
@@ -15,7 +15,7 @@ from .vlan_gnmi import (
     del_vlan_mem_interface_on_device,
     get_vlan_details_from_device,
 )
-from .device import getDeviceFromDB
+from .device import get_device_from_db
 from .utils import get_logging
 from .graph_db_models import Vlan
 
@@ -118,7 +118,7 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
 
 def discover_vlan(device_ip: str = None, vlan_name: str = None):
     _logger.info("Discovering VLAN.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
     for device in devices:
         _logger.info(f"Discovering VLAN on device {device}.")
         insertVlanInDB(device, getVlanDBObj(device.mgt_ip, vlan_name))

@@ -1,6 +1,6 @@
 from typing import List
 from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
-from orca_nw_lib.device import getDeviceFromDB
+from orca_nw_lib.device import get_device_from_db
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
@@ -116,7 +116,7 @@ def set_port_group_speed(device_ip: str, id: int, speed: Speed):
 
 
 def getAllPortGroupsOfDeviceFromDB(device_ip: str):
-    device: Device = getDeviceFromDB(device_ip)
+    device: Device = get_device_from_db(device_ip)
     return device.port_groups.all() if device else None
 
 
@@ -130,7 +130,7 @@ def getPortGroupIDOfDeviceInterfaceFromDB(device_ip: str, inertface_name: str):
 
 
 def getPortGroupFromDB(device_ip: str, group_id):
-    device: Device = getDeviceFromDB(device_ip)
+    device: Device = get_device_from_db(device_ip)
     return device.port_groups.get_or_none(port_group_id=group_id) if device else None
 
 

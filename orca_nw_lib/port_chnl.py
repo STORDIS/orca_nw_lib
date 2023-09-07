@@ -5,7 +5,7 @@ from .port_chnl_db import (
     get_all_port_chnl_of_device_from_db,
     get_port_chnl_of_device_from_db,
 )
-from .device import getDeviceFromDB
+from .device import get_device_from_db
 from .graph_db_models import PortChannel
 from .port_chnl_db import (
     get_port_chnl_members_from_db,
@@ -66,7 +66,7 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
         None
     """
     _logger.info("Port Channel Discovery Started.")
-    devices = [getDeviceFromDB(device_ip)] if device_ip else getDeviceFromDB()
+    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
     for device in devices:
         _logger.info(f"Discovering Port Channels of device {device}.")
         insert_device_port_chnl_in_db(

@@ -1,15 +1,12 @@
 import unittest
 from time import sleep
-from orca_nw_lib.bgp import (
-    configBGPNeighborsOnDevice,
-    configBgpGlobalOnDevice,
+from orca_nw_lib.bgp import config_bgp_global, config_bgp_neighbors, del_all_bgp_neighbors, del_bgp_global, get_bgp_global, get_bgp_neighbors
+from orca_nw_lib.bgp_gnmi import (
     del_bgp_global_from_device,
-    delAllBgpNeighborsFromDevice,
-    get_bgp_global_of_vrf_from_device,
-    get_bgp_neighbor_from_device,
 )
+from orca_nw_lib.bgp_gnmi import config_bgp_neighbors_on_device, config_bgp_global_on_device, del_all_bgp_neighbors_from_device, get_bgp_global_of_vrf_from_device, get_bgp_neighbor_from_device
 from orca_nw_lib.common import Speed, VlanTagMode
-from orca_nw_lib.device import getAllDevicesIPFromDB
+from orca_nw_lib.device import get_all_devices_ip_from_db
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 from orca_nw_lib.mclag import (
     config_mclag,
@@ -43,7 +40,7 @@ from orca_nw_lib.interfaces import (
     get_subinterface_from_device,
     getInterfaceOfDeviceFromDB,
 )
-from orca_nw_lib.mclag_gnmi import del_mclag_from_device,
+from orca_nw_lib.mclag_gnmi import del_mclag_from_device
 
 from orca_nw_lib.interfaces import (
     getAllInterfacesNameOfDeviceFromDB,
@@ -70,12 +67,12 @@ class InterfaceTests(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
+        ).issubset(set(get_all_devices_ip_from_db()))
+        cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.ethernet = [
             ether
             for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
@@ -281,12 +278,12 @@ class PortChannelTests(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
+        ).issubset(set(get_all_devices_ip_from_db()))
+        cls.dut_ip = get_all_devices_ip_from_db()[0]
         assert cls.dut_ip is not None
         cls.ethernet1 = [
             ether
@@ -399,13 +396,13 @@ class MclagTests(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
-        cls.peer_address = getAllDevicesIPFromDB()[1]
+        ).issubset(set(get_all_devices_ip_from_db()))
+        cls.dut_ip = get_all_devices_ip_from_db()[0]
+        cls.peer_address = get_all_devices_ip_from_db()[1]
         assert cls.dut_ip is not None
 
     def test_mclag_domain(self):
@@ -522,57 +519,53 @@ class BGPTests(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
+        ).issubset(set(get_all_devices_ip_from_db()))
         assert (
-            len(set(getAllDevicesIPFromDB())) >= 3
-        ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(getAllDevicesIPFromDB()))}"
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
-        cls.dut_ip_2 = getAllDevicesIPFromDB()[1]
-        cls.dut_ip_3 = getAllDevicesIPFromDB()[2]
-        cls.peer_address = getAllDevicesIPFromDB()[0]
+            len(set(get_all_devices_ip_from_db())) >= 3
+        ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(get_all_devices_ip_from_db()))}"
+        cls.dut_ip = get_all_devices_ip_from_db()[0]
+        cls.dut_ip_2 = get_all_devices_ip_from_db()[1]
+        cls.dut_ip_3 = get_all_devices_ip_from_db()[2]
+        cls.peer_address = get_all_devices_ip_from_db()[0]
         assert cls.dut_ip is not None
 
     def test_bgp_global_config(self):
-        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
-        configBgpGlobalOnDevice(
+        del_bgp_global(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global(self.dut_ip, self.vrf_name)
+        config_bgp_global(
             self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
         )
-        for bgp_global in (
-            get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name).get(
-                "sonic-bgp-global:BGP_GLOBALS_LIST"
-            )
-            or []
-        ):
-            assert self.asn0 == bgp_global.get("local_asn")
-            assert self.dut_ip == bgp_global.get("router_id")
-            assert self.vrf_name == bgp_global.get("vrf_name")
-        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+        
+        bgp_global=get_bgp_global(self.dut_ip, self.vrf_name)
+        for bgp in bgp_global:
+            assert self.asn0 == bgp.get("local_asn")
+            assert self.dut_ip == bgp.get("router_id")
+            assert self.vrf_name == bgp.get("vrf_name")
+        
+        del_bgp_global(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global(self.dut_ip, self.vrf_name)
 
     def test_bgp_nbr_config(self):
-        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
-        configBgpGlobalOnDevice(
+        del_bgp_global(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global(self.dut_ip, self.vrf_name)
+        config_bgp_global(
             self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
         )
-        delAllBgpNeighborsFromDevice(self.dut_ip)
-        assert not get_bgp_neighbor_from_device(self.dut_ip)
-        configBGPNeighborsOnDevice(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
-        for nbr in get_bgp_neighbor_from_device(self.dut_ip).get(
-            "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
-        ):
-            assert self.asn1 == nbr.get("asn")
-            assert self.bgp_ip_0 == nbr.get("neighbor")
-            assert self.vrf_name == nbr.get("vrf_name")
-        delAllBgpNeighborsFromDevice(self.dut_ip)
-        assert not get_bgp_neighbor_from_device(self.dut_ip)
-        del_bgp_global_from_device(self.dut_ip, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip, self.vrf_name)
+        del_all_bgp_neighbors(self.dut_ip)
+        assert not get_bgp_neighbors(self.dut_ip, self.asn0)
+        
+        config_bgp_neighbors(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
+        for nbr in get_bgp_neighbors(self.dut_ip,self.asn0):
+            assert self.bgp_ip_0 == nbr.get("ip_address")
+        
+        del_all_bgp_neighbors(self.dut_ip)
+        assert not get_bgp_neighbors(self.dut_ip, self.asn0)
+        del_bgp_global(self.dut_ip, self.vrf_name)
+        assert not get_bgp_global(self.dut_ip, self.vrf_name)
 
 
 class VLANTests(unittest.TestCase):
@@ -586,12 +579,12 @@ class VLANTests(unittest.TestCase):
     def setUpClass(cls):
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB())):
+        ).issubset(set(get_all_devices_ip_from_db())):
             discover_all()
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(getAllDevicesIPFromDB()))
-        cls.dut_ip = getAllDevicesIPFromDB()[0]
+        ).issubset(set(get_all_devices_ip_from_db()))
+        cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.eth1 = [
             ether
             for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
