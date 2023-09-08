@@ -191,3 +191,12 @@ def getJsonOfAllPortGroupsOfDeviceFromDB(device_ip: str):
             )
             op_dict.append(temp)
     return op_dict
+
+
+def discover_port_groups():
+    _logger.info("Port-groups Discovery Started.")
+    for device in get_device_from_db():
+        _logger.info(f"Discovering port-groups of device {device}.")
+        insert_device_port_groups_in_db(
+            device, createPortGroupGraphObjects(device.mgt_ip)
+        )

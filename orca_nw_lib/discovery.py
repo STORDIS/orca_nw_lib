@@ -1,6 +1,8 @@
 import ipaddress
 
-from .interface_db import insert_device_interfaces_in_db
+from orca_nw_lib.interface import discover_interfaces
+from orca_nw_lib.portgroup import discover_port_groups
+
 
 from .bgp import discover_bgp
 
@@ -9,11 +11,9 @@ from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
-from .device import create_device_graph_object, get_device_from_db
+from .device import create_device_graph_object
 from .graph_db_models import Device
-from .interface import createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
-from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config
 from .constants import network
 
@@ -50,24 +50,6 @@ def read_lldp_topo(ip):
                 read_lldp_topo(nbr.get("nbr_ip"))
     except Exception as te:
         _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
-
-
-def discover_interfaces():
-    _logger.info("Interface Discovery Started.")
-    for device in get_device_from_db():
-        _logger.info(f"Discovering interfaces of device {device}.")
-        insert_device_interfaces_in_db(
-            device, createInterfaceGraphObjects(device.mgt_ip)
-        )
-
-
-def discover_port_groups():
-    _logger.info("Port-groups Discovery Started.")
-    for device in get_device_from_db():
-        _logger.info(f"Discovering port-groups of device {device}.")
-        insert_device_port_groups_in_db(
-            device, createPortGroupGraphObjects(device.mgt_ip)
-        )
 
 
 def insert_topology_in_db(topology):
@@ -120,8 +102,15 @@ def create_lldp_rel():
 
 
 def discover_all():
-    # clean_db()
+    """
+    Discover all devices in the network and gather information about their
+    interfaces, port groups, VLANs, LLDP relationships, port channels,
+    MCLAG configurations, MCLAG gateway MAC addresses, and BGP configurations.
+
+    :return: True if the discovery was successful, False otherwise.
+    """
     global topology
+
     topology = {}
     if discover_topology():
         discover_interfaces()

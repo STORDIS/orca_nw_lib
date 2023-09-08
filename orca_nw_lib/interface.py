@@ -4,10 +4,12 @@ from typing import List
 import pytz
 
 from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
+from orca_nw_lib.device import get_device_from_db
 from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
     getAllInterfacesOfDeviceFromDB,
     getInterfaceOfDeviceFromDB,
+    insert_device_interfaces_in_db,
 )
 from orca_nw_lib.interface_gnmi import (
     del_all_subinterfaces_of_interface_from_device,
@@ -171,3 +173,12 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
         
     """
     del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
+
+
+def discover_interfaces():
+    _logger.info("Interface Discovery Started.")
+    for device in get_device_from_db():
+        _logger.info(f"Discovering interfaces of device {device}.")
+        insert_device_interfaces_in_db(
+            device, createInterfaceGraphObjects(device.mgt_ip)
+        )
