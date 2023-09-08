@@ -1,13 +1,22 @@
+import random
 import unittest
 from time import sleep
-from orca_nw_lib.bgp import config_bgp_global, config_bgp_neighbors, del_all_bgp_neighbors, del_bgp_global, get_bgp_global, get_bgp_neighbors
-from orca_nw_lib.bgp_gnmi import (
-    del_bgp_global_from_device,
+
+from orca_nw_lib.bgp import (
+    config_bgp_global,
+    config_bgp_neighbors,
+    del_all_bgp_neighbors,
+    del_bgp_global,
+    get_bgp_global,
+    get_bgp_neighbors,
 )
-from orca_nw_lib.bgp_gnmi import config_bgp_neighbors_on_device, config_bgp_global_on_device, del_all_bgp_neighbors_from_device, get_bgp_global_of_vrf_from_device, get_bgp_neighbor_from_device
 from orca_nw_lib.common import Speed, VlanTagMode
+from orca_nw_lib.constants import network
 from orca_nw_lib.device import get_all_devices_ip_from_db
+from orca_nw_lib.discovery import discover_all
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
+from orca_nw_lib.interface import config_interface, del_ip_from_intf, get_interface
+from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
 from orca_nw_lib.mclag import (
     config_mclag,
     config_mclag_gw_mac,
@@ -19,7 +28,6 @@ from orca_nw_lib.mclag import (
     get_mclag_mem_portchnls,
     get_mclags,
 )
-
 from orca_nw_lib.port_chnl import (
     add_port_chnl,
     add_port_chnl_mem,
@@ -28,26 +36,7 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
-from orca_nw_lib.port_chnl_gnmi import del_all_port_chnl
-
 from orca_nw_lib.utils import get_orca_config, ping_ok
-from orca_nw_lib.discovery import discover_all
-
-from orca_nw_lib.constants import network
-from orca_nw_lib.interfaces import (
-    del_all_subinterfaces_of_all_interfaces_from_device,
-    del_subinterface_of_interface_from_device,
-    get_subinterface_from_device,
-    getInterfaceOfDeviceFromDB,
-)
-from orca_nw_lib.mclag_gnmi import del_mclag_from_device
-
-from orca_nw_lib.interfaces import (
-    getAllInterfacesNameOfDeviceFromDB,
-    set_interface_config_on_device,
-    get_interface_config_from_device,
-    get_interface_speed_from_device,
-)
 from orca_nw_lib.vlan import (
     add_vlan_mem,
     config_vlan,
@@ -79,190 +68,74 @@ class InterfaceTests(unittest.TestCase):
             if "Ethernet" in ether
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
+        sts = gnmi_subscribe(cls.dut_ip)
+        assert sts
+        sleep(3)
 
     @classmethod
     def tearDownClass(cls) -> None:
         gnmi_unsubscribe(cls.dut_ip)
 
-    def test_interface_mtu(self):
-        config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-interfaces:config"
-        )
-        mtu_before_test = config.get("mtu")
-        mtu_to_set = 9100
-        set_interface_config_on_device(self.dut_ip, self.ethernet, mtu=mtu_to_set)
-        config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("mtu") == mtu_to_set
-        set_interface_config_on_device(self.dut_ip, self.ethernet, mtu=mtu_before_test)
-
-        config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("mtu") == mtu_before_test
-
-    def test_interface_speed(self):
-        self.ethernet = "Ethernet0"
-        speed_before_test = get_interface_speed_from_device(
-            self.dut_ip, self.ethernet
-        ).get("openconfig-if-ethernet:port-speed")
-        speed_to_set = Speed.SPEED_10GB
-        set_interface_config_on_device(self.dut_ip, self.ethernet, speed=speed_to_set)
-        assert (
-            get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
+    def test_interface_enable_subscription_update(self):
+        ##run following code 2 times to ensure the interface has its origional enable state after the test
+        for _ in range(2):
+            enable_to_set = not get_interface(self.dut_ip, self.ethernet)[0].get(
+                "enabled"
             )
-            == speed_to_set.get_oc_val()
-        )
-
-        speed_to_set = Speed.SPEED_25GB
-        set_interface_config_on_device(self.dut_ip, self.ethernet, speed=speed_to_set)
-        assert (
-            get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
-            )
-            == speed_to_set.get_oc_val()
-        )
-
-        set_interface_config_on_device(
-            self.dut_ip, self.ethernet, speed=Speed[speed_before_test.split(":")[1]]
-        )
-        assert (
-            get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
-            )
-            == speed_before_test
-        )
-
-    def test_interface_enable(self):
-        enable = False
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == enable
-
-        enable = True
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        config = get_interface_config_from_device(self.dut_ip, self.ethernet).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == enable
-
-    def test_interface_ip(self):
-        pfx_len = 31
-        ip = "1.1.1."
-        del_mclag_from_device(self.dut_ip)
-        del_all_port_chnl(self.dut_ip)
-        for idx in range(0, 1):
-            ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error
-
-            del_all_subinterfaces_of_all_interfaces_from_device(self.dut_ip)
-            for intf in (
-                get_subinterface_from_device(self.dut_ip, self.ethernet, idx).get(
-                    "openconfig-interfaces:subinterface"
-                )
-                or []
-            ):
-                assert not intf.get("openconfig-if-ip:ipv4")
-            set_interface_config_on_device(
+            config_interface(
                 self.dut_ip,
                 self.ethernet,
-                ip=f"{ip}{idx}",
-                ip_prefix_len=pfx_len,
-                index=idx,
+                enable=enable_to_set,
             )
-            sub_if_config = (
-                get_subinterface_from_device(self.dut_ip, self.ethernet, idx)
-                .get("openconfig-interfaces:subinterface")[idx]
-                .get("openconfig-if-ip:ipv4")
-                .get("addresses")
-                .get("address")[0]
+            sleep(2)
+            assert (
+                get_interface(self.dut_ip, self.ethernet)[0].get("enabled")
+                == enable_to_set
             )
-            assert sub_if_config.get("ip") == f"{ip}{idx}"
-            assert sub_if_config.get("config").get("prefix-length") == pfx_len
-            del_subinterface_of_interface_from_device(self.dut_ip, self.ethernet, idx)
-            for intf in get_subinterface_from_device(
-                self.dut_ip, self.ethernet, idx
-            ).get("openconfig-interfaces:subinterface"):
-                assert not intf.get("openconfig-if-ip:ipv4")
-
-    def test_interface_config_subscription_update(self):
-        sts = gnmi_subscribe(self.dut_ip)
-        assert sts
-        sleep(3)
-        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
-
-        enable = not getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled
-
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            enable=enable,
-        )
-        sleep(1)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).enabled == enable
-        gnmi_unsubscribe(self.dut_ip)
 
     def test_interface_speed_subscription_update(self):
-        self.ethernet = "Ethernet0"
-
-        sts = gnmi_subscribe(self.dut_ip)
-        assert sts
-        sleep(2)
-        speed = (
-            Speed.SPEED_10GB
-            if str(Speed.SPEED_25GB)
-            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
+        ##run following code 2 times to ensure the interface has its origional speed after the test
+        for _ in range(2):
+            speed = get_interface(self.dut_ip, self.ethernet)[0].get("speed")
+            speed_to_set = (
+                Speed.SPEED_40GB
+                if str(Speed.SPEED_100GB) == speed
+                else Speed.SPEED_100GB
             )
-            else Speed.SPEED_25GB
-        )
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            speed=speed,
-        )
-        sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(
-            speed
-        )
-
-        speed = (
-            Speed.SPEED_10GB
-            if str(Speed.SPEED_25GB)
-            in get_interface_speed_from_device(self.dut_ip, self.ethernet).get(
-                "openconfig-if-ethernet:port-speed"
+            config_interface(
+                self.dut_ip,
+                self.ethernet,
+                speed=speed_to_set,
             )
-            else Speed.SPEED_25GB
-        )
+            sleep(2)
+            assert get_interface(self.dut_ip, self.ethernet)[0].get("speed") == str(
+                speed_to_set
+            )
 
-        set_interface_config_on_device(
-            self.dut_ip,
-            self.ethernet,
-            speed=speed,
-        )
-        sleep(2)
-        assert getInterfaceOfDeviceFromDB(self.dut_ip, self.ethernet).speed == str(
-            speed
-        )
-        gnmi_unsubscribe(self.dut_ip)
+    def test_interface_mtu_subscription_update(self):
+        for i in range(1, 3):
+            mtu_to_set = 9102 - i
+            config_interface(
+                self.dut_ip,
+                self.ethernet,
+                mtu=mtu_to_set,
+            )
+            sleep(2)
+            assert get_interface(self.dut_ip, self.ethernet)[0].get("mtu") == mtu_to_set
+
+    def test_interface_description_subscription_update(self):
+        for _ in range(2):
+            description_to_set = "description_" + str(random.randint(1, 100))
+            config_interface(
+                self.dut_ip,
+                self.ethernet,
+                description=description_to_set,
+            )
+            sleep(2)
+            assert (
+                get_interface(self.dut_ip, self.ethernet)[0].get("description")
+                == description_to_set
+            )
 
 
 class PortChannelTests(unittest.TestCase):
@@ -305,6 +178,13 @@ class PortChannelTests(unittest.TestCase):
             for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
             if "Ethernet" in ether
         ][3]
+        sts = gnmi_subscribe(cls.dut_ip)
+        assert sts
+        sleep(3)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        gnmi_unsubscribe(cls.dut_ip)
 
     def test_add_port_chnl(self):
         ## Cleanup PortChannels
@@ -329,20 +209,13 @@ class PortChannelTests(unittest.TestCase):
     def test_add_del_port_chnl_members(self):
         ## Cleanup PortChannel 1
         mem_infcs = [self.ethernet1, self.ethernet2]
-        for mem_name in mem_infcs:
-            del_port_chnl_mem(self.dut_ip, self.chnl_name, mem_name)
-        assert not get_port_chnl_members(self.dut_ip, self.chnl_name)
-        del_port_chnl(self.dut_ip, self.chnl_name)
-        assert not get_port_chnl(self.dut_ip, self.chnl_name)
-
-        ## Cleanup PortChannel 2
         mem_infcs_2 = [self.ethernet3, self.ethernet4]
-        for mem_name in mem_infcs_2:
-            del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
-        assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
-        del_port_chnl(self.dut_ip, self.chnl_name_2)
-        assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
+        del_port_chnl(self.dut_ip)
 
+        ##Remove IPs from interfaces
+        for mem_name in mem_infcs + mem_infcs_2:
+            del_ip_from_intf(self.dut_ip, mem_name)
+            ## TODO - Check if speed is same for interfaces going to become member of same port channel
         ## Add PortChannel 1
         add_port_chnl(self.dut_ip, self.chnl_name)
         port_chnls = get_port_chnl(self.dut_ip, self.chnl_name)
@@ -409,7 +282,7 @@ class MclagTests(unittest.TestCase):
         del_port_chnl(self.dut_ip, self.peer_link)
         add_port_chnl(self.dut_ip, self.peer_link)
 
-        for chnl in get_port_chnl(self.dut_ip):
+        for chnl in get_port_chnl(self.dut_ip, self.peer_link):
             assert chnl.get("lag_name") == self.peer_link
 
         del_mclag(self.dut_ip)
@@ -536,32 +409,28 @@ class BGPTests(unittest.TestCase):
     def test_bgp_global_config(self):
         del_bgp_global(self.dut_ip, self.vrf_name)
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
-        config_bgp_global(
-            self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
-        )
-        
-        bgp_global=get_bgp_global(self.dut_ip, self.vrf_name)
+        config_bgp_global(self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name)
+
+        bgp_global = get_bgp_global(self.dut_ip, self.vrf_name)
         for bgp in bgp_global:
             assert self.asn0 == bgp.get("local_asn")
             assert self.dut_ip == bgp.get("router_id")
             assert self.vrf_name == bgp.get("vrf_name")
-        
+
         del_bgp_global(self.dut_ip, self.vrf_name)
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
 
     def test_bgp_nbr_config(self):
         del_bgp_global(self.dut_ip, self.vrf_name)
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
-        config_bgp_global(
-            self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
-        )
+        config_bgp_global(self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name)
         del_all_bgp_neighbors(self.dut_ip)
         assert not get_bgp_neighbors(self.dut_ip, self.asn0)
-        
+
         config_bgp_neighbors(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
-        for nbr in get_bgp_neighbors(self.dut_ip,self.asn0):
+        for nbr in get_bgp_neighbors(self.dut_ip, self.asn0):
             assert self.bgp_ip_0 == nbr.get("ip_address")
-        
+
         del_all_bgp_neighbors(self.dut_ip)
         assert not get_bgp_neighbors(self.dut_ip, self.asn0)
         del_bgp_global(self.dut_ip, self.vrf_name)

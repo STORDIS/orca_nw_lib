@@ -4,6 +4,8 @@ from orca_nw_lib.bgp_gnmi import (
     del_bgp_global_from_device,
 )
 from orca_nw_lib.device import get_all_devices_ip_from_db
+from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
+from orca_nw_lib.interface_gnmi import del_all_subinterfaces_of_all_interfaces_from_device, del_all_subinterfaces_of_interface_from_device, set_interface_config_on_device
 from orca_nw_lib.mclag_gnmi import config_mclag_domain_on_device, config_mclag_gateway_mac_on_device, config_mclag_member_on_device, del_mclag_gateway_mac_from_device, get_mclag_domain_from_device, get_mclag_gateway_mac_from_device
 from orca_nw_lib.port_chnl_gnmi import add_port_chnl_member, del_port_chnl_from_device, get_all_port_chnl_members, get_port_chnl_from_device, remove_port_chnl_member
 
@@ -11,11 +13,8 @@ from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
-from orca_nw_lib.interfaces import (
-    del_all_subinterfaces_of_all_interfaces_from_device,
-    del_all_subinterfaces_of_interface_from_device,
+from orca_nw_lib.interface_gnmi import (
     get_subinterface_from_device,
-    getAllInterfacesNameOfDeviceFromDB,
 )
 import unittest
 from orca_nw_lib.mclag_gnmi import (
@@ -23,8 +22,7 @@ from orca_nw_lib.mclag_gnmi import (
 )
 
 
-from orca_nw_lib.interfaces import (
-    set_interface_config_on_device,
+from orca_nw_lib.interface_gnmi import (
     get_interface_config_from_device,
 )
 from orca_nw_lib.port_chnl_gnmi import (

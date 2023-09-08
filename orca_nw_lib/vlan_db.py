@@ -1,6 +1,6 @@
 from orca_nw_lib.device import get_device_from_db
 from orca_nw_lib.graph_db_models import Device, Vlan
-from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
+from orca_nw_lib.interface_db import getInterfaceOfDeviceFromDB
 
 
 def del_vlan_from_db(device_ip, vlan_name: str = None):

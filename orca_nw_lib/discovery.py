@@ -1,5 +1,7 @@
 import ipaddress
 
+from .interface_db import insert_device_interfaces_in_db
+
 from .bgp import discover_bgp
 
 
@@ -9,7 +11,7 @@ from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .device import create_device_graph_object, get_device_from_db
 from .graph_db_models import Device
-from .interfaces import insert_device_interfaces_in_db, createInterfaceGraphObjects
+from .interface import createInterfaceGraphObjects
 from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
 from .portgroup import createPortGroupGraphObjects, insert_device_port_groups_in_db
 from .utils import get_logging, get_orca_config

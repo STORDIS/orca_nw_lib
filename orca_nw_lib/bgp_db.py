@@ -2,7 +2,7 @@ from typing import List
 
 from .utils import get_logging
 from .device import get_device_from_db
-from .interfaces import getSubInterfaceFromDB
+from .interface_db import getSubInterfaceFromDB
 from .graph_db_models import BGP, Device
 
 _logger = get_logging().getLogger(__name__)

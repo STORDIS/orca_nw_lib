@@ -13,14 +13,12 @@ from orca_nw_lib.gnmi_util import _logger, getGrpcStubs
 
 
 from typing import List
-from orca_nw_lib.interfaces import (
-    get_intfc_config_path,
-    get_intfc_speed_path,
+from orca_nw_lib.interface_db import (
     getAllInterfacesNameOfDeviceFromDB,
-    set_interface_config_in_db,
 )
+from orca_nw_lib.interface_db import set_interface_config_in_db
 
-from orca_nw_lib.interfaces import get_interface_base_path
+from orca_nw_lib.interface_gnmi import get_interface_base_path, get_intfc_config_path, get_intfc_speed_path
 from orca_nw_lib.utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
@@ -47,6 +45,10 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
             if ele.name == "port-speed":
                 set_interface_config_in_db(
                     device_ip, ether, speed=Speed[u.val.string_val]
+                )
+            if ele.name == "description":
+                set_interface_config_in_db(
+                    device_ip, ether, description=u.val.string_val
                 )
 
 

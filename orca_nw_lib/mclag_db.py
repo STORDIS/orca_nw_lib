@@ -2,7 +2,7 @@ from typing import List
 
 from .device import get_device_from_db
 from .graph_db_models import MCLAG, MCLAG_GW_MAC, Device, Interface, PortChannel
-from .interfaces import getInterfaceOfDeviceFromDB
+from .interface_db import getInterfaceOfDeviceFromDB
 from .port_chnl_db import get_port_chnl_of_device_from_db
 from .utils import get_logging
 

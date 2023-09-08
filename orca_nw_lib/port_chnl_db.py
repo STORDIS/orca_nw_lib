@@ -1,7 +1,7 @@
 from typing import List
 from .device import get_device_from_db
 from .graph_db_models import Device, Interface, PortChannel
-from .interfaces import getInterfaceOfDeviceFromDB
+from .interface_db import getInterfaceOfDeviceFromDB
 
 
 def get_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str) -> PortChannel:

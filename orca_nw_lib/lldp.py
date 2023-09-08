@@ -1,4 +1,4 @@
-from orca_nw_lib.interfaces import getInterfaceOfDeviceFromDB
+from orca_nw_lib.interface_db import getInterfaceOfDeviceFromDB
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import send_gnmi_get
 from orca_nw_lib.utils import get_logging

@@ -126,7 +126,7 @@ def add_port_chnl(
     discover_port_chnl(device_ip)
 
 
-def del_port_chnl(device_ip: str, chnl_name: str):
+def del_port_chnl(device_ip: str, chnl_name: str=None):
     """
     Deletes a port channel from a device,
     and triggers the discovery of the port channel on the device to keep database up to date.

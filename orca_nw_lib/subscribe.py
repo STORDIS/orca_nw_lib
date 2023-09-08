@@ -1,7 +1,7 @@
 from threading import Thread
 from orca_nw_lib.gnmi_sub import gnmi_subscribe
-from orca_nw_lib.interfaces import getAllInterfacesNameOfDeviceFromDB
-from orca_nw_lib.interfaces import get_intfc_config_path
+from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
+from orca_nw_lib.interface_gnmi import get_intfc_config_path
 
 
 def subscribe_for_infc_chngs(device_ip: str):

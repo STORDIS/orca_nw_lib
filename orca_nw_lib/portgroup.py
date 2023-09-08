@@ -9,7 +9,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
 )
 from orca_nw_lib.graph_db_models import Device, Interface, PortGroup
-import orca_nw_lib.interfaces as orca_interfaces
+import orca_nw_lib.interface_db as orca_interfaces
 from orca_nw_lib.utils import get_logging
 
 

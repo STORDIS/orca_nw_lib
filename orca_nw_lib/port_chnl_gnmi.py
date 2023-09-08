@@ -30,9 +30,12 @@ def get_port_chnl_list_path() -> Path:
     return path
 
 
-def get_port_chnl_path(chnl_name: str):
+def get_port_chnl_path(chnl_name: str=None):
     path = get_port_chnl_base_path()
-    path.elem.append(PathElem(name="PORTCHANNEL_LIST", key={"name": chnl_name}))
+    if chnl_name:
+        path.elem.append(PathElem(name="PORTCHANNEL_LIST", key={"name": chnl_name}))
+    else:
+        path.elem.append(PathElem(name="PORTCHANNEL_LIST"))
     return path
 
 
@@ -104,7 +107,7 @@ def remove_port_chnl_member(device_ip: str, chnl_name: str, ifname: str):
     )
 
 
-def del_port_chnl_from_device(device_ip: str, chnl_name: str):
+def del_port_chnl_from_device(device_ip: str, chnl_name: str=None):
     return send_gnmi_set(get_gnmi_del_req(get_port_chnl_path(chnl_name)), device_ip)
 
 
