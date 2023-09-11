@@ -7,8 +7,8 @@ from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
 from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
-    getAllInterfacesOfDeviceFromDB,
-    getInterfaceOfDeviceFromDB,
+    get_all_interfaces_of_device_from_db,
+    get_interface_of_device_from_db,
     insert_device_interfaces_in_db,
 )
 from orca_nw_lib.interface_gnmi import (
@@ -22,7 +22,7 @@ from orca_nw_lib.utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def createInterfaceGraphObjects(device_ip: str) -> List[Interface]:
+def create_interface_graph_objects(device_ip: str) -> List[Interface]:
     interfaces_json = get_all_interfaces_from_device(device_ip)
     intfc_graph_obj_list = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
@@ -122,18 +122,18 @@ def get_interface(device_ip: str, intfc_name=None) -> List[dict]:
 
     Returns:
         List[dict]: A list of dictionaries containing the properties of the interfaces stored in the DB.
-       
 
-    
+
+
     """
     op_dict: List[dict] = []
 
     if intfc_name:
-        intfc = getInterfaceOfDeviceFromDB(device_ip, intfc_name)
+        intfc = get_interface_of_device_from_db(device_ip, intfc_name)
         if intfc:
             op_dict.append(intfc.__properties__)
     else:
-        interfaces = getAllInterfacesOfDeviceFromDB(device_ip)
+        interfaces = get_all_interfaces_of_device_from_db(device_ip)
         for intfc in interfaces or []:
             op_dict.append(intfc.__properties__)
     return op_dict
@@ -147,7 +147,7 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
         kwargs (dict): The configuration parameters of the interface.
-        
+
     kwargs:
         enable (bool, optional): The enable status of the interface. Defaults to None.
         loopback (bool, optional): The loopback status of the interface. Defaults to None.
@@ -157,12 +157,14 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         ip (str, optional): The IP address of the interface. Defaults to None.
         ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
         index (int, optional): The index of the sub-interface. Defaults to 0.
-        
+
     """
     _logger.debug(f"Configuring interface {intfc_name} on device {device_ip}")
     set_interface_config_on_device(device_ip, intfc_name, **kwargs)
+    discover_interfaces(device_ip)
     _logger.debug(f"Configured interface {intfc_name} on device {device_ip}")
-    
+
+
 def del_ip_from_intf(device_ip: str, intfc_name: str):
     """
     Delete an IP address from an interface.
@@ -170,15 +172,16 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
     Parameters:
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
-        
+
     """
     del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
 
 
-def discover_interfaces():
+def discover_interfaces(device_ip: str = None):
     _logger.info("Interface Discovery Started.")
-    for device in get_device_db_obj():
+    devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
+    for device in devices:
         _logger.info(f"Discovering interfaces of device {device}.")
         insert_device_interfaces_in_db(
-            device, createInterfaceGraphObjects(device.mgt_ip)
+            device, create_interface_graph_objects(device.mgt_ip)
         )

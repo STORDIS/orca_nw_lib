@@ -1,13 +1,42 @@
-from orca_nw_lib.bgp_gnmi import config_bgp_neighbor_af_on_device, config_bgp_neighbors_on_device, config_bgp_global_af_on_device, config_bgp_global_on_device, del_all_bgp_global_af_from_device, del_all_bgp_neighbors_from_device, del_all_neighbor_af_from_device, get_bgp_global_of_vrf_from_device, get_bgp_neighbor_from_device, get_all_bgp_af_list_from_device, get_all_neighbor_af_list_from_device
+from orca_nw_lib.bgp_gnmi import (
+    config_bgp_neighbor_af_on_device,
+    config_bgp_neighbors_on_device,
+    config_bgp_global_af_on_device,
+    config_bgp_global_on_device,
+    del_all_bgp_global_af_from_device,
+    del_all_bgp_neighbors_from_device,
+    del_all_neighbor_af_from_device,
+    get_bgp_global_of_vrf_from_device,
+    get_bgp_neighbor_from_device,
+    get_all_bgp_af_list_from_device,
+    get_all_neighbor_af_list_from_device,
+)
 from orca_nw_lib.common import VlanTagMode
 from orca_nw_lib.bgp_gnmi import (
     del_bgp_global_from_device,
 )
 from orca_nw_lib.device_db import get_all_devices_ip_from_db
-from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
-from orca_nw_lib.interface_gnmi import del_all_subinterfaces_of_all_interfaces_from_device, del_all_subinterfaces_of_interface_from_device, set_interface_config_on_device
-from orca_nw_lib.mclag_gnmi import config_mclag_domain_on_device, config_mclag_gateway_mac_on_device, config_mclag_member_on_device, del_mclag_gateway_mac_from_device, get_mclag_domain_from_device, get_mclag_gateway_mac_from_device
-from orca_nw_lib.port_chnl_gnmi import add_port_chnl_member, del_port_chnl_from_device, get_all_port_chnl_members, get_port_chnl_from_device, remove_port_chnl_member
+from orca_nw_lib.graph_db_utils import clean_db
+from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
+from orca_nw_lib.interface_gnmi import (
+    del_all_subinterfaces_of_all_interfaces_from_device,
+    del_all_subinterfaces_of_interface_from_device,
+    set_interface_config_on_device,
+)
+from orca_nw_lib.mclag_gnmi import (
+    config_mclag_domain_on_device,
+    config_mclag_gateway_mac_on_device,
+    config_mclag_member_on_device,
+    del_mclag_gateway_mac_from_device,
+    get_mclag_domain_from_device,
+    get_mclag_gateway_mac_from_device,
+)
+from orca_nw_lib.port_chnl_gnmi import (
+    add_port_chnl_member,
+    del_port_chnl_from_device,
+    get_all_port_chnl_members,
+    get_port_chnl_from_device,
+)
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
@@ -68,10 +97,9 @@ class SampleConfigDiscovery(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
+        clean_db()
+        discover_all()
+       
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))
@@ -85,7 +113,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         all_interface = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip_1)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip_1)
             if "Ethernet" in ether
         ]
         cls.ethernet0 = all_interface[0]
@@ -104,7 +132,7 @@ class SampleConfigDiscovery(unittest.TestCase):
         ## Once all config test cases are done discovefr all again,
         ## Because, currently not all the nodes in DB are updated in real time.
         discover_all()
-        #TODO: assert more on the nodes and relations discovered.
+        # TODO: assert more on the nodes and relations discovered.
         assert (
             len(set(get_all_devices_ip_from_db())) >= 3
         ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
@@ -240,7 +268,7 @@ class SampleConfigDiscovery(unittest.TestCase):
         config_mclag_member_on_device(
             self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
         )
-        
+
         ## Create MCLAG GW mac
         del_mclag_gateway_mac_from_device(self.dut_ip_1)
         assert not get_mclag_gateway_mac_from_device(self.dut_ip_1)
@@ -253,14 +281,14 @@ class SampleConfigDiscovery(unittest.TestCase):
             .get("gateway-mac")
             == gw_mac
         )
-        
+
     def test_create_bgp_config(self):
         del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
         assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)
         pfxLen = 31
         idx = 0
         ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error
-        for ether in getAllInterfacesNameOfDeviceFromDB(self.dut_ip_1):
+        for ether in get_all_interfaces_name_of_device_from_db(self.dut_ip_1):
             ## IP config is not permitted on port channel member port
             if ether != self.ethernet2 and ether != self.ethernet3:
                 del_all_subinterfaces_of_interface_from_device(self.dut_ip_1, ether)
@@ -562,4 +590,3 @@ class SampleConfigDiscovery(unittest.TestCase):
             elif v.get("ifname") in [self.ethernet5, self.ethernet7]:
                 assert v.get("tagging_mode") == str(VlanTagMode.untagged)
             assert v.get("name") in [self.vlan_name, self.vlan_name_2]
-            

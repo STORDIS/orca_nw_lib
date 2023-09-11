@@ -82,7 +82,7 @@ def get_device_img_name(device_ip: str):
     )
 
 
-def get_device_details(device_ip: str):
+def get_device_details_from_device(device_ip: str):
     """
     Retrieves the details of a device based on its IP address.
 

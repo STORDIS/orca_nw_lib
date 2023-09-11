@@ -11,14 +11,14 @@ def copy_portgr_obj_prop(target_obj: PortGroup, src_obj: PortGroup):
     target_obj.default_speed = src_obj.default_speed
 
 
-def getPortGroupFromDB(device_ip: str, group_id):
+def get_port_group_from_db(device_ip: str, group_id):
     device: Device = get_device_db_obj(device_ip)
     return device.port_groups.get_or_none(port_group_id=group_id) if device else None
 
 
 def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = None):
     for pg, mem_intfcs in port_groups.items():
-        if p := getPortGroupFromDB(device.mgt_ip, pg.port_group_id):
+        if p := get_port_group_from_db(device.mgt_ip, pg.port_group_id):
             copy_portgr_obj_prop(p, pg)
             p.save()
             device.port_groups.connect(p)
@@ -26,34 +26,34 @@ def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = N
             pg.save()
             device.port_groups.connect(pg)
 
-        saved_pg = getPortGroupFromDB(device.mgt_ip, pg.port_group_id)
+        saved_pg = get_port_group_from_db(device.mgt_ip, pg.port_group_id)
 
         for if_name in mem_intfcs:
             saved_pg.memberInterfaces.connect(intf) if (
-                intf := orca_interfaces.getInterfaceOfDeviceFromDB(
+                intf := orca_interfaces.get_interface_of_device_from_db(
                     device.mgt_ip, if_name
                 )
             ) and saved_pg else None
 
 
-def getPortGroupMemIFFromDB(device_ip: str, group_id) -> List[Interface]:
-    port_group_obj = getPortGroupFromDB(device_ip, group_id)
+def get_port_group_member_from_db(device_ip: str, group_id) -> List[Interface]:
+    port_group_obj = get_port_group_from_db(device_ip, group_id)
     return port_group_obj.memberInterfaces.all() if port_group_obj else None
 
 
-def getPortGroupMemIFNamesFromDB(device_ip: str, group_id) -> List[str]:
-    intfcs = getPortGroupMemIFFromDB(device_ip, group_id)
+def get_port_group_member_names_from_db(device_ip: str, group_id) -> List[str]:
+    intfcs = get_port_group_member_from_db(device_ip, group_id)
     return [intf.name for intf in intfcs or []]
 
 
-def getAllPortGroupsOfDeviceFromDB(device_ip: str):
+def get_all_port_groups_of_device_from_db(device_ip: str):
     device: Device = get_device_db_obj(device_ip)
     return device.port_groups.all() if device else None
 
 
-def getPortGroupIDOfDeviceInterfaceFromDB(device_ip: str, inertface_name: str):
+def get_port_group_id_of_device_interface_from_db(device_ip: str, inertface_name: str):
     ## TODO: Following query certainly has scope of performance enhancement.
-    for pg in getAllPortGroupsOfDeviceFromDB(device_ip):
+    for pg in get_all_port_groups_of_device_from_db(device_ip):
         for intf in pg.memberInterfaces.all():
             if intf.name == inertface_name:
                 return pg.port_group_id

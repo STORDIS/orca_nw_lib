@@ -13,7 +13,7 @@ from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .device import create_device_graph_object
 from .graph_db_models import Device
-from .lldp import create_lldp_relations_in_db, getLLDPNeighbors
+from .lldp import create_lldp_relations_in_db, get_lldp_neighbors
 from .utils import get_logging, get_orca_config
 from .constants import network
 
@@ -28,7 +28,7 @@ def read_lldp_topo(ip):
     try:
         device = create_device_graph_object(ip)
         if device not in topology.keys():
-            nbrs = getLLDPNeighbors(ip)
+            nbrs = get_lldp_neighbors(ip)
             temp_arr = []
             for nbr in nbrs:
                 nbr_device = create_device_graph_object(nbr.get("nbr_ip"))
@@ -64,13 +64,14 @@ def insert_topology_in_db(topology):
 
 
 def discover_topology():
+    nw_to_discover= get_orca_config().get(network)
     _logger.info(
         "Network Discovery Started using network provided {0}".format(
-            get_orca_config().get(network)
+            nw_to_discover
         )
     )
     try:
-        for ip_or_nw in get_orca_config().get(network):
+        for ip_or_nw in nw_to_discover:
             ips = ipaddress.ip_network(ip_or_nw)
             for ip in ips:
                 _logger.debug(f"Discovering device:{ip} and its neighbors.")

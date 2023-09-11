@@ -1,6 +1,6 @@
 from orca_nw_lib.common import Speed
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
+from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
 from orca_nw_lib.gnmi_util import create_gnmi_update, create_req_for_update, get_gnmi_del_req, send_gnmi_get, send_gnmi_set
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
@@ -121,10 +121,10 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if orca_nw_lib.portgroup_db.getAllPortGroupsOfDeviceFromDB(
+        if orca_nw_lib.portgroup_db.get_all_port_groups_of_device_from_db(
             device_ip
-        ) and orca_nw_lib.portgroup_db.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
-            pg_id = orca_nw_lib.portgroup_db.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
+        ) and orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(device_ip, interface_name):
+            pg_id = orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
                     orca_nw_lib.portgroup_gnmi._get_port_group_speed_path(pg_id),
@@ -207,7 +207,7 @@ def del_all_subinterfaces_of_interface_from_device(device_ip: str, if_name: str)
 
 
 def del_all_subinterfaces_of_all_interfaces_from_device(device_ip: str):
-    for ether in getAllInterfacesNameOfDeviceFromDB(device_ip):
+    for ether in get_all_interfaces_name_of_device_from_db(device_ip):
         del_all_subinterfaces_of_interface_from_device(device_ip, ether)
 
 

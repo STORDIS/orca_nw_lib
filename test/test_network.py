@@ -14,9 +14,8 @@ from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.constants import network
 from orca_nw_lib.device_db import get_all_devices_ip_from_db
 from orca_nw_lib.discovery import discover_all
-from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 from orca_nw_lib.interface import config_interface, del_ip_from_intf, get_interface
-from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
+from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
 from orca_nw_lib.mclag import (
     config_mclag,
     config_mclag_gw_mac,
@@ -64,17 +63,10 @@ class InterfaceTests(unittest.TestCase):
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.ethernet = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
-        sts = gnmi_subscribe(cls.dut_ip)
-        assert sts
-        sleep(3)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        gnmi_unsubscribe(cls.dut_ip)
 
     def test_interface_enable_subscription_update(self):
         ##run following code 2 times to ensure the interface has its origional enable state after the test
@@ -160,31 +152,24 @@ class PortChannelTests(unittest.TestCase):
         assert cls.dut_ip is not None
         cls.ethernet1 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][0]
         cls.ethernet2 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][1]
         cls.ethernet3 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][2]
         cls.ethernet4 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][3]
-        sts = gnmi_subscribe(cls.dut_ip)
-        assert sts
-        sleep(3)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        gnmi_unsubscribe(cls.dut_ip)
 
     def test_add_port_chnl(self):
         ## Cleanup PortChannels
@@ -456,12 +441,12 @@ class VLANTests(unittest.TestCase):
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.eth1 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][0]
         cls.eth2 = [
             ether
-            for ether in getAllInterfacesNameOfDeviceFromDB(cls.dut_ip)
+            for ether in get_all_interfaces_name_of_device_from_db(cls.dut_ip)
             if "Ethernet" in ether
         ][1]
         assert cls.dut_ip is not None

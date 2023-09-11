@@ -1,7 +1,7 @@
 from typing import List
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Interface, PortChannel
-from .interface_db import getInterfaceOfDeviceFromDB
+from .interface_db import get_interface_of_device_from_db
 
 
 def get_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str) -> PortChannel:
@@ -128,7 +128,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
             device.port_chnl.connect(chnl)
         saved_p_chnl = get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name)
         for intf_name in mem_list:
-            intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
+            intf_obj = get_interface_of_device_from_db(device.mgt_ip, intf_name)
             if saved_p_chnl and intf_obj:
                 saved_p_chnl.members.connect(intf_obj)
 

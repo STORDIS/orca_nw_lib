@@ -14,7 +14,7 @@ from orca_nw_lib.gnmi_util import _logger, getGrpcStubs
 
 from typing import List
 from orca_nw_lib.interface_db import (
-    getAllInterfacesNameOfDeviceFromDB,
+    get_all_interfaces_name_of_device_from_db,
 )
 from orca_nw_lib.interface_db import set_interface_config_in_db
 
@@ -80,14 +80,14 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
 def gnmi_subscribe(device_ip: str):
     subscriptions = []
 
-    for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
+    for eth in get_all_interfaces_name_of_device_from_db(device_ip):
         subscriptions.append(
             Subscription(
                 path=get_intfc_config_path(eth), mode=SubscriptionMode.ON_CHANGE
             )
         )
 
-    for eth in getAllInterfacesNameOfDeviceFromDB(device_ip):
+    for eth in get_all_interfaces_name_of_device_from_db(device_ip):
         subscriptions.append(
             Subscription(
                 path=get_intfc_speed_path(eth), mode=SubscriptionMode.ON_CHANGE

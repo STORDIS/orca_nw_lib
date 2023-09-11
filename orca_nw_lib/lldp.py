@@ -1,4 +1,4 @@
-from orca_nw_lib.interface_db import getInterfaceOfDeviceFromDB
+from orca_nw_lib.interface_db import get_interface_of_device_from_db
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import send_gnmi_get
 from orca_nw_lib.utils import get_logging
@@ -6,7 +6,7 @@ from orca_nw_lib.utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def getLLDPNeighbors(device_ip: str):
+def get_lldp_neighbors(device_ip: str):
     lldp_json = get_lldp_interfaces_from_device(device_ip)
     neighbors = []
     for intfs in lldp_json.get("openconfig-lldp:interface") or []:
@@ -55,11 +55,11 @@ def create_lldp_relations_in_db(topology):
         for nbr in neighbors:
             nbr_device = nbr.get("nbr_device")
             local_intfc.lldp_neighbour.connect(nbr_intfc) if (
-                local_intfc := getInterfaceOfDeviceFromDB(
+                local_intfc := get_interface_of_device_from_db(
                     device.mgt_ip, nbr.get("local_port")
                 )
             ) and (
-                nbr_intfc := getInterfaceOfDeviceFromDB(
+                nbr_intfc := get_interface_of_device_from_db(
                     nbr_device.mgt_ip, nbr.get("nbr_port")
                 )
             ) else None

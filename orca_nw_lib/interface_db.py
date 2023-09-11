@@ -3,12 +3,12 @@ from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import Device, Interface, SubInterface
 
 
-def getAllInterfacesOfDeviceFromDB(device_ip: str):
+def get_all_interfaces_of_device_from_db(device_ip: str):
     device = get_device_db_obj(device_ip)
     return device.interfaces.all() if device else None
 
 
-def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface:
+def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Interface:
     device = get_device_db_obj(device_ip)
     return (
         get_device_db_obj(device_ip).interfaces.get_or_none(name=interface_name)
@@ -17,16 +17,16 @@ def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface
     )
 
 
-def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip: str) -> SubInterface:
-    for intf in getAllInterfacesOfDeviceFromDB(device_ip) or []:
+def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> SubInterface:
+    for intf in get_all_interfaces_of_device_from_db(device_ip) or []:
         if si := intf.subInterfaces.get_or_none(ip_address=sub_if_ip):
             return si
 
 
-def getSubInterfaceFromDB(sub_if_ip: str) -> SubInterface:
+def get_sub_interface_from_db(sub_if_ip: str) -> SubInterface:
     devices = get_device_db_obj()
     for device in devices:
-        if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_if_ip):
+        if si := get_sub_interface_of_device_from_db(device.mgt_ip, sub_if_ip):
             return si
 
 
@@ -51,7 +51,7 @@ def set_interface_config_in_db(
     speed: Speed = None,
     description: str = None,
 ):
-    interface = getInterfaceOfDeviceFromDB(device_ip, if_name)
+    interface = get_interface_of_device_from_db(device_ip, if_name)
     if interface:
         if enable is not None:
             interface.enabled = enable
@@ -66,7 +66,7 @@ def set_interface_config_in_db(
 
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):
     for intfc, sub_intfc in interfaces.items():
-        if i := getInterfaceOfDeviceFromDB(device.mgt_ip, intfc.name):
+        if i := get_interface_of_device_from_db(device.mgt_ip, intfc.name):
             # Update existing node
             copy_intfc_object_props(i, intfc)
             i.save()
@@ -75,10 +75,12 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             intfc.save()
             device.interfaces.connect(intfc)
 
-        saved_i = getInterfaceOfDeviceFromDB(device.mgt_ip, intfc.name)
+        saved_i = get_interface_of_device_from_db(device.mgt_ip, intfc.name)
 
         for sub_i in sub_intfc:
-            if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_i.ip_address):
+            if si := get_sub_interface_of_device_from_db(
+                device.mgt_ip, sub_i.ip_address
+            ):
                 si.ip_address = sub_i.ip_address
                 si.save()
                 saved_i.subInterfaces.connect(si) if saved_i else None
@@ -87,6 +89,6 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
                 saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
 
-def getAllInterfacesNameOfDeviceFromDB(device_ip: str):
-    intfcs = getAllInterfacesOfDeviceFromDB(device_ip)
+def get_all_interfaces_name_of_device_from_db(device_ip: str):
+    intfcs = get_all_interfaces_of_device_from_db(device_ip)
     return [intfc.name for intfc in intfcs] if intfcs else None

@@ -2,7 +2,7 @@ from typing import List
 
 from .utils import get_logging
 from .device_db import get_device_db_obj
-from .interface_db import getSubInterfaceFromDB
+from .interface_db import get_sub_interface_from_db
 from .graph_db_models import BGP, Device
 
 _logger = get_logging().getLogger(__name__)
@@ -92,7 +92,7 @@ def connect_bgp_peers():
             
             for nbr_ip in bgp.nbr_ips:
                 bgp.neighbors.connect(si) if (
-                    si := getSubInterfaceFromDB(nbr_ip)
+                    si := get_sub_interface_from_db(nbr_ip)
                 ) else None
             for remote_as in bgp.remote_asn:
                 [

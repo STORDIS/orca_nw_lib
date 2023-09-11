@@ -2,7 +2,7 @@ from typing import List
 
 from .device_db import get_device_db_obj
 from .graph_db_models import MCLAG, MCLAG_GW_MAC, Device, Interface, PortChannel
-from .interface_db import getInterfaceOfDeviceFromDB
+from .interface_db import get_interface_of_device_from_db
 from .port_chnl_db import get_port_chnl_of_device_from_db
 from .utils import get_logging
 
@@ -182,7 +182,7 @@ def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):
         saved_mclag = get_mclag_of_device_from_db(device.mgt_ip, mclag.domain_id)
 
         for intf_name in intfcs:
-            intf_obj = getInterfaceOfDeviceFromDB(device.mgt_ip, intf_name)
+            intf_obj = get_interface_of_device_from_db(device.mgt_ip, intf_name)
             if intf_obj:
                 saved_mclag.intfc_members.connect(intf_obj)
             port_chnl_obj = get_port_chnl_of_device_from_db(device.mgt_ip, intf_name)

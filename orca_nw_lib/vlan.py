@@ -1,6 +1,6 @@
 from ast import List
 
-from orca_nw_lib.vlan_db import get_vlan_db_obj
+from orca_nw_lib.vlan_db import create_vlan_db_obj
 from .common import VlanTagMode
 
 from .device_db import get_device_db_obj
@@ -88,4 +88,4 @@ def discover_vlan(device_ip: str = None, vlan_name: str = None):
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         _logger.info(f"Discovering VLAN on device {device}.")
-        insert_vlan_in_db(device, get_vlan_db_obj(device.mgt_ip, vlan_name))
+        insert_vlan_in_db(device, create_vlan_db_obj(device.mgt_ip, vlan_name))

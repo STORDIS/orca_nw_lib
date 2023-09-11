@@ -1,7 +1,7 @@
 from typing import List, Optional
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Vlan
-from .interface_db import getInterfaceOfDeviceFromDB
+from .interface_db import get_interface_of_device_from_db
 from .vlan_gnmi import get_vlan_details_from_device
 
 
@@ -108,7 +108,7 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
                 saved_vlan.memberInterfaces.connect(intf)
                 if saved_vlan
                 and (
-                    intf := getInterfaceOfDeviceFromDB(device.mgt_ip, mem.get("ifname"))
+                    intf := get_interface_of_device_from_db(device.mgt_ip, mem.get("ifname"))
                 )
                 else None
             )
@@ -121,7 +121,7 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
             del_vlan_from_db(device.mgt_ip, vlan_in_db.name)
 
 
-def get_vlan_db_obj(device_ip: str, vlan_name: str = None):
+def create_vlan_db_obj(device_ip: str, vlan_name: str = None):
     """
     Retrieves VLAN information from a device.
 
