@@ -1,11 +1,11 @@
 from time import sleep
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .port_chnl_db import (
     get_all_port_chnl_of_device_from_db,
     get_port_chnl_of_device_from_db,
 )
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .graph_db_models import PortChannel
 from .port_chnl_db import (
     get_port_chnl_members_from_db,
@@ -24,7 +24,19 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def createPortChnlGraphObject(device_ip: str, port_chnl_name: str = None):
+def create_port_chnl_graph_object(
+    device_ip: str, port_chnl_name: str = None
+) -> Dict[PortChannel, List[str]]:
+    """
+    Retrieves the information of the port channels from the specified device.
+    
+    Args:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (str, optional): The name of the port channel. Defaults to None.
+    
+    Returns:
+        Dict[PortChannel, List[str]]: A dictionary mapping PortChannel objects to lists of interface names.
+    """
     port_chnl_json = get_port_chnls_info_from_device(device_ip, port_chnl_name)
     port_chnl_obj_list = {}
     if port_chnl_json:
@@ -50,6 +62,7 @@ def createPortChnlGraphObject(device_ip: str, port_chnl_name: str = None):
                     oper_sts_reason=lag.get("reason"),
                 )
             ] = ifname_list
+            
     return port_chnl_obj_list
 
 
@@ -66,11 +79,11 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
         None
     """
     _logger.info("Port Channel Discovery Started.")
-    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
+    devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         _logger.info(f"Discovering Port Channels of device {device}.")
         insert_device_port_chnl_in_db(
-            device, createPortChnlGraphObject(device.mgt_ip, port_chnl_name)
+            device, create_port_chnl_graph_object(device.mgt_ip, port_chnl_name)
         )
 
 
@@ -126,7 +139,7 @@ def add_port_chnl(
     discover_port_chnl(device_ip)
 
 
-def del_port_chnl(device_ip: str, chnl_name: str=None):
+def del_port_chnl(device_ip: str, chnl_name: str = None):
     """
     Deletes a port channel from a device,
     and triggers the discovery of the port channel on the device to keep database up to date.

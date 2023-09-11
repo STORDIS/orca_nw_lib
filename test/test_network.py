@@ -12,7 +12,7 @@ from orca_nw_lib.bgp import (
 )
 from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.constants import network
-from orca_nw_lib.device import get_all_devices_ip_from_db
+from orca_nw_lib.device_db import get_all_devices_ip_from_db
 from orca_nw_lib.discovery import discover_all
 from orca_nw_lib.gnmi_sub import gnmi_subscribe, gnmi_unsubscribe
 from orca_nw_lib.interface import config_interface, del_ip_from_intf, get_interface

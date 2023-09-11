@@ -9,7 +9,14 @@ from orca_nw_lib.gnmi_util import (
 )
 
 
-def get_sonic_vlan_base_path():
+def get_sonic_vlan_base_path() -> Path:
+    """
+    Generates a `Path` object for the sonic-vlan base path.
+
+    Returns:
+        Path: The `Path` object representing the sonic-vlan base path.
+    """
+
     return Path(
         target="openconfig",
         origin="sonic-vlan",
@@ -61,6 +68,19 @@ def get_vlan_mem_tagging_path(vlan_name: str, intf_name: str):
 
 
 def get_vlan_details_from_device(device_ip: str, vlan_name: str = None):
+    """
+    Retrieves VLAN details from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str, optional): The name of the VLAN. Defaults to None.
+
+    Returns:
+        The VLAN details retrieved from the device.
+
+    Raises:
+        None
+    """
     return send_gnmi_get(
         device_ip=device_ip,
         path=[
@@ -72,6 +92,18 @@ def get_vlan_details_from_device(device_ip: str, vlan_name: str = None):
 
 
 def del_vlan_from_device(device_ip: str, vlan_list_name: str = None):
+    """
+    Deletes a VLAN from a device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        vlan_list_name (str, optional): The name of the VLAN list to delete. If not provided, 
+        the function will delete the VLAN using the default VLAN base path.
+
+    Returns:
+        The result of the GNMI set operation.
+
+    """
     return send_gnmi_set(
         get_gnmi_del_req(
             get_sonic_vlan_base_path()

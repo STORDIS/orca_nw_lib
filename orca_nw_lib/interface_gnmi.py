@@ -1,8 +1,9 @@
 from orca_nw_lib.common import Speed
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
-import orca_nw_lib.portgroup as pg
 from orca_nw_lib.gnmi_util import create_gnmi_update, create_req_for_update, get_gnmi_del_req, send_gnmi_get, send_gnmi_set
+import orca_nw_lib.portgroup_db
+import orca_nw_lib.portgroup_gnmi
 
 
 def get_interface_base_path():
@@ -120,13 +121,13 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if pg.getAllPortGroupsOfDeviceFromDB(
+        if orca_nw_lib.portgroup_db.getAllPortGroupsOfDeviceFromDB(
             device_ip
-        ) and pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
-            pg_id = pg.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
+        ) and orca_nw_lib.portgroup_db.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name):
+            pg_id = orca_nw_lib.portgroup_db.getPortGroupIDOfDeviceInterfaceFromDB(device_ip, interface_name)
             updates.append(
                 create_gnmi_update(
-                    pg._get_port_group_speed_path(pg_id),
+                    orca_nw_lib.portgroup_gnmi._get_port_group_speed_path(pg_id),
                     {"openconfig-port-group:speed": speed.get_oc_val()},
                 )
             )

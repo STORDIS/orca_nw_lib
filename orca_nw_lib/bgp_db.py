@@ -1,7 +1,7 @@
 from typing import List
 
 from .utils import get_logging
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .interface_db import getSubInterfaceFromDB
 from .graph_db_models import BGP, Device
 
@@ -37,7 +37,7 @@ def get_bgp_from_db(asn: int) -> List[BGP]:
     """
     return [
         b
-        for device in get_device_from_db()
+        for device in get_device_db_obj()
         for b in device.bgp.all()
         if b.local_asn == asn
     ]
@@ -82,7 +82,7 @@ def connect_bgp_peers():
     Returns:
         None
     """
-    for device in get_device_from_db():
+    for device in get_device_db_obj():
         for bgp in device.bgp.all() or []:
             ## In case neighbours has been deleted on the device,
             ## To update the DB relationship is to disconnect_all(),
@@ -111,21 +111,21 @@ def get_bgp_global_with_vrf_from_db(device_ip, vrf_name:str=None):
     Returns:
         List[BGP]: A list of BGP global configurations for the device. If the device is not found, returns None.
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     if vrf_name:
         return device.bgp.get_or_none(vrf_name=vrf_name) if device else None
     return device.bgp.all() if device else None
 
 
 def get_bgp_global_with_asn_from_db(device_ip, asn:str=None):
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     if asn:
         return device.bgp.get_or_none(local_asn=asn) if device else None
     return device.bgp.all() if device else None
 
 
 def get_bgp_neighbor_from_db(device_ip, asn:str):
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     bgp = device.bgp.get_or_none(local_asn=asn) if device else None
     return bgp.neighbors.all() if bgp else None
 

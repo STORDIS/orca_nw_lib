@@ -1,3 +1,6 @@
+from orca_nw_lib.gnmi_pb2 import PathElem
+from orca_nw_lib.gnmi_util import create_gnmi_update, create_req_for_update, send_gnmi_get, send_gnmi_set
+from orca_nw_lib.portgroup_gnmi import get_port_chnl_mem_base_path
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_gnmi_update,
@@ -141,12 +144,4 @@ def add_port_chnl_on_device(
             [create_gnmi_update(get_port_chnl_list_path(), port_chnl_add)]
         ),
         device_ip,
-    )
-
-
-def get_port_chnl_mem_base_path():
-    return Path(
-        target="openconfig",
-        origin="sonic-portchannel",
-        elem=[PathElem(name="sonic-portchannel"), PathElem(name="PORTCHANNEL_MEMBER")],
     )

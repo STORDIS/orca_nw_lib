@@ -1,17 +1,17 @@
 from orca_nw_lib.common import Speed
-from orca_nw_lib.device import get_device_from_db
+from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import Device, Interface, SubInterface
 
 
 def getAllInterfacesOfDeviceFromDB(device_ip: str):
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     return device.interfaces.all() if device else None
 
 
 def getInterfaceOfDeviceFromDB(device_ip: str, interface_name: str) -> Interface:
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     return (
-        get_device_from_db(device_ip).interfaces.get_or_none(name=interface_name)
+        get_device_db_obj(device_ip).interfaces.get_or_none(name=interface_name)
         if device
         else None
     )
@@ -24,7 +24,7 @@ def getSubInterfaceOfDeviceFromDB(device_ip: str, sub_if_ip: str) -> SubInterfac
 
 
 def getSubInterfaceFromDB(sub_if_ip: str) -> SubInterface:
-    devices = get_device_from_db()
+    devices = get_device_db_obj()
     for device in devices:
         if si := getSubInterfaceOfDeviceFromDB(device.mgt_ip, sub_if_ip):
             return si

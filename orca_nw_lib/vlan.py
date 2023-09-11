@@ -1,11 +1,13 @@
 from ast import List
+
+from orca_nw_lib.vlan_db import get_vlan_db_obj
 from .common import VlanTagMode
 
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .vlan_db import (
     get_vlan_obj_from_db,
     get_vlan_mem_ifcs_from_db,
-    insertVlanInDB,
+    insert_vlan_in_db,
 )
 from .vlan_gnmi import (
     add_vlan_mem_interface_on_device,
@@ -13,47 +15,12 @@ from .vlan_gnmi import (
     config_vlan_tagging_mode_on_device,
     del_vlan_from_device,
     del_vlan_mem_interface_on_device,
-    get_vlan_details_from_device,
 )
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .utils import get_logging
 from .graph_db_models import Vlan
 
 _logger = get_logging().getLogger(__name__)
-
-
-def getVlanDBObj(device_ip: str, vlan_name: str = None):
-    """
-    Function useful while discovery. Retrieve vlan information from device and return DB object with member information.
-    Returns {<vlan_db_obj>: {'ifname': 'Ethernet64', 'name': 'Vlan1', 'tagging_mode': 'tagged'}}
-    """
-    vlan_details = get_vlan_details_from_device(device_ip, vlan_name)
-    vlans = []
-    for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
-        vlans.append(
-            Vlan(
-                vlanid=vlan.get("vlanid"),
-                name=vlan.get("name"),
-            )
-        )
-
-    for vlan in vlan_details.get("sonic-vlan:VLAN_TABLE_LIST") or []:
-        for v in vlans:
-            if v.name == vlan.get("name"):
-                v.mtu = vlan.get("mtu")
-                v.admin_status = vlan.get("admin_status")
-                v.oper_status = vlan.get("oper_status")
-                v.autostate = vlan.get("autostate")
-
-    vlans_obj_vs_mem = {}
-    for v in vlans:
-        members = []
-        for item in vlan_details.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.name == item.get("name"):
-                members.append(item)
-        vlans_obj_vs_mem[v] = members
-
-    return vlans_obj_vs_mem
 
 
 def _getJson(device_ip: str, v: Vlan):
@@ -118,7 +85,7 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
 
 def discover_vlan(device_ip: str = None, vlan_name: str = None):
     _logger.info("Discovering VLAN.")
-    devices = [get_device_from_db(device_ip)] if device_ip else get_device_from_db()
+    devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         _logger.info(f"Discovering VLAN on device {device}.")
-        insertVlanInDB(device, getVlanDBObj(device.mgt_ip, vlan_name))
+        insert_vlan_in_db(device, get_vlan_db_obj(device.mgt_ip, vlan_name))

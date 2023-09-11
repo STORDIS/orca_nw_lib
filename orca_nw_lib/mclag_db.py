@@ -1,6 +1,6 @@
 from typing import List
 
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .graph_db_models import MCLAG, MCLAG_GW_MAC, Device, Interface, PortChannel
 from .interface_db import getInterfaceOfDeviceFromDB
 from .port_chnl_db import get_port_chnl_of_device_from_db
@@ -21,7 +21,7 @@ def get_mclag_of_device_from_db(device_ip: str, domain_id: int = None):
         MCLAG or QuerySet or None: The MCLAG object if domain_id is provided and device exists,
         or the QuerySet of all MCLAGs if device exists, or None if device doesn't exist.
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     if domain_id:
         return device.mclags.get_or_none(domain_id=domain_id) if device else None
     return device.mclags.all() if device else None
@@ -42,7 +42,7 @@ def get_mclag_gw_mac_of_device_from_db(device_ip: str, mac: str = None):
         If `mac` is not provided, returns a queryset of all MCLAG gateway
         MAC addresses of the device if it exists in the database, otherwise returns None.
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
 
     if mac:
         return device.mclag_gw_macs.get_or_none(gateway_mac=mac) if device else None
@@ -64,7 +64,7 @@ def del_mclag_gw_mac_of_device_from_db(device_ip: str, mac: str = None):
         None
 
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     gw_mac = device.mclag_gw_macs.get_or_none(gateway_mac=mac) if device else None
     if gw_mac:
         gw_mac.delete()
@@ -81,7 +81,7 @@ def del_mclag_of_device_from_db(device_ip: str, domain_id: int):
     Returns:
         None
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     mclag = device.mclags.get_or_none(domain_id=domain_id) if device else None
     if mclag:
         mclag.delete()
@@ -102,7 +102,7 @@ def create_mclag_peerlink_relations_in_db():
     Retrieves the peer link and port channel information of the peer device.
     Connects the port channel of the local device to the port channel of the peer device if both port channel information is available.
     """
-    for local_dev in get_device_from_db() or []:
+    for local_dev in get_device_db_obj() or []:
         # there is only 1 mclag per device possible so always fetch index 0
         mclag_local = (
             mcl[0] if (mcl := get_mclag_of_device_from_db(local_dev.mgt_ip)) else None

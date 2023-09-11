@@ -3,7 +3,7 @@ from orca_nw_lib.common import VlanTagMode
 from orca_nw_lib.bgp_gnmi import (
     del_bgp_global_from_device,
 )
-from orca_nw_lib.device import get_all_devices_ip_from_db
+from orca_nw_lib.device_db import get_all_devices_ip_from_db
 from orca_nw_lib.interface_db import getAllInterfacesNameOfDeviceFromDB
 from orca_nw_lib.interface_gnmi import del_all_subinterfaces_of_all_interfaces_from_device, del_all_subinterfaces_of_interface_from_device, set_interface_config_on_device
 from orca_nw_lib.mclag_gnmi import config_mclag_domain_on_device, config_mclag_gateway_mac_on_device, config_mclag_member_on_device, del_mclag_gateway_mac_from_device, get_mclag_domain_from_device, get_mclag_gateway_mac_from_device

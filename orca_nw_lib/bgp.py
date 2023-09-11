@@ -14,7 +14,7 @@ from .bgp_gnmi import (
     get_bgp_global_list_from_device,
     get_bgp_neighbor_from_device,
 )
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 
 from .graph_db_models import BGP
 from .utils import get_logging
@@ -156,7 +156,7 @@ def discover_bgp():
     None
     """
     _logger.info("Discovering BGP Global List.")
-    for device in get_device_from_db():
+    for device in get_device_db_obj():
         _logger.info(f"Discovering BGP on device {device}.")
         insert_device_bgp_in_db(device, create_bgp_graph_objects(device.mgt_ip))
     create_bgp_peer_link_rel()

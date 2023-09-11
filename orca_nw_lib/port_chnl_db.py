@@ -1,5 +1,5 @@
 from typing import List
-from .device import get_device_from_db
+from .device_db import get_device_db_obj
 from .graph_db_models import Device, Interface, PortChannel
 from .interface_db import getInterfaceOfDeviceFromDB
 
@@ -16,7 +16,7 @@ def get_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str) -> Port
         PortChannel: The port channel object if found, None otherwise.
     """
 
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     return device.port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
 
 
@@ -31,7 +31,7 @@ def del_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str):
     Returns:
         None
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     chnl = device.port_chnl.get_or_none(lag_name=port_chnl_name) if device else None
     if chnl:
         chnl.delete()
@@ -47,7 +47,7 @@ def get_all_port_chnl_of_device_from_db(device_ip: str) -> List[PortChannel]:
     Returns:
         List[PortChannel]: A list of port channel objects associated with the device.
     """
-    device = get_device_from_db(device_ip)
+    device = get_device_db_obj(device_ip)
     return device.port_chnl.all() if device else None
 
 
