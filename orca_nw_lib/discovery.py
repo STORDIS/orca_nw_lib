@@ -1,6 +1,7 @@
 import ipaddress
 
 from orca_nw_lib.interface import discover_interfaces
+from orca_nw_lib.lldp import read_lldp_topo
 from orca_nw_lib.portgroup import discover_port_groups
 
 
@@ -11,9 +12,8 @@ from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
-from .device import create_device_graph_object
 from .graph_db_models import Device
-from .lldp import create_lldp_relations_in_db, get_lldp_neighbors
+from .lldp import create_lldp_relations_in_db
 from .utils import get_logging, get_orca_config
 from .constants import network
 
@@ -24,58 +24,7 @@ _logger = get_logging().getLogger(__name__)
 topology = {}
 
 
-def read_lldp_topo(ip: str):
-    """
-    Starting from an IP address, Read LLDP table recursively 
-    untill all the connected devices are discovered.
-    Keeps the discovered devices in the `topology` dictionary.
-    Sample `topology` dictionary :
-    {<Device: 10.10.130.212>: [{'local_port': 'Ethernet0',
-                            'nbr_device': <Device: 10.10.130.210>,
-                            'nbr_port': 'Ethernet1'}]}
-    Args:
-        ip (str): The IP address of the device.
-
-    Returns:
-        None
-
-    Raises:
-        Exception: If there is an error while discovering the device.
-
-    Description:
-        This function reads the LLDP (Link Layer Discovery Protocol) topology of a device. It takes an IP address as input and creates a device graph object using the `create_device_graph_object` function. If the device is not already in the `topology` dictionary, it retrieves the LLDP neighbors of the device using the `get_lldp_neighbors` function. For each neighbor, it creates a neighbor device graph object and checks if the neighbor device has a management interface. If it does, it appends the neighbor device and its corresponding ports to a temporary array. The temporary array is then assigned to the `topology` dictionary with the device as the key. Finally, the function recursively calls itself for each neighbor device to discover their LLDP topology.
-
-        If an exception occurs during the execution of the function, an error message is logged using the `_logger` object.
-
-    """
-    try:
-        device = create_device_graph_object(ip)
-        if device not in topology:
-            nbrs = get_lldp_neighbors(ip)
-            temp_arr = []
-            for nbr in nbrs:
-                nbr_device = create_device_graph_object(nbr.get("nbr_ip"))
-                # Following check prevents adding an empty device object in topology.
-                # with no mgt_ip any no other properties as well.
-                # This may happen if device is pingable but gnmi connection can not be established.
-                if nbr_device.mgt_intf and nbr_device.mgt_intf:
-                    temp_arr.append(
-                        {
-                            "nbr_device": create_device_graph_object(nbr.get("nbr_ip")),
-                            "nbr_port": nbr.get("nbr_port"),
-                            "local_port": nbr.get("local_port"),
-                        }
-                    )
-
-            topology[device] = temp_arr
-
-            for nbr in nbrs or []:
-                read_lldp_topo(nbr.get("nbr_ip"))
-    except Exception as te:
-        _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
-
-
-def insert_topology_in_db(topology):
+def insert_devices_in_db():
     for device, neighbors in topology.items():
         if Device.nodes.get_or_none(mac=device.mac) is None:
             device.save()
@@ -88,17 +37,20 @@ def insert_topology_in_db(topology):
 
 def discover_topology():
     """
-    Discover the network topology.
+    Discover the topology of the network.
 
-    This function discovers the network topology by querying the Orca configuration to obtain the network to be discovered.
-    It then iterates over each IP and calls the function `read_lldp_topo` to discover the LLDP topology of the device and its neighbors.
+    This function retrieves the network configuration from the ORCA config file and 
+    starts the network discovery process. 
+    The network to be discovered is specified in the configuration file. 
 
     Parameters:
-        None
+    None
 
     Returns:
-        bool: True if the network topology was successfully discovered and inserted into the database, False otherwise.
+    bool: Returns True if the topology is successfully discovered and inserted into the database. 
+    Returns False otherwise.
     """
+    global topology
     nw_to_discover = get_orca_config().get(network)
     _logger.info(
         "Network Discovery Started using network provided {0}".format(nw_to_discover)
@@ -108,7 +60,7 @@ def discover_topology():
             ips = ipaddress.ip_network(ip_or_nw)
             for ip in ips:
                 _logger.debug(f"Discovering device:{ip} and its neighbors.")
-                read_lldp_topo(str(ip))
+                read_lldp_topo(str(ip),topology)
         import pprint
 
         _logger.info(
@@ -124,41 +76,35 @@ def discover_topology():
 
     if topology:
         _logger.info("Inserting Device LLDP topology to database.")
-        insert_topology_in_db(topology)
+        insert_devices_in_db()
     else:
         return False
     return True
 
 
-def create_lldp_rel():
-    """
-    Create an LLDP relation using the global dictionary `topology`.
-    Function should be called after discovering the interfaces.
-
-    Parameters:
-        None
-
-    Returns:
-        None
-    """
-    _logger.info("Discovering LLDP relations.")
-    create_lldp_relations_in_db(topology)
-
-
 def discover_all():
     """
-    Discover all devices in the network and gather information about their
-    interfaces, port groups, VLANs, LLDP relationships, port channels,
-    MCLAG configurations, MCLAG gateway MAC addresses, and BGP configurations.
+    Discover all network devices and their configurations.
 
-    :return: True if the discovery was successful, False otherwise.
+    This function performs the following tasks:
+    - Calls the `discover_topology` function to discover the network topology.
+    - Calls the `discover_interfaces` function to discover the interfaces of each device.
+    - Calls the `create_lldp_relations_in_db` function to create the LLDP relations in the database.
+    - Calls the `discover_port_groups` function to discover the port groups.
+    - Calls the `discover_vlan` function to discover the VLAN configurations.
+    - Calls the `discover_port_chnl` function to discover the port channel configurations.
+    - Calls the `discover_mclag` function to discover the MCLAG configurations.
+    - Calls the `discover_mclag_gw_macs` function to discover the MAC addresses of MCLAG gateways.
+    - Calls the `discover_bgp` function to discover the BGP configurations.
+
+    Returns:
+    - True: If the discovery process was successful.
+    - False: If the discovery process was unsuccessful.
     """
-    global topology
-
-    topology = {}
+    
     if discover_topology():
         discover_interfaces()
-        create_lldp_rel()
+        create_lldp_relations_in_db(topology)
         discover_port_groups()
         discover_vlan()
         discover_port_chnl()

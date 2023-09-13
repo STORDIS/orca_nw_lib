@@ -1,6 +1,8 @@
 from ast import List
 
-from orca_nw_lib.vlan_db import create_vlan_db_obj
+from orca_nw_lib.graph_db_models import Vlan
+from orca_nw_lib.vlan_gnmi import get_vlan_details_from_device
+
 from .common import VlanTagMode
 
 from .device_db import get_device_db_obj
@@ -22,6 +24,49 @@ from .graph_db_models import Vlan
 
 _logger = get_logging().getLogger(__name__)
 
+def create_vlan_db_obj(device_ip: str, vlan_name: str = None):
+    """
+    Retrieves VLAN information from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str, optional): The name of the VLAN to retrieve information for.
+                                   Defaults to None.
+
+    Returns:
+        dict: A dictionary mapping Vlan objects to a list of VLAN member information.
+              Each Vlan object contains information such as VLAN ID, name, MTU,
+              administrative status, operational status, and autostate.
+              {<vlan_db_obj>: {'ifname': 'Ethernet64', 'name': 'Vlan1', 'tagging_mode': 'tagged'}}
+    """
+
+    vlan_details = get_vlan_details_from_device(device_ip, vlan_name)
+    vlans = []
+    for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
+        vlans.append(
+            Vlan(
+                vlanid=vlan.get("vlanid"),
+                name=vlan.get("name"),
+            )
+        )
+
+    for vlan in vlan_details.get("sonic-vlan:VLAN_TABLE_LIST") or []:
+        for v in vlans:
+            if v.name == vlan.get("name"):
+                v.mtu = vlan.get("mtu")
+                v.admin_status = vlan.get("admin_status")
+                v.oper_status = vlan.get("oper_status")
+                v.autostate = vlan.get("autostate")
+
+    vlans_obj_vs_mem = {}
+    for v in vlans:
+        members = []
+        for item in vlan_details.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
+            if v.name == item.get("name"):
+                members.append(item)
+        vlans_obj_vs_mem[v] = members
+
+    return vlans_obj_vs_mem
 
 def _getJson(device_ip: str, v: Vlan):
     temp = v.__properties__
@@ -81,6 +126,8 @@ def config_vlan_mem_tagging(
 def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
     del_vlan_mem_interface_on_device(device_ip, vlan_name, if_name)
     discover_vlan(device_ip, vlan_name)
+
+
 
 
 def discover_vlan(device_ip: str = None, vlan_name: str = None):

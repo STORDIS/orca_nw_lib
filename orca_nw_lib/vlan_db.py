@@ -2,7 +2,6 @@ from typing import List, Optional
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Vlan
 from .interface_db import get_interface_of_device_from_db
-from .vlan_gnmi import get_vlan_details_from_device
 
 
 def del_vlan_from_db(device_ip, vlan_name: str = None):
@@ -121,46 +120,3 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
             del_vlan_from_db(device.mgt_ip, vlan_in_db.name)
 
 
-def create_vlan_db_obj(device_ip: str, vlan_name: str = None):
-    """
-    Retrieves VLAN information from a device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str, optional): The name of the VLAN to retrieve information for.
-                                   Defaults to None.
-
-    Returns:
-        dict: A dictionary mapping Vlan objects to a list of VLAN member information.
-              Each Vlan object contains information such as VLAN ID, name, MTU,
-              administrative status, operational status, and autostate.
-              {<vlan_db_obj>: {'ifname': 'Ethernet64', 'name': 'Vlan1', 'tagging_mode': 'tagged'}}
-    """
-
-    vlan_details = get_vlan_details_from_device(device_ip, vlan_name)
-    vlans = []
-    for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
-        vlans.append(
-            Vlan(
-                vlanid=vlan.get("vlanid"),
-                name=vlan.get("name"),
-            )
-        )
-
-    for vlan in vlan_details.get("sonic-vlan:VLAN_TABLE_LIST") or []:
-        for v in vlans:
-            if v.name == vlan.get("name"):
-                v.mtu = vlan.get("mtu")
-                v.admin_status = vlan.get("admin_status")
-                v.oper_status = vlan.get("oper_status")
-                v.autostate = vlan.get("autostate")
-
-    vlans_obj_vs_mem = {}
-    for v in vlans:
-        members = []
-        for item in vlan_details.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.name == item.get("name"):
-                members.append(item)
-        vlans_obj_vs_mem[v] = members
-
-    return vlans_obj_vs_mem

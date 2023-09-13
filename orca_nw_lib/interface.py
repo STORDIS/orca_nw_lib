@@ -1,5 +1,5 @@
 import datetime
-from typing import List
+from typing import Dict, List
 
 import pytz
 
@@ -24,7 +24,7 @@ _logger = get_logging().getLogger(__name__)
 
 def create_interface_graph_objects(device_ip: str) -> List[Interface]:
     interfaces_json = get_all_interfaces_from_device(device_ip)
-    intfc_graph_obj_list = {}
+    intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
         intfc_counters = intfc_state.get("counters", {})

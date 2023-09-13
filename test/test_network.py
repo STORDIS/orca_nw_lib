@@ -1,6 +1,5 @@
 import random
 import unittest
-from time import sleep
 
 from orca_nw_lib.bgp import (
     config_bgp_global,
@@ -79,7 +78,6 @@ class InterfaceTests(unittest.TestCase):
                 self.ethernet,
                 enable=enable_to_set,
             )
-            sleep(2)
             assert (
                 get_interface(self.dut_ip, self.ethernet)[0].get("enabled")
                 == enable_to_set
@@ -99,7 +97,6 @@ class InterfaceTests(unittest.TestCase):
                 self.ethernet,
                 speed=speed_to_set,
             )
-            sleep(2)
             assert get_interface(self.dut_ip, self.ethernet)[0].get("speed") == str(
                 speed_to_set
             )
@@ -112,7 +109,6 @@ class InterfaceTests(unittest.TestCase):
                 self.ethernet,
                 mtu=mtu_to_set,
             )
-            sleep(2)
             assert get_interface(self.dut_ip, self.ethernet)[0].get("mtu") == mtu_to_set
 
     def test_interface_description_subscription_update(self):
@@ -123,7 +119,6 @@ class InterfaceTests(unittest.TestCase):
                 self.ethernet,
                 description=description_to_set,
             )
-            sleep(2)
             assert (
                 get_interface(self.dut_ip, self.ethernet)[0].get("description")
                 == description_to_set
