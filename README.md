@@ -49,7 +49,7 @@ For normal usage following APIs in python modules in the package [orca_nw_lib](o
 [mclag.py](orca_nw_lib/mclag.py) - MCLAG CRUD operations.\
 [port_chnl.py](orca_nw_lib/port_chnl.py) - Port Channel CRUD operations.\
 [portgroup.py](orca_nw_lib/portgroup.py) - Read port group information.\
-[vlan.py](orca_nw_lib/vlan.py) - VLAN CRUD operations.\
+[vlan.py](orca_nw_lib/vlan.py) - VLAN CRUD operations.
 
 There are modules having suffixes _db and _gnmi, they contain operations to be performed in db or on device using gNMI respectively.\
 e.g. interface.py have general operation on interfaces and users can achieve normal interface configurations by using functions present in interface.py, on the other hand interface_db.py has function to perform CRUD operations in graph DB and interface_gnmi.py has function to configure interfaces on device.
