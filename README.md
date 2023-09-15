@@ -5,7 +5,7 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Build and Install orca\_nw\_lib](#build-and-install-orca_nw_lib)
   - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
   - [Install Neo4j](#install-neo4j)
-  - [Using the ORCA APIs](#using-the-orca-apis)
+  - [Using the ORCA Network APIs](#using-the-orca-network-apis)
   - [Knowing API call status](#knowing-api-call-status)
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
   - [Executing Tests](#executing-tests)
@@ -41,7 +41,7 @@ Easiest to install neo4j is to run in container with the following command :
 Then open https://localhost:7474 with credentials neo4j/password to browse the database.
 
 
-## Using the ORCA APIs
+## Using the ORCA Network APIs
 For normal usage following APIs in python modules in the package [orca_nw_lib](orca_nw_lib) are useful -\
 [discovery.py](orca_nw_lib/discovery.py) - discover_all() function can be used to discover complete topology as per the network defined in orca.yml\
 [bgp.py](orca_nw_lib/bgp.py) - BGP CRUD operations\
