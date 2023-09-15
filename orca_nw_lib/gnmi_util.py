@@ -3,7 +3,7 @@ import re
 import ssl
 import sys
 from typing import List
-
+from grpc._channel import _InactiveRpcError
 import grpc
 from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
 from .gnmi_pb2_grpc import gNMIStub
@@ -84,12 +84,12 @@ def send_gnmi_get(device_ip, path: list[Path]):
         for n in resp.notification:
             for u in n.update:
                 op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
-            
-    except Exception as e:
-        _logger.error(
+        return op
+    except _InactiveRpcError as e:
+        _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
         )
-    return op
+        raise
 
 
 def create_gnmi_update(path: Path, val: dict):
@@ -107,19 +107,17 @@ def get_gnmi_del_req(path: Path):
 
 
 def send_gnmi_set(req: SetRequest, device_ip: str):
-    resp = ""
     device_gnmi_stub = getGrpcStubs(device_ip)
     try:
-        resp = (
+        if device_gnmi_stub:
             device_gnmi_stub.Set(req, timeout=get_orca_config().get(conn_timeout))
-            if device_gnmi_stub
-            else _logger.error(f"no gnmi stub found for device {device_ip}")
-        )
-    except Exception as e:
-        _logger.error(
+        else :
+            _logger.error(f"no gnmi stub found for device {device_ip}")
+    except _InactiveRpcError as e:
+        _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n set request : {req}"
         )
-    return resp
+        raise
 
 
 def create_gnmi_path(path_arr: List[str]) -> List[Path]:

@@ -284,6 +284,6 @@ def insert_device_mclag_gw_macs_in_db(
             del_mclag_gw_mac_of_device_from_db(device.mgt_ip, gw_mac_in_db.gateway_mac)
 
 
-def create_mclag_peer_link_rel():
+def create_mclag_peer_link_rel_in_db():
     _logger.info("Discovering MCLAG peer-link relations.")
     create_mclag_peerlink_relations_in_db()

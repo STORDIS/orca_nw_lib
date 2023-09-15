@@ -1,10 +1,11 @@
 from typing import List
 
 from orca_nw_lib.utils import get_logging
+from grpc._channel import _InactiveRpcError
 
 from .device_db import get_device_db_obj
 from .mclag_db import (
-    create_mclag_peer_link_rel,
+    create_mclag_peer_link_rel_in_db,
     get_mclag_gw_mac_of_device_from_db,
     get_mclag_of_device_from_db,
     insert_device_mclag_gw_macs_in_db,
@@ -27,7 +28,7 @@ from .graph_db_models import MCLAG_GW_MAC, MCLAG
 _logger = get_logging().getLogger(__name__)
 
 
-def create_mclag_graph_objects(device_ip: str) -> dict:
+def _create_mclag_graph_objects(device_ip: str) -> dict:
     """
     Generates a dictionary of MCLAG objects
     and their associated interfaces based on the provided device IP.
@@ -70,7 +71,7 @@ def create_mclag_graph_objects(device_ip: str) -> dict:
     return mclags_obj_list
 
 
-def create_mclag_gw_mac_obj(device_ip: str) -> List[MCLAG_GW_MAC]:
+def _create_mclag_gw_mac_obj(device_ip: str) -> List[MCLAG_GW_MAC]:
     """
     Creates a list of MCLAG_GW_MAC objects based on the given device IP.
 
@@ -102,19 +103,33 @@ def discover_mclag(device_ip: str = None):
     _logger.info("MCLAG Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
-        _logger.info(f"Discovering MCLAG on device {device}.")
-        insert_device_mclag_in_db(device, create_mclag_graph_objects(device.mgt_ip))
-    create_mclag_peer_link_rel()
+        try:
+            _logger.info(f"Discovering MCLAG on device {device}.")
+            insert_device_mclag_in_db(
+                device, _create_mclag_graph_objects(device.mgt_ip)
+            )
+        except _InactiveRpcError as err:
+            _logger.error(
+                f"MCLAG Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            )
+            raise
+    create_mclag_peer_link_rel_in_db()
 
 
 def discover_mclag_gw_macs(device_ip: str = None):
     _logger.info("MCLAG GW MAC Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
-        _logger.info(f"Discovering MCLAG on device {device}.")
-        insert_device_mclag_gw_macs_in_db(
-            device, create_mclag_gw_mac_obj(device.mgt_ip)
-        )
+        try:
+            _logger.info(f"Discovering MCLAG on device {device}.")
+            insert_device_mclag_gw_macs_in_db(
+                device, _create_mclag_gw_mac_obj(device.mgt_ip)
+            )
+        except _InactiveRpcError as err:
+            _logger.error(
+                f"MCLAG gateway MAC Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            )
+            raise
 
 
 def get_mclags(device_ip: str, domain_id=None):
@@ -153,23 +168,38 @@ def config_mclag(
     session_timeout: int = None,
     delay_restore: int = None,
 ):
-    config_mclag_domain_on_device(
-        device_ip,
-        domain_id,
-        source_addr,
-        peer_addr,
-        peer_link,
-        mclag_sys_mac,
-        keepalive_int,
-        session_timeout,
-        delay_restore,
-    )
-    discover_mclag(device_ip)
+    try:
+        config_mclag_domain_on_device(
+            device_ip,
+            domain_id,
+            source_addr,
+            peer_addr,
+            peer_link,
+            mclag_sys_mac,
+            keepalive_int,
+            session_timeout,
+            delay_restore,
+        )
+
+    except _InactiveRpcError as err:
+        _logger.error(
+            f" MCLAG configuration failed on device_ip : {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
 
 
 def del_mclag(device_ip: str):
-    del_mclag_from_device(device_ip)
-    discover_mclag(device_ip)
+    try:
+        del_mclag_from_device(device_ip)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f" MCLAG deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
 
 
 def get_mclag_gw_mac(device_ip: str, mac: str = None):
@@ -186,13 +216,27 @@ def get_mclag_gw_mac(device_ip: str, mac: str = None):
 
 
 def config_mclag_gw_mac(device_ip: str, gw_mac: str):
-    config_mclag_gateway_mac_on_device(device_ip, gw_mac)
-    discover_mclag_gw_macs(device_ip)
+    try:
+        config_mclag_gateway_mac_on_device(device_ip, gw_mac)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"MCLAG GW MAC {gw_mac} configuration failed on device_ip : {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_mclag_gw_macs(device_ip)
 
 
 def del_mclag_gw_mac(device_ip: str):
-    del_mclag_gateway_mac_from_device(device_ip)
-    discover_mclag_gw_macs(device_ip)
+    try:
+        del_mclag_gateway_mac_from_device(device_ip)
+    except _InactiveRpcError:
+        _logger.error(
+            f"MCLAG GW MAC deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_mclag_gw_macs(device_ip)
 
 
 def get_mclag_mem_intfs(device_ip: str, mclag_domain_id: int):
@@ -222,10 +266,24 @@ def get_mclag_mem_portchnls(device_ip: str, mclag_domain_id: int):
 def config_mclag_mem_portchnl(
     device_ip: str, mclag_domain_id: int, port_chnl_name: str
 ):
-    config_mclag_member_on_device(device_ip, mclag_domain_id, port_chnl_name)
-    discover_mclag(device_ip)
+    try:
+        config_mclag_member_on_device(device_ip, mclag_domain_id, port_chnl_name)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"MCLAG member {port_chnl_name} configuration failed on mclag_domain_id : {mclag_domain_id} and device_ip : {device_ip}, Reason: {err.details()} "
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
 
 
-def del_mclag_member(device_ip:str):
-    del_mclag_member_on_device(device_ip)
-    discover_mclag(device_ip)
+def del_mclag_member(device_ip: str):
+    try:
+        del_mclag_member_on_device(device_ip)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)

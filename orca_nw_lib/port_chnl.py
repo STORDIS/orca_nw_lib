@@ -1,5 +1,7 @@
 from time import sleep
 from typing import Dict, List, Optional
+from grpc._channel import _InactiveRpcError
+
 
 from .port_chnl_db import (
     get_all_port_chnl_of_device_from_db,
@@ -24,16 +26,16 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def create_port_chnl_graph_object(
+def _create_port_chnl_graph_object(
     device_ip: str, port_chnl_name: str = None
 ) -> Dict[PortChannel, List[str]]:
     """
     Retrieves the information of the port channels from the specified device.
-    
+
     Args:
         device_ip (str): The IP address of the device.
         port_chnl_name (str, optional): The name of the port channel. Defaults to None.
-    
+
     Returns:
         Dict[PortChannel, List[str]]: A dictionary mapping PortChannel objects to lists of interface names.
     """
@@ -62,29 +64,39 @@ def create_port_chnl_graph_object(
                     oper_sts_reason=lag.get("reason"),
                 )
             ] = ifname_list
-            
+
     return port_chnl_obj_list
 
 
 def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
     """
-    Discover the port channel of a device.
+    Discover port channels of a device and insert them into the database.
 
     Args:
-        device_ip (str): The IP address of the device. If None, all devices will be used.
-        port_chnl_name (str): The name of the port channel.
-        If None, all port channels will be discovered.
+        device_ip (str, optional): The IP address of the device. Defaults to None.
+        port_chnl_name (str, optional): The name of the port channel. Defaults to None.
 
     Returns:
         None
+
+    Raises:
+        _InactiveRpcError: If the port channel discovery fails on the specified device.
+
     """
+
     _logger.info("Port Channel Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
-        _logger.info(f"Discovering Port Channels of device {device}.")
-        insert_device_port_chnl_in_db(
-            device, create_port_chnl_graph_object(device.mgt_ip, port_chnl_name)
-        )
+        try:
+            _logger.info(f"Discovering Port Channels of device {device}.")
+            insert_device_port_chnl_in_db(
+                device, _create_port_chnl_graph_object(device.mgt_ip, port_chnl_name)
+            )
+        except _InactiveRpcError as err:
+            _logger.error(
+                f"Port Channel Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            )
+            raise
 
 
 def get_port_chnl(device_ip: str, port_chnl_name: Optional[str] = None) -> List[dict]:
@@ -127,16 +139,25 @@ def add_port_chnl(
     Args:
         device_ip (str): The IP address of the device.
         chnl_name (str): The name of the port channel.
-        admin_status (str, optional): The administrative status of the port channel.
-        Defaults to None.
-        mtu (int, optional): The maximum transmission unit (MTU) size of the port channel.
-        Defaults to None.
+        admin_status (str, optional): The administrative status of the port channel. Defaults to None.
+        mtu (int, optional): The maximum transmission unit (MTU) of the port channel. Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If the addition of the port channel fails.
 
     Returns:
         None
     """
-    add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
-    discover_port_chnl(device_ip)
+
+    try:
+        add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Port Channel {chnl_name} addition failed on device {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_port_chnl(device_ip)
 
 
 def del_port_chnl(device_ip: str, chnl_name: str = None):
@@ -146,13 +167,24 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
 
     Args:
         device_ip (str): The IP address of the device.
-        chnl_name (str): The name of the port channel to delete.
+        chnl_name (str, optional): The name of the port channel to delete. Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If the deletion of the port channel fails.
 
     Returns:
         None
     """
-    del_port_chnl_from_device(device_ip, chnl_name)
-    discover_port_chnl(device_ip)
+
+    try:
+        del_port_chnl_from_device(device_ip, chnl_name)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Port Channel {chnl_name} deletion failed on device {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_port_chnl(device_ip)
 
 
 def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
@@ -160,25 +192,56 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
     Adds channel members to a port channel on the specified device,
     and triggers the discovery of the port channel on the device to keep database up to date.
 
-    Args:
+    Parameters:
         device_ip (str): The IP address of the device.
-        chnl_name (str): The name of the channel to add the members to.
-        ifnames (list[str]): A list of interface names to add as members.
+        chnl_name (str): The name of the port channel.
+        ifnames (list[str]): A list of interface names to be added as members to the port channel.
+
+    Raises:
+        _InactiveRpcError: If the addition of port channel members fails.
 
     Returns:
         None
     """
-    add_port_chnl_member(device_ip, chnl_name, ifnames)
-    ## Note - A bit strange but despite of being single threaded process,
-    ## Need to keep a delay between creating channel members and getting them.
-    sleep(1)
-    discover_port_chnl(device_ip)
+
+    try:
+        add_port_chnl_member(device_ip, chnl_name, ifnames)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Port Channel {chnl_name} members {ifnames} addition failed on device {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        ## Note - A bit strange but despite of being single threaded process,
+        ## Need to keep a delay between creating channel members and getting them.
+        sleep(1)
+        discover_port_chnl(device_ip)
 
 
 def del_port_chnl_mem(device_ip: str, chnl_name: str, ifname: str):
-    remove_port_chnl_member(device_ip, chnl_name, ifname)
-    discover_port_chnl(device_ip)
+    """
+    Deletes a member from a port channel on a given device.
 
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+        ifname (str): The name of the interface to be removed from the port channel.
+
+    Raises:
+        _InactiveRpcError: If the deletion of the member fails.
+
+    Returns:
+        None
+    """
+    try:
+        remove_port_chnl_member(device_ip, chnl_name, ifname)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Port Channel {chnl_name} member {ifname} deletion failed on device {device_ip}, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_port_chnl(device_ip)
 
 def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = None):
     if ifname:

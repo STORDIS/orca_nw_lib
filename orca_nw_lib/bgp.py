@@ -1,4 +1,5 @@
 from ast import Dict
+from grpc._channel import _InactiveRpcError
 from typing import List
 from .bgp_db import (
     create_bgp_peer_link_rel,
@@ -22,7 +23,7 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def create_bgp_graph_objects(device_ip: str) -> List[BGP]:
+def _create_bgp_graph_objects(device_ip: str) -> List[BGP]:
     """
     Creates BGP graph objects based on the given device IP.
 
@@ -109,13 +110,23 @@ def config_bgp_global(
     Returns:
         None: This function does not return anything.
     """
-    config_bgp_global_on_device(device_ip, local_asn, router_id, vrf_name)
-    discover_bgp()
+    try:
+        config_bgp_global_on_device(device_ip, local_asn, router_id, vrf_name)
+    except _InactiveRpcError as err:
+        _logger.error(f"Failed to configure BGP with ASN {local_asn} on device {device_ip}, Reason: {err.details()}.")
+        raise
+    finally:
+        discover_bgp()
 
 
 def del_bgp_global(device_ip: str, vrf_name: str) -> None:
-    del_bgp_global_from_device(device_ip, vrf_name)
-    discover_bgp()
+    try:
+        del_bgp_global_from_device(device_ip, vrf_name)
+    except _InactiveRpcError as err:
+        _logger.error(f"Failed to delete BGP with VRF {vrf_name} on device {device_ip}, Reason: {err.details()}.")
+        raise
+    finally:
+        discover_bgp()
 
 
 def get_bgp_neighbors(device_ip: str, asn: int) -> List[dict]:
@@ -133,13 +144,25 @@ def get_bgp_neighbors(device_ip: str, asn: int) -> List[dict]:
 def config_bgp_neighbors(
     device_ip: str, remote_asn: int, neighbor_ip: str, remote_vrf: str
 ):
-    config_bgp_neighbors_on_device(device_ip, remote_asn, neighbor_ip, remote_vrf)
-    discover_bgp()
+    try:
+        config_bgp_neighbors_on_device(device_ip, remote_asn, neighbor_ip, remote_vrf)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Failed to configure BGP neighbor {neighbor_ip} with ASN {remote_asn} on device {device_ip}, Reason: {err.details()}."
+        )
+        raise
+    finally:
+        discover_bgp()
 
 
 def del_all_bgp_neighbors(device_ip: str):
-    del_all_bgp_neighbors_from_device(device_ip)
-    discover_bgp()
+    try:
+        del_all_bgp_neighbors_from_device(device_ip)
+    except _InactiveRpcError as err:
+        _logger.error(f"Failed to delete BGP neighbors on device {device_ip}, Reason: {err.details()}.")
+        raise
+    finally:
+        discover_bgp()
 
 
 def discover_bgp():
@@ -157,6 +180,12 @@ def discover_bgp():
     """
     _logger.info("Discovering BGP Global List.")
     for device in get_device_db_obj():
-        _logger.info(f"Discovering BGP on device {device}.")
-        insert_device_bgp_in_db(device, create_bgp_graph_objects(device.mgt_ip))
+        try:
+            _logger.info(f"Discovering BGP on device {device}.")
+            insert_device_bgp_in_db(device, _create_bgp_graph_objects(device.mgt_ip))
+        except _InactiveRpcError as err:
+            _logger.error(
+                f"BGP Discovery Failed on device {device.mgt_ip}, Reason: {err.details()}"
+            )
+            raise
     create_bgp_peer_link_rel()

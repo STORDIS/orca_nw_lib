@@ -6,6 +6,8 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
   - [Install Neo4j](#install-neo4j)
   - [Using the ORCA APIs](#using-the-orca-apis)
+  - [Knowing API call status](#knowing-api-call-status)
+  - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
   - [Executing Tests](#executing-tests)
   - [Supported SONiC versions](#supported-sonic-versions)
 
@@ -43,7 +45,7 @@ Then open https://localhost:7474 with credentials neo4j/password to browse the d
 For normal usage following APIs in python modules in the package [orca_nw_lib](orca_nw_lib) are useful -\
 [discovery.py](orca_nw_lib/discovery.py) - discover_all() function can be used to discover complete topology as per the network defined in orca.yml\
 [bgp.py](orca_nw_lib/bgp.py) - BGP CRUD operations\
-[device.py] (orca_nw_lib/device.py) - Get device system info.\
+[device.py](orca_nw_lib/device.py) - Get device system info.\
 [interface.py](orca_nw_lib/interface.py) - Interfaces CRUD operations.\
 [lldp.py](orca_nw_lib/lldp.py) - Read LLDP relation, usefull while doing discovery.\
 [mclag.py](orca_nw_lib/mclag.py) - MCLAG CRUD operations.\
@@ -53,6 +55,16 @@ For normal usage following APIs in python modules in the package [orca_nw_lib](o
 
 There are modules having suffixes _db and _gnmi, they contain operations to be performed in db or on device using gNMI respectively.\
 e.g. interface.py have general operation on interfaces and users can achieve normal interface configurations by using functions present in interface.py, on the other hand interface_db.py has function to perform CRUD operations in graph DB and interface_gnmi.py has function to configure interfaces on device.
+
+## Knowing API call status
+Exception (grpc._channel._InactiveRpcError) raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
+
+## Keeping graph DB in sync with realtime Network state.
+gNMI subscription would have been the best way to achieve this, but due lack of support for gNMI subscription for all openconfig models in SONiC orca_nw_lib used the pull mechanism to keep graph DB in sync with realtime network state.
+
+For every write operation performed the API triggers the discovery of that network component.
+> NOTE :  To keep graph DB up to date with the changes done out side of application which uses orca_nw_lib i.e. changes done directly on the device, a recurring call to discover_all() should be performed by the application.
+
 
 ## Executing Tests
 Test cases are located under [test](./orca_nw_lib/test) directory.\

@@ -1,5 +1,6 @@
 import datetime
 from typing import Dict, List
+from grpc._channel import _InactiveRpcError
 
 import pytz
 
@@ -22,7 +23,7 @@ from orca_nw_lib.utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def create_interface_graph_objects(device_ip: str) -> List[Interface]:
+def _create_interface_graph_objects(device_ip: str):
     interfaces_json = get_all_interfaces_from_device(device_ip)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
@@ -158,11 +159,21 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
         index (int, optional): The index of the sub-interface. Defaults to 0.
 
+    raises:
+        _InactiveRpcError: If the configuration of the interface fails.
+
     """
     _logger.debug(f"Configuring interface {intfc_name} on device {device_ip}")
-    set_interface_config_on_device(device_ip, intfc_name, **kwargs)
-    discover_interfaces(device_ip)
-    _logger.debug(f"Configured interface {intfc_name} on device {device_ip}")
+    try:
+        set_interface_config_on_device(device_ip, intfc_name, **kwargs)
+        _logger.debug(f"Configured interface {intfc_name} on device {device_ip}")
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip)
 
 
 def del_ip_from_intf(device_ip: str, intfc_name: str):
@@ -173,15 +184,48 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
 
+    Raises:
+        _InactiveRpcError: If the deletion of the IP address from the interface fails.
+
     """
-    del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
+    try:
+        del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Deleting IP address from interface {intfc_name} on device {device_ip} failed, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip)
 
 
 def discover_interfaces(device_ip: str = None):
+    """
+    Discover the interfaces of a device.
+
+    This function discovers the interfaces of a device specified by its IP address.
+    If no IP address is provided, it discovers the interfaces of all devices.
+
+    Args:
+        device_ip (str, optional): The IP address of the device to discover the interfaces of.
+            Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If the interface discovery fails on any device.
+
+    Returns:
+        None
+    """
     _logger.info("Interface Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
-        _logger.info(f"Discovering interfaces of device {device}.")
-        insert_device_interfaces_in_db(
-            device, create_interface_graph_objects(device.mgt_ip)
-        )
+        try:
+            _logger.info(f"Discovering interfaces of device {device}.")
+            insert_device_interfaces_in_db(
+                device, _create_interface_graph_objects(device.mgt_ip)
+            )
+        except _InactiveRpcError as err:
+            _logger.error(
+                f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            )
+            raise
