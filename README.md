@@ -55,6 +55,7 @@ For normal usage following APIs in python modules in the package [orca_nw_lib](o
 
 There are modules having suffixes _db and _gnmi, they contain operations to be performed in db or on device using gNMI respectively.\
 e.g. interface.py have general operation on interfaces and users can achieve normal interface configurations by using functions present in interface.py, on the other hand interface_db.py has function to perform CRUD operations in graph DB and interface_gnmi.py has function to configure interfaces on device.
+> [Test cases](./test) are a good starting point to know the usage of APIs in orca_nbw_lib.
 
 ## Knowing API call status
 Exception (grpc._channel._InactiveRpcError) raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
@@ -67,8 +68,9 @@ For every write operation performed the API triggers the discovery of that netwo
 
 
 ## Executing Tests
-Test cases are located under [test](./orca_nw_lib/test) directory.\
-Example:
+Test cases are located under [test](./orca_nw_lib/test) directory. To execute tests a topology of 3 switches (1-spine, 2-leaves) is required. Prior to execute tests leaves should be connected to spine and respective interfaces should be enabled , so that by providing one of the switch IP in [orca.yml](./orca_nw_lib/orca.yml) whole topology gets discovered.\
+For performing tests creating a topology in GNS3 can be a good starting point.
+
 - To execute tests
   
         pytest orca_nw_lib/test/test_network.py
