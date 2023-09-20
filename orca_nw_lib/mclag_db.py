@@ -285,5 +285,19 @@ def insert_device_mclag_gw_macs_in_db(
 
 
 def create_mclag_peer_link_rel_in_db():
+    """
+    Create MCLAG peer-link relation in the database.
+
+    This function is responsible for discovering MCLAG peer-link relations
+    and creating them in the database. It calls the 
+    `create_mclag_peerlink_relations_in_db()` function to perform the actual
+    creation of the relations.
+
+    Parameters:
+        None
+
+    Returns:
+        None
+    """
     _logger.info("Discovering MCLAG peer-link relations.")
     create_mclag_peerlink_relations_in_db()

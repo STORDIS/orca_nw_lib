@@ -27,6 +27,12 @@ def get_bgp_neighbor_base_path() -> Path:
 
 
 def get_bgp_neighbor_list_path() -> Path:
+    """
+    Returns the path to the BGP neighbor list.
+
+    :return: A Path object representing the path to the BGP neighbor list.
+    :rtype: Path
+    """
     path = get_bgp_neighbor_base_path()
     path.elem.append(
         PathElem(
@@ -42,6 +48,12 @@ def get_bgp_neighbor_list_path() -> Path:
 
 
 def get_bgp_neighbor_af_list_path() -> Path:
+    """
+    Returns the path to the BGP neighbor AF list.
+
+    :return: A Path object representing the path to the BGP neighbor AF list.
+    :rtype: Path
+    """
     path = get_bgp_neighbor_base_path()
     path.elem.append(
         PathElem(
@@ -74,6 +86,12 @@ def get_base_bgp_global_path() -> Path:
 
 
 def get_bgp_global_path() -> Path:
+    """
+    Get the path to the BGP_GLOBALS element in the base BGP global path.
+
+    Returns:
+        Path: The path object representing the BGP_GLOBALS element in the base BGP global path.
+    """
     path = get_base_bgp_global_path()
     path.elem.append(
         PathElem(
@@ -84,6 +102,13 @@ def get_bgp_global_path() -> Path:
 
 
 def get_bgp_global_list_path() -> Path:
+    """
+    Retrieves the path to the BGP_GLOBALS_LIST in the file system.
+
+    Returns:
+        Path: The path to the BGP_GLOBALS_LIST.
+
+    """
     path = get_bgp_global_path()
     path.elem.append(
         PathElem(
@@ -94,12 +119,27 @@ def get_bgp_global_list_path() -> Path:
 
 
 def get_bgp_global_list_of_vrf_path(vrf_name) -> Path:
+    """
+    Returns the path of the BGP_GLOBALS_LIST for a specific VRF.
+
+    Args:
+        vrf_name (str): The name of the VRF.
+
+    Returns:
+        Path: The path of the BGP_GLOBALS_LIST for the specified VRF.
+    """
     path = get_bgp_global_path()
     path.elem.append(PathElem(name="BGP_GLOBALS_LIST", key={"vrf_name": vrf_name}))
     return path
 
 
 def get_bgp_global_af_list_path() -> Path:
+    """
+    Get the path for the BGP_GLOBALS_AF_LIST.
+
+    Returns:
+        Path: The path for the BGP_GLOBALS_AF_LIST.
+    """
     path = get_base_bgp_global_path()
     path.elem.append(PathElem(name="BGP_GLOBALS_AF"))
     path.elem.append(PathElem(name="BGP_GLOBALS_AF_LIST"))
@@ -107,10 +147,30 @@ def get_bgp_global_af_list_path() -> Path:
 
 
 def get_bgp_global_list_from_device(device_ip: str):
+    """
+    Get the BGP global list from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: The BGP global list obtained from the device.
+    """
     return send_gnmi_get(device_ip, [get_bgp_global_list_path()])
 
 
 def get_bgp_global_of_vrf_from_device(device_ip: str, vrf_name: str):
+    """
+    Get the BGP global of a VRF from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vrf_name (str): The name of the VRF.
+
+    Returns:
+        list: The BGP global of the VRF obtained from the device.
+    """
+
     return send_gnmi_get(device_ip, [get_bgp_global_list_of_vrf_path(vrf_name)])
 
 
@@ -183,15 +243,71 @@ def config_bgp_global_af_on_device(
     )
 
 
-def get_bgp_neighbor_from_device(device_ip: str):
+def get_bgp_neighbors_from_device(device_ip: str):
+    """
+    Get the BGP neighbors from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: The BGP neighbors obtained from the device.
+
+    Raises:
+        None
+    """
+
+    return send_gnmi_get(device_ip, [get_bgp_neighbor_base_path()])
+
+
+def get_bgp_neighbor_list_from_device(device_ip: str):
+    """
+    Get the BGP neighbor list from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: The BGP neighbor list obtained from the device.
+
+    Raises:
+        None
+    """
+
     return send_gnmi_get(device_ip, [get_bgp_neighbor_list_path()])
 
 
-def get_all_bgp_af_list_from_device(device_ip):
+def get_bgp_global_af_list_from_device(device_ip):
+    """
+    Get the BGP global address family list from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: The BGP global address family list obtained from the device.
+
+    Raises:
+        None
+    """
+
     return send_gnmi_get(device_ip, [get_bgp_global_af_list_path()])
 
 
 def del_all_bgp_global_af_from_device(device_ip: str):
+    """
+    Delete all BGP global address family from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        str: The result of the GNMI set operation.
+
+    Raises:
+        None
+    """
+
     return send_gnmi_set(get_gnmi_del_req(get_bgp_global_af_list_path()), device_ip)
 
 
@@ -278,18 +394,59 @@ def config_bgp_neighbor_af_on_device(
 
 
 def get_all_neighbor_af_list_from_device(device_ip):
+    """
+    Get all neighbor AF list from a device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: A list of all neighbor AF lists from the device.
+    """
     return send_gnmi_get(device_ip, [get_bgp_neighbor_af_list_path()])
 
 
 def del_all_neighbor_af_from_device(device_ip: str):
+    """
+    Deletes all the neighbor address families (AF) from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device from which to delete the neighbor AFs.
+
+    Returns:
+        The response from the GNMI set operation that deletes the neighbor AFs from the device.
+    """
+
     return send_gnmi_set(get_gnmi_del_req(get_bgp_neighbor_af_list_path()), device_ip)
 
 
 def del_all_bgp_neighbors_from_device(device_ip: str):
+    """
+    Deletes all BGP neighbors from a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        The result of the GNMI set operation.
+
+    Raises:
+        None.
+    """
     return send_gnmi_set(get_gnmi_del_req(get_bgp_neighbor_list_path()), device_ip)
 
 
 def del_bgp_global_from_device(device_ip: str, vrf_name: str):
+    """
+    Deletes the BGP global configuration from a specific device and virtual routing and forwarding (VRF) instance.
+
+    Args:
+        device_ip (str): The IP address of the device from which the BGP global configuration will be deleted.
+        vrf_name (str): The name of the VRF instance.
+
+    Returns:
+        None: This function does not return any value.
+    """
     return send_gnmi_set(
         get_gnmi_del_req(get_bgp_global_list_of_vrf_path(vrf_name)), device_ip
     )

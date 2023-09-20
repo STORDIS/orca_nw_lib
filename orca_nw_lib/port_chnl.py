@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from grpc._channel import _InactiveRpcError
 
 
@@ -99,34 +99,35 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
             raise
 
 
-def get_port_chnl(device_ip: str, port_chnl_name: Optional[str] = None) -> List[dict]:
+def get_port_chnl(
+    device_ip: str, port_chnl_name: Optional[str] = None
+) -> Union[List[Dict[str, Any]], Dict[str, Any], None]:
     """
-    Retrieves the port channel information for a specific device.
+    Retrieves the port channel information for a given device.
 
     Args:
         device_ip (str): The IP address of the device.
         port_chnl_name (Optional[str], optional): The name of the port channel. Defaults to None.
 
     Returns:
-        List[dict]: A list of dictionaries containing the properties of the port channels.
-
-    Raises:
-        None
-
-    Examples:
-        >>> get_port_chnl("192.168.0.1", "PortChannel1")
-        [{'property1': 'value1', 'property2': 'value2'},
-        {'property1': 'value3', 'property2': 'value4'}]
+        Union[List[Dict[str, Any]], Dict[str, Any], None]: If `port_chnl_name` is provided,
+        returns the properties of the specified port channel as a dictionary.
+        If `port_chnl_name` is not provided, returns a list of dictionaries containing
+        the properties of all port channels associated with the device.
+        If no port channels are found, returns an empty list.
+        If the device or port channel is not found, returns None.
     """
-    op_dict = []
+
     if port_chnl_name:
-        if port_chnl := get_port_chnl_of_device_from_db(device_ip, port_chnl_name):
-            op_dict.append(port_chnl.__properties__)
-    else:
-        port_chnl = get_all_port_chnl_of_device_from_db(device_ip)
-        for chnl in port_chnl or []:
-            op_dict.append(chnl.__properties__)
-    return op_dict
+        return (
+            port_chnl.__properties__
+            if (port_chnl := get_port_chnl_of_device_from_db(device_ip, port_chnl_name))
+            else None
+        )
+    return [
+        chnl.__properties__
+        for chnl in get_all_port_chnl_of_device_from_db(device_ip) or []
+    ]
 
 
 def add_port_chnl(
@@ -243,7 +244,19 @@ def del_port_chnl_mem(device_ip: str, chnl_name: str, ifname: str):
     finally:
         discover_port_chnl(device_ip)
 
+
 def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = None):
+    """
+    Retrieves the members of a port channel on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_chnl_name (str): The name of the port channel.
+        ifname (str, optional): The name of the interface. Defaults to None.
+
+    Returns:
+        Union[List[Dict[str, Any]], None]: A list of dictionaries representing the properties of each member of the port channel. Returns None if no members are found.
+    """
     if ifname:
         return (
             port_chnl_mem.__properties__

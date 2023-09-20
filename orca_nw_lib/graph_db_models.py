@@ -6,10 +6,15 @@ from neomodel import (
     StringProperty,
     IntegerProperty,
     RelationshipTo,
+    JSONProperty,
 )
 
 
 class Device(StructuredNode):
+    """
+    Represents a device in the database.
+    """
+
     img_name = StringProperty()
     mgt_intf = StringProperty()
     mgt_ip = StringProperty()
@@ -26,6 +31,7 @@ class Device(StructuredNode):
     bgp = RelationshipTo("BGP", "BGP_GLOBAL")
     vlans = RelationshipTo("Vlan", "HAS")
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
+    bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -43,6 +49,10 @@ class Device(StructuredNode):
 
 
 class PortChannel(StructuredNode):
+    """
+    Represents a port channel in the database.
+    """
+
     lag_name = StringProperty(unique_index=True)  # name of port channel
     active = BooleanProperty()
     admin_sts = StringProperty()
@@ -72,6 +82,10 @@ class PortChannel(StructuredNode):
 
 
 class MCLAG_GW_MAC(StructuredNode):
+    """
+    Represents a MCLAG gateway MAC address in the database.
+    """
+
     gateway_mac = StringProperty()
 
     def __eq__(self, other):
@@ -87,6 +101,10 @@ class MCLAG_GW_MAC(StructuredNode):
 
 
 class MCLAG(StructuredNode):
+    """
+    Represents a MCLAG in the database.
+    """
+
     domain_id = IntegerProperty()
     keepalive_interval = IntegerProperty()
     mclag_sys_mac = StringProperty()
@@ -116,6 +134,10 @@ class MCLAG(StructuredNode):
 
 
 class SubInterface(StructuredNode):
+    """
+    Represents a sub interface in the database.
+    """
+
     ip_address = StringProperty()
 
     def __eq__(self, other):
@@ -131,6 +153,10 @@ class SubInterface(StructuredNode):
 
 
 class Interface(StructuredNode):
+    """
+    Represents an interface in the database.
+    """
+
     name = StringProperty(unique_index=True)
     enabled = BooleanProperty()
     mtu = IntegerProperty()
@@ -198,6 +224,10 @@ class Interface(StructuredNode):
 
 
 class PortGroup(StructuredNode):
+    """
+    Represents a port group in the database.
+    """
+
     port_group_id = IntegerProperty()
     speed = StringProperty()
     valid_speeds = ArrayProperty()
@@ -216,14 +246,26 @@ class PortGroup(StructuredNode):
         return str(self.port_group_id)
 
 
+class Bgp_Neighbor_Rel(StructuredRel):
+    """
+    Represents a relationship between two BGP neighbors.
+    """
+
+    afi_safi = JSONProperty()
+    vrf_name = StringProperty()
+
+
 class BGP(StructuredNode):
+    """
+    Represents a BGP neighbor in the database.
+    """
+
     local_asn = IntegerProperty()
     vrf_name = StringProperty()
     router_id = StringProperty()
-    remote_asn = ArrayProperty()
-    nbr_ips = ArrayProperty()
+    neighbor_prop = JSONProperty()
 
-    neighbors = RelationshipTo("SubInterface", "BGP_NEIGHBOR")
+    neighbor = RelationshipTo("SubInterface", "BGP_NEIGHBOR", model=Bgp_Neighbor_Rel)
     remote_asn_node = RelationshipTo("BGP", "REMOTE_ASN")
 
     def __eq__(self, other):
@@ -238,11 +280,39 @@ class BGP(StructuredNode):
         return str(self.local_asn)
 
 
+class BGP_GLOBAL_AF(StructuredNode):
+    """
+    Represents a BGP Global AF in the database.
+    """
+
+    afi_safi = StringProperty()
+    vrf_name = StringProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.afi_safi == other.afi_safi
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.afi_safi)
+
+    def __str__(self):
+        return str(self.afi_safi)
+
+
 class VlanMemRel(StructuredRel):
+    """
+    Represents a relationship between a VLAN and an interface.
+    """
+
     tagging_mode = StringProperty()
 
 
 class Vlan(StructuredNode):
+    """
+    Represents a VLAN in the database.
+    """
+
     vlanid = IntegerProperty()
     name = StringProperty()
     mtu = IntegerProperty()

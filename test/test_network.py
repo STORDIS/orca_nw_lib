@@ -8,7 +8,7 @@ from orca_nw_lib.bgp import (
     del_all_bgp_neighbors,
     del_bgp_global,
     get_bgp_global,
-    get_bgp_neighbors,
+    get_bgp_neighbors_subinterfaces,
 )
 from orca_nw_lib.common import Speed, VlanTagMode
 from orca_nw_lib.constants import network
@@ -71,7 +71,7 @@ class InterfaceTests(unittest.TestCase):
     def test_interface_enable_subscription_update(self):
         ##run following code 2 times to ensure the interface has its origional enable state after the test
         for _ in range(2):
-            enable_to_set = not get_interface(self.dut_ip, self.ethernet)[0].get(
+            enable_to_set = not get_interface(self.dut_ip, self.ethernet).get(
                 "enabled"
             )
             try:
@@ -83,14 +83,14 @@ class InterfaceTests(unittest.TestCase):
             except _InactiveRpcError as err:
                 self.fail(err)
             assert (
-                get_interface(self.dut_ip, self.ethernet)[0].get("enabled")
+                get_interface(self.dut_ip, self.ethernet).get("enabled")
                 == enable_to_set
             )
 
     def test_interface_speed_subscription_update(self):
         ##run following code 2 times to ensure the interface has its origional speed after the test
         for _ in range(2):
-            speed = get_interface(self.dut_ip, self.ethernet)[0].get("speed")
+            speed = get_interface(self.dut_ip, self.ethernet).get("speed")
             speed_to_set = (
                 Speed.SPEED_40GB
                 if str(Speed.SPEED_100GB) == speed
@@ -105,7 +105,7 @@ class InterfaceTests(unittest.TestCase):
             except _InactiveRpcError as err:
                 self.fail(err)
 
-            assert get_interface(self.dut_ip, self.ethernet)[0].get("speed") == str(
+            assert get_interface(self.dut_ip, self.ethernet).get("speed") == str(
                 speed_to_set
             )
 
@@ -120,7 +120,7 @@ class InterfaceTests(unittest.TestCase):
                 )
             except _InactiveRpcError:
                 self.fail("Failed to set interface mtu")
-            assert get_interface(self.dut_ip, self.ethernet)[0].get("mtu") == mtu_to_set
+            assert get_interface(self.dut_ip, self.ethernet).get("mtu") == mtu_to_set
 
     def test_interface_description_subscription_update(self):
         for _ in range(2):
@@ -134,7 +134,7 @@ class InterfaceTests(unittest.TestCase):
             except _InactiveRpcError:
                 self.fail("Failed to set interface description")
             assert (
-                get_interface(self.dut_ip, self.ethernet)[0].get("description")
+                get_interface(self.dut_ip, self.ethernet).get("description")
                 == description_to_set
             )
 
@@ -240,7 +240,7 @@ class PortChannelTests(unittest.TestCase):
             ## Add PortChannel 1
             add_port_chnl(self.dut_ip, self.chnl_name)
             port_chnls = get_port_chnl(self.dut_ip, self.chnl_name)
-            assert port_chnls[0].get("lag_name") == self.chnl_name
+            assert port_chnls.get("lag_name") == self.chnl_name
 
             add_port_chnl_mem(self.dut_ip, self.chnl_name, mem_infcs)
             port_chnl_mem_json = get_port_chnl_members(self.dut_ip, self.chnl_name)
@@ -251,7 +251,7 @@ class PortChannelTests(unittest.TestCase):
             ## Add PortChannel 2
             add_port_chnl(self.dut_ip, self.chnl_name_2)
             port_chnls = get_port_chnl(self.dut_ip, self.chnl_name_2)
-            assert port_chnls[0].get("lag_name") == self.chnl_name_2
+            assert port_chnls.get("lag_name") == self.chnl_name_2
 
             add_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_infcs_2)
             port_chnl_mem_json = get_port_chnl_members(self.dut_ip, self.chnl_name_2)
@@ -300,6 +300,12 @@ class MclagTests(unittest.TestCase):
 
     def test_mclag_domain(self):
         try:
+            del_mclag(self.dut_ip)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_mclags(self.dut_ip, self.domain_id)
+        
+        try:
             del_port_chnl(self.dut_ip, self.peer_link)
         except _InactiveRpcError as err:
             ## Trying to remove port channels which doesn't exist, which is ok
@@ -310,14 +316,8 @@ class MclagTests(unittest.TestCase):
         except _InactiveRpcError as err:
             self.fail(err)
 
-        for chnl in get_port_chnl(self.dut_ip, self.peer_link):
-            assert chnl.get("lag_name") == self.peer_link
-
-        try:
-            del_mclag(self.dut_ip)
-        except _InactiveRpcError as err:
-            assert err.details().lower() == "resource not found"
-        assert not get_mclags(self.dut_ip, self.domain_id)
+        chnl = get_port_chnl(self.dut_ip, self.peer_link)
+        assert chnl.get("lag_name") == self.peer_link
 
         try:
             config_mclag(
@@ -378,8 +378,8 @@ class MclagTests(unittest.TestCase):
         try:
             add_port_chnl(self.dut_ip, self.peer_link)
 
-            for chnl in get_port_chnl(self.dut_ip, self.peer_link):
-                assert chnl.get("lag_name") == self.peer_link
+            chnl = get_port_chnl(self.dut_ip, self.peer_link)
+            assert chnl.get("lag_name") == self.peer_link
 
             config_mclag(
                 self.dut_ip,
@@ -390,12 +390,12 @@ class MclagTests(unittest.TestCase):
                 self.mclag_sys_mac,
             )
 
-            for resp in get_mclags(self.dut_ip, self.domain_id):
-                assert resp["domain_id"] == self.domain_id
-                assert resp["peer_addr"] == self.peer_address
-                assert resp["peer_link"] == self.peer_link
-                assert resp["mclag_sys_mac"] == self.mclag_sys_mac
-                assert resp["source_address"] == self.dut_ip
+            resp = get_mclags(self.dut_ip, self.domain_id)
+            assert resp["domain_id"] == self.domain_id
+            assert resp["peer_addr"] == self.peer_address
+            assert resp["peer_link"] == self.peer_link
+            assert resp["mclag_sys_mac"] == self.mclag_sys_mac
+            assert resp["source_address"] == self.dut_ip
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl)
             except _InactiveRpcError as err:
@@ -480,10 +480,9 @@ class BGPTests(unittest.TestCase):
             config_bgp_global(self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name)
 
             bgp_global = get_bgp_global(self.dut_ip, self.vrf_name)
-            for bgp in bgp_global:
-                assert self.asn0 == bgp.get("local_asn")
-                assert self.dut_ip == bgp.get("router_id")
-                assert self.vrf_name == bgp.get("vrf_name")
+            assert self.asn0 == bgp_global.get("local_asn")
+            assert self.dut_ip == bgp_global.get("router_id")
+            assert self.vrf_name == bgp_global.get("vrf_name")
 
             del_bgp_global(self.dut_ip, self.vrf_name)
             assert not get_bgp_global(self.dut_ip, self.vrf_name)
@@ -505,19 +504,21 @@ class BGPTests(unittest.TestCase):
             except _InactiveRpcError as err:
                 assert err.details().lower() == "resource not found"
                 
-            assert not get_bgp_neighbors(self.dut_ip, self.asn0)
+            assert not get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0)
 
             config_bgp_neighbors(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
-            for nbr in get_bgp_neighbors(self.dut_ip, self.asn0):
+            for nbr in get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0):
                 assert self.bgp_ip_0 == nbr.get("ip_address")
 
             del_all_bgp_neighbors(self.dut_ip)
-            assert not get_bgp_neighbors(self.dut_ip, self.asn0)
+            assert not get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0)
             del_bgp_global(self.dut_ip, self.vrf_name)
             assert not get_bgp_global(self.dut_ip, self.vrf_name)
         except _InactiveRpcError as err:
             self.fail(err)
 
+    # TODO - Test global and neighbour AF, Test adding and removal of neighbors.
+    
 class VLANTests(unittest.TestCase):
     dut_ip = ""
     vlan_name = "Vlan1"

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List, Union
 
 from orca_nw_lib.utils import get_logging
 from grpc._channel import _InactiveRpcError
@@ -100,6 +100,20 @@ def _create_mclag_gw_mac_obj(device_ip: str) -> List[MCLAG_GW_MAC]:
 
 
 def discover_mclag(device_ip: str = None):
+    """
+    Discover MCLAG for a given device.
+
+    Args:
+        device_ip (str, optional): The IP address of the device. Defaults to None.
+
+    Returns:
+        None
+
+    Raises:
+        _InactiveRpcError: If the MCLAG discovery fails.
+
+    """
+
     _logger.info("MCLAG Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
@@ -117,6 +131,20 @@ def discover_mclag(device_ip: str = None):
 
 
 def discover_mclag_gw_macs(device_ip: str = None):
+    """
+    Discover MCLAG gateway MAC addresses for a given device or all devices.
+
+    Args:
+        device_ip (str): The IP address of the device to discover MCLAG gateway MAC addresses for.
+            If None, MCLAG gateway MAC addresses for all devices will be discovered. Default is None.
+
+    Returns:
+        None
+
+    Raises:
+        _InactiveRpcError: If the MCLAG gateway MAC discovery fails on a device,
+            an _InactiveRpcError is raised with the corresponding error message.
+    """
     _logger.info("MCLAG GW MAC Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
@@ -132,29 +160,30 @@ def discover_mclag_gw_macs(device_ip: str = None):
             raise
 
 
-def get_mclags(device_ip: str, domain_id=None):
+def get_mclags(
+    device_ip: str, domain_id=None
+) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
     """
-    Retrieves MCLAG information from the database based on the given device IP
-    and optional domain ID.
+    Retrieves the MCLAG information for a given device IP and domain ID.
 
     Args:
         device_ip (str): The IP address of the device.
         domain_id (Optional[int]): The ID of the domain. Defaults to None.
 
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing
-        the properties of the retrieved MCLAG objects.
+        Union[Dict[str, Any], List[Dict[str, Any]]]: The MCLAG information
+        as a dictionary or a list of dictionaries.
     """
-    op_dict = []
+
     if domain_id:
         mclag = get_mclag_of_device_from_db(device_ip, domain_id)
-        if mclag:
-            op_dict.append(mclag.__properties__)
+        return mclag.__properties__ if mclag else {}
     else:
+        op_dict = []
         mclags = get_mclag_of_device_from_db(device_ip)
         for mclag in mclags or []:
             op_dict.append(mclag.__properties__)
-    return op_dict
+        return op_dict
 
 
 def config_mclag(
@@ -168,6 +197,27 @@ def config_mclag(
     session_timeout: int = None,
     delay_restore: int = None,
 ):
+    """
+    Configures MCLAG on the device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The domain ID for MCLAG.
+        source_addr (str): The source address for MCLAG.
+        peer_addr (str): The peer address for MCLAG.
+        peer_link (str): The peer link for MCLAG.
+        mclag_sys_mac (str): The MCLAG system MAC address.
+        keepalive_int (int, optional): The keepalive interval. Defaults to None.
+        session_timeout (int, optional): The session timeout. Defaults to None.
+        delay_restore (int, optional): The delay to restore MCLAG. Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If MCLAG configuration fails.
+
+    Returns:
+        None
+
+    """
     try:
         config_mclag_domain_on_device(
             device_ip,
@@ -191,6 +241,18 @@ def config_mclag(
 
 
 def del_mclag(device_ip: str):
+    """
+    Deletes the MCLAG configuration from the specified device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+
+    Raises:
+        _InactiveRpcError: If the MCLAG deletion fails.
+
+    Returns:
+        None
+    """
     try:
         del_mclag_from_device(device_ip)
     except _InactiveRpcError as err:
@@ -202,20 +264,52 @@ def del_mclag(device_ip: str):
         discover_mclag(device_ip)
 
 
-def get_mclag_gw_mac(device_ip: str, mac: str = None):
-    op_dict = []
-    if mac:
-        mclag_gw_mac = get_mclag_gw_mac_of_device_from_db(device_ip, mac)
-        if mclag_gw_mac:
-            op_dict.append(mclag_gw_mac.__properties__)
-    else:
-        mclag_gw_macs = get_mclag_gw_mac_of_device_from_db(device_ip)
-        for mac in mclag_gw_macs or []:
-            op_dict.append(mac.__properties__)
-    return op_dict
+def get_mclag_gw_mac(
+    device_ip: str, gw_mac: str = None
+) -> Union[List[Dict[str, Any]], Dict[str, Any], None]:
+    """
+    Retrieves the MCLAG gateway MAC address for a given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        gw_mac (str, optional): The gateway MAC address. Defaults to None.
+
+    Returns:
+        Union[List[Dict[str, Any]], Dict[str, Any], None]:
+        - If the `gw_mac` parameter is provided, returns a dictionary representing
+          the properties of the MCLAG gateway MAC address. If the MCLAG gateway
+          MAC address is not found, returns None.
+        - If the `gw_mac` parameter is not provided, returns a list of dictionaries,
+          where each dictionary represents the properties of a MCLAG gateway MAC
+          address for the specified device IP. If no MCLAG gateway MAC addresses
+          are found, returns an empty list.
+
+    """
+    if gw_mac:
+        mclag_gw_mac = get_mclag_gw_mac_of_device_from_db(device_ip, gw_mac)
+        return mclag_gw_mac.__properties__ if mclag_gw_mac else None
+    return [
+        mac.__properties__
+        for mac in get_mclag_gw_mac_of_device_from_db(device_ip) or []
+    ]
 
 
 def config_mclag_gw_mac(device_ip: str, gw_mac: str):
+    """
+    Configures the MCLAG gateway MAC address for the specified device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        gw_mac (str): The gateway MAC address.
+
+    Raises:
+        _InactiveRpcError: If the MCLAG gateway MAC address configuration fails.
+
+    Returns:
+        None
+
+    """
+
     try:
         config_mclag_gateway_mac_on_device(device_ip, gw_mac)
     except _InactiveRpcError as err:
@@ -228,6 +322,18 @@ def config_mclag_gw_mac(device_ip: str, gw_mac: str):
 
 
 def del_mclag_gw_mac(device_ip: str):
+    """
+    Deletes the MCLAG gateway MAC address from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device from which to delete the MCLAG gateway MAC address.
+
+    Raises:
+        Exception: If the deletion of the MCLAG gateway MAC address fails.
+
+    Returns:
+        None
+    """
     try:
         del_mclag_gateway_mac_from_device(device_ip)
     except _InactiveRpcError:
@@ -240,6 +346,20 @@ def del_mclag_gw_mac(device_ip: str):
 
 
 def get_mclag_mem_intfs(device_ip: str, mclag_domain_id: int):
+    """
+    Retrieves the list of MCLAG member interfaces for a given device IP and MCLAG domain ID.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        mclag_domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary represents the properties of a MCLAG member interface.
+              The properties include information such as interface name, status, and configuration details.
+
+    Raises:
+        None
+    """
     mclag = get_mclag_of_device_from_db(device_ip, mclag_domain_id)
 
     op_dict = []
@@ -252,6 +372,16 @@ def get_mclag_mem_intfs(device_ip: str, mclag_domain_id: int):
 
 
 def get_mclag_mem_portchnls(device_ip: str, mclag_domain_id: int):
+    """
+    Retrieves the MCLAG member port channels for a given device IP and MCLAG domain ID.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        mclag_domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        list: A list of dictionaries representing the properties of the member port channels.
+    """
     mclag = get_mclag_of_device_from_db(device_ip, mclag_domain_id)
 
     op_dict = []
@@ -266,6 +396,20 @@ def get_mclag_mem_portchnls(device_ip: str, mclag_domain_id: int):
 def config_mclag_mem_portchnl(
     device_ip: str, mclag_domain_id: int, port_chnl_name: str
 ):
+    """
+    Configures an MCLAG member port channel on the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        mclag_domain_id (int): The ID of the MCLAG domain.
+        port_chnl_name (str): The name of the port channel.
+
+    Raises:
+        _InactiveRpcError: If the MCLAG member configuration fails.
+
+    Returns:
+        None
+    """
     try:
         config_mclag_member_on_device(device_ip, mclag_domain_id, port_chnl_name)
     except _InactiveRpcError as err:
@@ -278,6 +422,18 @@ def config_mclag_mem_portchnl(
 
 
 def del_mclag_member(device_ip: str):
+    """
+    Deletes an MCLAG member on the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Raises:
+        _InactiveRpcError: If the MCLAG member deletion fails.
+
+    Returns:
+        None
+    """
     try:
         del_mclag_member_on_device(device_ip)
     except _InactiveRpcError as err:

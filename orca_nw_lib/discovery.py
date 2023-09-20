@@ -5,7 +5,7 @@ from orca_nw_lib.lldp import read_lldp_topo
 from orca_nw_lib.portgroup import discover_port_groups
 
 
-from .bgp import discover_bgp
+from .bgp import discover_bgp, discover_bgp_af_global
 
 
 from .mclag import discover_mclag, discover_mclag_gw_macs
@@ -25,6 +25,19 @@ topology = {}
 
 
 def insert_devices_in_db():
+    """
+    Insert devices and their neighbors into the database.
+
+    This function iterates over the `topology` dictionary and inserts each device and its neighbors into the database.
+    If a device with the same MAC address already exists in the database, it is skipped.
+    For each neighbor of a device, if the neighbor device does not exist in the database, it is inserted.
+
+    Parameters:
+    None
+
+    Returns:
+    None
+    """
     for device, neighbors in topology.items():
         if Device.nodes.get_or_none(mac=device.mac) is None:
             device.save()
@@ -111,6 +124,8 @@ def discover_all():
         discover_mclag()
         discover_mclag_gw_macs()
         discover_bgp()
+        discover_bgp_af_global()
+        
 
         _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
         return True

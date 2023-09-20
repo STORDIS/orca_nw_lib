@@ -10,9 +10,11 @@ from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
     get_all_interfaces_of_device_from_db,
     get_interface_of_device_from_db,
+    get_sub_interface_of_intfc_from_db,
     insert_device_interfaces_in_db,
 )
 from orca_nw_lib.interface_gnmi import (
+    del_all_subinterfaces_of_all_interfaces_from_device,
     del_all_subinterfaces_of_interface_from_device,
     get_all_interfaces_from_device,
     set_interface_config_on_device,
@@ -24,15 +26,24 @@ _logger = get_logging().getLogger(__name__)
 
 
 def _create_interface_graph_objects(device_ip: str):
+    """
+    Retrieves all interface information from a given device IP and creates a graph object representation.
+
+    Parameters:
+    - device_ip (str): The IP address of the device.
+
+    Returns:
+    - intfc_graph_obj_list (Dict[Interface, List[SubInterface]]): A dictionary mapping Interface objects to lists of SubInterface objects.
+    """
     interfaces_json = get_all_interfaces_from_device(device_ip)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
         intfc_counters = intfc_state.get("counters", {})
-        type = intfc.get("config").get("type")
+        if_type = intfc.get("config").get("type")
 
         if (
-            "ether" or "loopback" in type.lower()
+            "ether" or "loopback" in if_type.lower()
         ) and "PortChannel" not in intfc_state.get("name"):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
@@ -100,11 +111,11 @@ def _create_interface_graph_objects(device_ip: str):
                     sub_intf_obj_list.append(sub_intf_obj)
 
             intfc_graph_obj_list[interface] = sub_intf_obj_list
-        elif "lag" in type.lower():
+        elif "lag" in if_type.lower():
             # its a port channel
             pass
         else:
-            _logger.error(f"Unknown Interface type {type}")
+            _logger.error(f"Unknown Interface type {if_type}")
 
     return intfc_graph_obj_list
 
@@ -113,31 +124,28 @@ def get_possible_speeds():
     return [str(e) for e in Speed]
 
 
-def get_interface(device_ip: str, intfc_name=None) -> List[dict]:
+def get_interface(device_ip: str, intfc_name=None):
     """
-    Get the interface information of a device from DB in JSON format.
+    Returns the properties of a network interface on a device.
 
-    Parameters:
+    Args:
         device_ip (str): The IP address of the device.
         intfc_name (str, optional): The name of the interface. Defaults to None.
 
     Returns:
-        List[dict]: A list of dictionaries containing the properties of the interfaces stored in the DB.
-
-
-
+        Union[List[Dict[str, Any]], Dict[str, Any], None]: The properties of the interface
+        if the interface exists, a list of properties of all interfaces on the device
+        if no interface name is provided, or None if the interface does not exist.
     """
-    op_dict: List[dict] = []
-
     if intfc_name:
-        intfc = get_interface_of_device_from_db(device_ip, intfc_name)
-        if intfc:
-            op_dict.append(intfc.__properties__)
-    else:
-        interfaces = get_all_interfaces_of_device_from_db(device_ip)
-        for intfc in interfaces or []:
-            op_dict.append(intfc.__properties__)
-    return op_dict
+        return (
+            intfc.__properties__
+            if (intfc := get_interface_of_device_from_db(device_ip, intfc_name))
+            else None
+        )
+    return [
+        intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip)
+    ]
 
 
 def config_interface(device_ip: str, intfc_name: str, **kwargs):
@@ -229,3 +237,65 @@ def discover_interfaces(device_ip: str = None):
                 f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
             )
             raise
+
+
+def get_subinterfaces(device_ip: str, intfc_name: str):
+    """
+    Retrieves the subinterfaces of a given device IP and interface name from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        list: A list of dictionaries representing the properties of each subinterface.
+    """
+
+    return [
+        sub_intfc.__properties__
+        for sub_intfc in get_sub_interface_of_intfc_from_db(device_ip, intfc_name)
+    ]
+
+
+def del_all_subinterfaces_of_interface(device_ip: str, if_name: str):
+    """
+    Delete all subinterfaces of all interfaces.
+
+    Raises:
+        _InactiveRpcError: If the deletion of the subinterfaces fails.
+
+    Returns:
+        None
+    """
+    _logger.info("Deleting all subinterfaces of all interfaces.")
+    try:
+        del_all_subinterfaces_of_interface_from_device(device_ip, if_name)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Deleting all subinterfaces of all interfaces failed, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip)
+
+
+def del_all_subinterfaces_of_all_interfaces(device_ip: str):
+    """
+    Delete all subinterfaces of all interfaces.
+
+    Raises:
+        _InactiveRpcError: If the deletion of the subinterfaces fails.
+
+    Returns:
+        None
+    """
+    _logger.info("Deleting all subinterfaces of all interfaces.")
+    try:
+        del_all_subinterfaces_of_all_interfaces_from_device(device_ip)
+    except _InactiveRpcError as err:
+        _logger.error(
+            f"Deleting all subinterfaces of all interfaces failed, Reason: {err.details()}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip)

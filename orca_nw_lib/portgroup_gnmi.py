@@ -9,6 +9,13 @@ from orca_nw_lib.gnmi_util import (
 
 
 def _get_port_groups_base_path():
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
+
     return Path(
         target="openconfig",
         origin="openconfig-port-group",
@@ -21,6 +28,12 @@ def _get_port_groups_base_path():
 
 
 def _get_port_groups_path():
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
     path = _get_port_groups_base_path()
     path.elem.append(
         PathElem(
@@ -30,7 +43,13 @@ def _get_port_groups_path():
     return path
 
 
-def _get_port_group_path(id: str=None):
+def _get_port_group_path(id: str = None):
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
     path = _get_port_groups_base_path()
     if id:
         path.elem.append(PathElem(name="port-group", key={"id": id}))
@@ -40,18 +59,38 @@ def _get_port_group_path(id: str=None):
 
 
 def _get_port_group_config_path(id: str):
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
     path = _get_port_group_path(id)
     path.elem.append(PathElem(name="config"))
     return path
 
 
 def _get_port_group_speed_path(id: str):
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
+
     path = _get_port_group_config_path(id)
     path.elem.append(PathElem(name="speed"))
     return path
 
 
 def get_port_chnl_mem_base_path():
+    """
+    Generates the base path for the port groups in the OpenConfig model.
+
+    Returns:
+        Path: The base path for the port groups.
+    """
+
     return Path(
         target="openconfig",
         origin="sonic-portchannel",
@@ -59,15 +98,51 @@ def get_port_chnl_mem_base_path():
     )
 
 
-def get_port_group_from_device(device_ip: str, id: int=None):
+def get_port_group_from_device(device_ip: str, id: int = None):
+    """
+    Get the port group from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        id (int, optional): The ID of the port group. Defaults to None.
+
+    Returns:
+        The port group obtained from the device.
+
+    """
+
     return send_gnmi_get(device_ip=device_ip, path=[_get_port_group_path(id)])
 
 
 def get_port_group_speed_from_device(device_ip: str, id: int):
+    """
+    Retrieve the port group speed from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        id (int): The ID of the port group.
+
+    Returns:
+        The port group speed from the device.
+
+    Raises:
+        None.
+    """
     return send_gnmi_get(device_ip=device_ip, path=[_get_port_group_speed_path(id)])
 
 
 def set_port_group_speed_on_device(device_ip: str, id: int, speed: Speed):
+    """
+    Sets the speed of a port group on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        id (int): The ID of the port group.
+        speed (Speed): The desired speed for the port group.
+
+    Returns:
+        None: If the GNMI set operation was successful.
+    """
     return send_gnmi_set(
         create_req_for_update(
             [

@@ -2,14 +2,30 @@ from orca_nw_lib.common import getSpeedStrFromOCStr
 from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import PortGroup
 from orca_nw_lib.portgroup_gnmi import get_port_group_from_device
-from orca_nw_lib.portgroup_db import get_all_port_groups_of_device_from_db, get_port_group_member_from_db, get_port_group_member_names_from_db, insert_device_port_groups_in_db
+from orca_nw_lib.portgroup_db import (
+    get_all_port_groups_of_device_from_db,
+    get_port_group_member_from_db,
+    get_port_group_member_names_from_db,
+    insert_device_port_groups_in_db,
+)
 from orca_nw_lib.utils import get_logging
 
 
 _logger = get_logging().getLogger(__name__)
 
 
-def create_port_group_graph_objects(device_ip: str):
+def _create_port_group_graph_objects(device_ip: str):
+    """
+    Create port group graph objects based on the given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        dict: A dictionary of port group graph objects. The keys are PortGroup objects
+            and the values are lists of member interfaces.
+
+    """
     port_groups_json = get_port_group_from_device(device_ip)
     port_group_graph_objs = {}
     for port_group in port_groups_json.get("openconfig-port-group:port-group") or []:
@@ -43,6 +59,16 @@ def create_port_group_graph_objects(device_ip: str):
 
 
 def get_port_group_members(device_ip: str, group_id):
+    """
+    Retrieves the members of a port group based on the device IP and group ID.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        group_id: The ID of the port group.
+
+    Returns:
+        list: A list of dictionaries representing the properties of each member interface.
+    """
     op_dict = []
     mem_intfcs = get_port_group_member_from_db(device_ip, group_id)
     if mem_intfcs:
@@ -52,6 +78,16 @@ def get_port_group_members(device_ip: str, group_id):
 
 
 def get_port_groups(device_ip: str):
+    """
+    Retrieves the port groups associated with a given device IP address.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: A list of dictionaries representing the port groups. Each dictionary contains the properties of a port group, including the member interface names.
+
+    """
     op_dict = []
     port_groups = get_all_port_groups_of_device_from_db(device_ip)
     if port_groups:
@@ -65,9 +101,22 @@ def get_port_groups(device_ip: str):
 
 
 def discover_port_groups():
+    """
+    Discover port groups for all devices in the database.
+
+    This function retrieves a list of devices from the device database and
+    iterates over each device to discover its port groups. The port groups are
+    then inserted into the database.
+
+    Parameters:
+        None
+
+    Returns:
+        None
+    """
     _logger.info("Port-groups Discovery Started.")
     for device in get_device_db_obj():
         _logger.info(f"Discovering port-groups of device {device}.")
         insert_device_port_groups_in_db(
-            device, create_port_group_graph_objects(device.mgt_ip)
+            device, _create_port_group_graph_objects(device.mgt_ip)
         )

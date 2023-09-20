@@ -1,66 +1,56 @@
-from orca_nw_lib.bgp_gnmi import (
-    config_bgp_neighbor_af_on_device,
-    config_bgp_neighbors_on_device,
-    config_bgp_global_af_on_device,
-    config_bgp_global_on_device,
-    del_all_bgp_global_af_from_device,
-    del_all_bgp_neighbors_from_device,
-    del_all_neighbor_af_from_device,
-    get_bgp_global_of_vrf_from_device,
-    get_bgp_neighbor_from_device,
-    get_all_bgp_af_list_from_device,
-    get_all_neighbor_af_list_from_device,
+import unittest
+from grpc._channel import _InactiveRpcError
+from orca_nw_lib.bgp import (
+    config_bgp_global,
+    config_bgp_global_af,
+    config_bgp_neighbor_af,
+    config_bgp_neighbors,
+    del_all_bgp_neighbors,
+    del_bgp_global,
+    del_all_bgp_neighbour_af,
+    del_bgp_global_af_all,
+    get_bgp_global,
+    get_bgp_global_af_list,
+    get_bgp_neighbors_subinterfaces,
+    get_neighbour_bgp,
 )
 from orca_nw_lib.common import VlanTagMode
-from orca_nw_lib.bgp_gnmi import (
-    del_bgp_global_from_device,
-)
 from orca_nw_lib.device_db import get_all_devices_ip_from_db
 from orca_nw_lib.graph_db_utils import clean_db
+from orca_nw_lib.interface import (
+    config_interface,
+    del_all_subinterfaces_of_interface,
+    get_interface,
+    get_subinterfaces,
+)
 from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
-from orca_nw_lib.interface_gnmi import (
-    del_all_subinterfaces_of_all_interfaces_from_device,
-    del_all_subinterfaces_of_interface_from_device,
-    set_interface_config_on_device,
+from orca_nw_lib.mclag import (
+    config_mclag,
+    config_mclag_gw_mac,
+    config_mclag_mem_portchnl,
+    del_mclag,
+    del_mclag_gw_mac,
+    get_mclag_gw_mac,
+    get_mclags,
 )
-from orca_nw_lib.mclag_gnmi import (
-    config_mclag_domain_on_device,
-    config_mclag_gateway_mac_on_device,
-    config_mclag_member_on_device,
-    del_mclag_gateway_mac_from_device,
-    get_mclag_domain_from_device,
-    get_mclag_gateway_mac_from_device,
-)
-from orca_nw_lib.port_chnl_gnmi import (
-    add_port_chnl_member,
-    del_port_chnl_from_device,
-    get_all_port_chnl_members,
-    get_port_chnl_from_device,
+
+from orca_nw_lib.port_chnl import (
+    add_port_chnl,
+    add_port_chnl_mem,
+    del_port_chnl,
+    get_port_chnl,
+    get_port_chnl_members,
 )
 
 from orca_nw_lib.utils import get_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
-from orca_nw_lib.interface_gnmi import (
-    get_subinterface_from_device,
-)
-import unittest
 from orca_nw_lib.mclag_gnmi import (
     del_mclag_from_device,
 )
 
-
-from orca_nw_lib.interface_gnmi import (
-    get_interface_config_from_device,
-)
-from orca_nw_lib.port_chnl_gnmi import (
-    add_port_chnl_on_device,
-)
-from orca_nw_lib.vlan_gnmi import (
-    config_vlan_on_device,
-)
-from orca_nw_lib.vlan_gnmi import del_vlan_from_device, get_vlan_details_from_device
+from orca_nw_lib.vlan import config_vlan, del_vlan, get_vlan, get_vlan_members
 
 
 class SampleConfigDiscovery(unittest.TestCase):
@@ -99,7 +89,7 @@ class SampleConfigDiscovery(unittest.TestCase):
     def setUpClass(cls):
         clean_db()
         discover_all()
-       
+
         assert set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))
@@ -138,455 +128,500 @@ class SampleConfigDiscovery(unittest.TestCase):
         ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
 
     def test_create_port_channel_config(self):
-        del_port_chnl_from_device(self.dut_ip_1, self.port_chnl_103)
-        del_port_chnl_from_device(self.dut_ip_2, self.port_chnl_103)
-        del_port_chnl_from_device(self.dut_ip_3, self.port_chnl_103)
+        for dut in [self.dut_ip_1, self.dut_ip_2, self.dut_ip_3]:
+            try:
+                del_port_chnl(dut, self.port_chnl_103)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
 
-        add_port_chnl_on_device(self.dut_ip_1, self.port_chnl_103, "up")
-        assert (
-            get_port_chnl_from_device(self.dut_ip_1, self.port_chnl_103)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.port_chnl_103
-        )
-        mem_infcs = [self.ethernet2, self.ethernet3]
-        add_port_chnl_member(self.dut_ip_1, self.port_chnl_103, mem_infcs)
-        output = get_all_port_chnl_members(self.dut_ip_1)
-        for item in output.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST"):
-            if item.get("name") == self.port_chnl_103:
-                assert item.get("ifname") in mem_infcs
+            try:
+                add_port_chnl(dut, self.port_chnl_103, admin_status="up")
+                chnl = get_port_chnl(self.dut_ip_1, self.port_chnl_103)
+                assert chnl.get("lag_name") == self.port_chnl_103
+                mem_infcs = [self.ethernet2, self.ethernet3]
+                add_port_chnl_mem(self.dut_ip_1, self.port_chnl_103, mem_infcs)
+                members = get_port_chnl_members(self.dut_ip_1, self.port_chnl_103)
+                for mem in members:
+                    assert mem.get("name") in mem_infcs
+            except _InactiveRpcError as err:
+                self.fail(err.details())
 
     def test_create_mclag_configuration(self):
         ## On device -1 mclag config
-        del_mclag_from_device(self.dut_ip_1)
-        del_port_chnl_from_device(self.dut_ip_1, self.peer_link_chnl_100)
-        add_port_chnl_on_device(self.dut_ip_1, self.peer_link_chnl_100)
-        assert (
-            get_port_chnl_from_device(self.dut_ip_1, self.peer_link_chnl_100)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.peer_link_chnl_100
-        )
-        config_mclag_domain_on_device(
-            self.dut_ip_1,
-            self.domain_id,
-            self.dut_ip_1,
-            self.dut_ip_2,
-            self.peer_link_chnl_100,
-            self.mclag_sys_mac,
-        )
+        try:
+            del_mclag(self.dut_ip_1)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        resp = get_mclag_domain_from_device(self.dut_ip_1)
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("domain-id")
-            == self.domain_id
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0]
-            .get("config")
-            .get("mclag-system-mac")
-            == self.mclag_sys_mac
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0]
-            .get("config")
-            .get("peer-address")
-            == self.dut_ip_2
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
-            == self.peer_link_chnl_100
-        )
+        try:
+            del_port_chnl(self.dut_ip_1, self.peer_link_chnl_100)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
+        try:
+            add_port_chnl(self.dut_ip_1, self.peer_link_chnl_100)
+            assert (
+                get_port_chnl(self.dut_ip_1, self.peer_link_chnl_100).get("lag_name")
+                == self.peer_link_chnl_100
+            )
+            config_mclag(
+                self.dut_ip_1,
+                self.domain_id,
+                self.dut_ip_1,
+                self.dut_ip_2,
+                self.peer_link_chnl_100,
+                self.mclag_sys_mac,
+            )
+
+            resp = get_mclags(self.dut_ip_1, domain_id=self.domain_id)
+            assert resp.get("domain_id") == self.domain_id
+            assert resp.get("mclag_sys_mac") == self.mclag_sys_mac
+            assert resp.get("peer_addr") == self.dut_ip_2
+            assert resp.get("peer_link") == self.peer_link_chnl_100
+        except _InactiveRpcError as err:
+            self.fail(err)
         ## member configuration
+        try:
+            del_port_chnl(self.dut_ip_1, chnl_name=self.mem_port_chnl_101)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        del_port_chnl_from_device(self.dut_ip_1, self.mem_port_chnl_101)
-        del_port_chnl_from_device(self.dut_ip_1, self.mem_port_chnl_102)
+        try:
+            del_port_chnl(self.dut_ip_1, chnl_name=self.mem_port_chnl_102)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        add_port_chnl_on_device(self.dut_ip_1, self.mem_port_chnl_101)
-        add_port_chnl_on_device(self.dut_ip_1, self.mem_port_chnl_102)
+        try:
+            add_port_chnl(self.dut_ip_1, self.mem_port_chnl_101)
+            add_port_chnl(self.dut_ip_1, self.mem_port_chnl_102)
 
-        config_mclag_member_on_device(
-            self.dut_ip_1, self.domain_id, self.mem_port_chnl_101
-        )
-        config_mclag_member_on_device(
-            self.dut_ip_1, self.domain_id, self.mem_port_chnl_102
-        )
+            config_mclag_mem_portchnl(
+                self.dut_ip_1, self.domain_id, self.mem_port_chnl_101
+            )
+            config_mclag_mem_portchnl(
+                self.dut_ip_1, self.domain_id, self.mem_port_chnl_102
+            )
+        except _InactiveRpcError as err:
+            self.fail(err)
 
-        ## On device -2 mclag config
-        del_mclag_from_device(self.dut_ip_2)
-        del_port_chnl_from_device(self.dut_ip_2, self.peer_link_chnl_100)
-        add_port_chnl_on_device(self.dut_ip_2, self.peer_link_chnl_100)
-        assert (
-            get_port_chnl_from_device(self.dut_ip_2, self.peer_link_chnl_100)
-            .get("sonic-portchannel:PORTCHANNEL_LIST")[0]
-            .get("name")
-            == self.peer_link_chnl_100
-        )
-        config_mclag_domain_on_device(
-            self.dut_ip_2,
-            self.domain_id,
-            self.dut_ip_2,
-            self.dut_ip_1,
-            self.peer_link_chnl_100,
-            self.mclag_sys_mac,
-        )
+            ## On device -2 mclag config
+        try:
+            del_mclag_from_device(self.dut_ip_2)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+        try:
+            del_port_chnl(self.dut_ip_2, self.peer_link_chnl_100)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        resp = get_mclag_domain_from_device(self.dut_ip_2)
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("domain-id")
-            == self.domain_id
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0]
-            .get("config")
-            .get("mclag-system-mac")
-            == self.mclag_sys_mac
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0]
-            .get("config")
-            .get("peer-address")
-            == self.dut_ip_1
-        )
-        assert (
-            resp.get("openconfig-mclag:mclag-domain")[0].get("config").get("peer-link")
-            == self.peer_link_chnl_100
-        )
+        try:
+            add_port_chnl(self.dut_ip_2, self.peer_link_chnl_100)
+            assert (
+                get_port_chnl(self.dut_ip_2, self.peer_link_chnl_100).get("lag_name")
+                == self.peer_link_chnl_100
+            )
 
+            config_mclag(
+                self.dut_ip_2,
+                self.domain_id,
+                self.dut_ip_2,
+                self.dut_ip_1,
+                self.peer_link_chnl_100,
+                self.mclag_sys_mac,
+            )
+
+            resp = get_mclags(self.dut_ip_2, self.domain_id)
+            assert resp.get("domain_id") == self.domain_id
+            assert resp.get("mclag_sys_mac") == self.mclag_sys_mac
+            assert resp.get("peer_addr") == self.dut_ip_1
+            assert resp.get("peer_link") == self.peer_link_chnl_100
+        except _InactiveRpcError as err:
+            self.fail(err)
         ## member configuration
+        try:
+            del_port_chnl(self.dut_ip_2, self.mem_port_chnl_101)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+        try:
+            del_port_chnl(self.dut_ip_2, self.mem_port_chnl_102)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        del_port_chnl_from_device(self.dut_ip_2, self.mem_port_chnl_101)
-        del_port_chnl_from_device(self.dut_ip_2, self.mem_port_chnl_102)
+        try:
+            add_port_chnl(self.dut_ip_2, self.mem_port_chnl_101)
+            add_port_chnl(self.dut_ip_2, self.mem_port_chnl_102)
 
-        add_port_chnl_on_device(self.dut_ip_2, self.mem_port_chnl_101)
-        add_port_chnl_on_device(self.dut_ip_2, self.mem_port_chnl_102)
+            config_mclag_mem_portchnl(
+                self.dut_ip_2, self.domain_id, self.mem_port_chnl_101
+            )
+            config_mclag_mem_portchnl(
+                self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
+            )
+        except _InactiveRpcError as err:
+            self.fail(err)
 
-        config_mclag_member_on_device(
-            self.dut_ip_2, self.domain_id, self.mem_port_chnl_101
-        )
-        config_mclag_member_on_device(
-            self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
-        )
+            ## Create MCLAG GW mac
+        try:
+            del_mclag_gw_mac(self.dut_ip_1)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        ## Create MCLAG GW mac
-        del_mclag_gateway_mac_from_device(self.dut_ip_1)
-        assert not get_mclag_gateway_mac_from_device(self.dut_ip_1)
+        assert not get_mclag_gw_mac(self.dut_ip_1)
         gw_mac = "aa:bb:aa:bb:aa:bb"
-        config_mclag_gateway_mac_on_device(self.dut_ip_1, gw_mac)
-        assert (
-            get_mclag_gateway_mac_from_device(self.dut_ip_1)
-            .get("openconfig-mclag:mclag-gateway-macs")
-            .get("mclag-gateway-mac")[0]
-            .get("gateway-mac")
-            == gw_mac
-        )
+        try:
+            config_mclag_gw_mac(self.dut_ip_1, gw_mac)
+        except _InactiveRpcError as err:
+            self.fail(err)
+        assert get_mclag_gw_mac(self.dut_ip_1, gw_mac).get("gateway_mac") == gw_mac
 
     def test_create_bgp_config(self):
-        del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)
+        try:
+            del_bgp_global(self.dut_ip_1, self.vrf_name)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_bgp_global(self.dut_ip_1, self.vrf_name)
+
         pfxLen = 31
         idx = 0
-        ##Clear IPs from all interfaces on the device inorder to avoid overlapping IP error
-        for ether in get_all_interfaces_name_of_device_from_db(self.dut_ip_1):
-            ## IP config is not permitted on port channel member port
-            if ether != self.ethernet2 and ether != self.ethernet3:
-                del_all_subinterfaces_of_interface_from_device(self.dut_ip_1, ether)
-        del_all_subinterfaces_of_all_interfaces_from_device(self.dut_ip_2)
-        del_all_subinterfaces_of_all_interfaces_from_device(self.dut_ip_3)
-        ############################ Setup 2 interfaces on spine #######################
-        ##################### Setup first interface
-
-        set_interface_config_on_device(
-            self.dut_ip_1,
+        ##Clear IPs from all interfaces on the device in order to avoid overlapping IP error
+        ## IP config is not permitted on port channel member port, which are configured in port channel test
+        for ether in [
             self.ethernet0,
-            ip=self.bgp_ip_1,
-            ip_prefix_len=pfxLen,
-            index=idx,
-            enable=True,
-        )
-
-        sub_if_config = (
-            get_subinterface_from_device(self.dut_ip_1, self.ethernet0, idx)
-            .get("openconfig-interfaces:subinterface")[0]
-            .get("openconfig-if-ip:ipv4", {})
-            .get("addresses", {})
-            .get("address")[0]
-        )
-        assert sub_if_config.get("ip") == self.bgp_ip_1
-        assert sub_if_config.get("config").get("prefix-length") == pfxLen
-
-        config = get_interface_config_from_device(self.dut_ip_1, self.ethernet0).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == True
-
-        ##################### Setup second interface
-        set_interface_config_on_device(
-            self.dut_ip_1,
             self.ethernet1,
-            ip=self.bgp_ip_2,
-            ip_prefix_len=pfxLen,
-            index=idx,
-            enable=True,
-        )
+            self.ethernet4,
+            self.ethernet5,
+            self.ethernet6,
+            self.ethernet7,
+        ]:
+            try:
+                del_all_subinterfaces_of_interface(self.dut_ip_1, ether)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
 
-        sub_if_config = (
-            get_subinterface_from_device(self.dut_ip_1, self.ethernet1, idx)
-            .get("openconfig-interfaces:subinterface")[0]
-            .get("openconfig-if-ip:ipv4", {})
-            .get("addresses", {})
-            .get("address")[0]
-        )
-        assert sub_if_config.get("ip") == self.bgp_ip_2
-        assert sub_if_config.get("config").get("prefix-length") == pfxLen
+        try:
+            ############################ Setup two interfaces on spine #######################
+            ##################### Setup first interface
 
-        config = get_interface_config_from_device(self.dut_ip_1, self.ethernet1).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == True
+            config_interface(
+                self.dut_ip_1,
+                self.ethernet0,
+                ip=self.bgp_ip_1,
+                ip_prefix_len=pfxLen,
+                index=idx,
+                enable=True,
+            )
 
-        ############################ Setup 1 interfaces on leaf-1 #######################
+            assert get_interface(self.dut_ip_1, self.ethernet0).get("enabled") == True
+            assert (
+                get_subinterfaces(self.dut_ip_1, self.ethernet0)[0].get("ip_address")
+                == self.bgp_ip_1
+            )
 
-        set_interface_config_on_device(
-            self.dut_ip_2,
-            self.ethernet0,
-            ip=self.bgp_ip_0,
-            ip_prefix_len=pfxLen,
-            index=idx,
-            enable=True,
-        )
+            ##################### Setup second interface
+            config_interface(
+                self.dut_ip_1,
+                self.ethernet1,
+                ip=self.bgp_ip_2,
+                ip_prefix_len=pfxLen,
+                index=idx,
+                enable=True,
+            )
 
-        sub_if_config = (
-            get_subinterface_from_device(self.dut_ip_2, self.ethernet0, idx)
-            .get("openconfig-interfaces:subinterface")[0]
-            .get("openconfig-if-ip:ipv4", {})
-            .get("addresses", {})
-            .get("address")[0]
-        )
-        assert sub_if_config.get("ip") == self.bgp_ip_0
-        assert sub_if_config.get("config").get("prefix-length") == pfxLen
+            assert get_interface(self.dut_ip_1, self.ethernet1).get("enabled") == True
+            assert (
+                get_subinterfaces(self.dut_ip_1, self.ethernet1)[0].get("ip_address")
+                == self.bgp_ip_2
+            )
 
-        config = get_interface_config_from_device(self.dut_ip_2, self.ethernet0).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == True
+            ############################ Setup one interfaces on leaf-1 #######################
 
-        ############################ Setup 1 interfaces on leaf-2 #######################
+            config_interface(
+                self.dut_ip_2,
+                self.ethernet0,
+                ip=self.bgp_ip_0,
+                ip_prefix_len=pfxLen,
+                index=idx,
+                enable=True,
+            )
 
-        set_interface_config_on_device(
-            self.dut_ip_3,
-            self.ethernet0,
-            ip=self.bgp_ip_3,
-            ip_prefix_len=pfxLen,
-            index=idx,
-            enable=True,
-        )
+            assert get_interface(self.dut_ip_2, self.ethernet0).get("enabled") == True
+            assert (
+                get_subinterfaces(self.dut_ip_2, self.ethernet0)[0].get("ip_address")
+                == self.bgp_ip_0
+            )
 
-        sub_if_config = (
-            get_subinterface_from_device(self.dut_ip_3, self.ethernet0, idx)
-            .get("openconfig-interfaces:subinterface")[0]
-            .get("openconfig-if-ip:ipv4", {})
-            .get("addresses", {})
-            .get("address")[0]
-        )
-        assert sub_if_config.get("ip") == self.bgp_ip_3
-        assert sub_if_config.get("config").get("prefix-length") == pfxLen
+            ############################ Setup one interfaces on leaf-2 #######################
 
-        config = get_interface_config_from_device(self.dut_ip_3, self.ethernet0).get(
-            "openconfig-interfaces:config"
-        )
-        assert config.get("enabled") == True
+            config_interface(
+                self.dut_ip_3,
+                self.ethernet0,
+                ip=self.bgp_ip_3,
+                ip_prefix_len=pfxLen,
+                index=idx,
+                enable=True,
+            )
+
+            assert get_interface(self.dut_ip_3, self.ethernet0).get("enabled") == True
+            assert (
+                get_subinterfaces(self.dut_ip_3, self.ethernet0)[0].get("ip_address")
+                == self.bgp_ip_3
+            )
+        except _InactiveRpcError as err:
+            self.fail(err)
 
         ################# Configure BGP on spine #################
+        try:
+            del_bgp_global(self.dut_ip_1, self.vrf_name)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        del_bgp_global_from_device(self.dut_ip_1, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name)
-        config_bgp_global_on_device(
-            self.dut_ip_1, self.asn0, self.dut_ip_1, vrf_name=self.vrf_name
-        )
-        for bgp_global in (
-            get_bgp_global_of_vrf_from_device(self.dut_ip_1, self.vrf_name).get(
-                "sonic-bgp-global:BGP_GLOBALS_LIST"
+        assert not get_bgp_global(self.dut_ip_1, self.vrf_name)
+
+        try:
+            config_bgp_global(
+                self.dut_ip_1, self.asn0, self.dut_ip_1, vrf_name=self.vrf_name
             )
-            or []
-        ):
-            assert self.asn0 == bgp_global.get("local_asn")
-            assert self.dut_ip_1 == bgp_global.get("router_id")
-            assert self.vrf_name == bgp_global.get("vrf_name")
+        except _InactiveRpcError as err:
+            self.fail(err)
 
-        ################# Configure BGP & neighbor on leaf-1 #################
+        bgp_global = get_bgp_global(self.dut_ip_1, self.vrf_name)
+        assert self.asn0 == bgp_global.get("local_asn")
+        assert self.dut_ip_1 == bgp_global.get("router_id")
+        assert self.vrf_name == bgp_global.get("vrf_name")
 
-        del_bgp_global_from_device(self.dut_ip_2, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip_2, self.vrf_name)
-        config_bgp_global_on_device(
-            self.dut_ip_2, self.asn1, self.dut_ip_2, vrf_name=self.vrf_name
-        )
+        ################# Configure BGP on leaf-1 #################
 
-        for bgp_global in (
-            get_bgp_global_of_vrf_from_device(self.dut_ip_2, self.vrf_name).get(
-                "sonic-bgp-global:BGP_GLOBALS_LIST"
+        try:
+            del_bgp_global(self.dut_ip_2, self.vrf_name)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_bgp_global(self.dut_ip_2, self.vrf_name)
+
+        try:
+            config_bgp_global(
+                self.dut_ip_2, self.asn1, self.dut_ip_2, vrf_name=self.vrf_name
             )
-            or []
-        ):
-            assert self.asn1 == bgp_global.get("local_asn")
-            assert self.dut_ip_2 == bgp_global.get("router_id")
-            assert self.vrf_name == bgp_global.get("vrf_name")
+        except _InactiveRpcError as err:
+            self.fail(err)
 
-        ################# Configure BGP & neighbor on leaf-2 #################
+        bgp_global = get_bgp_global(self.dut_ip_2, self.vrf_name)
+        assert self.asn1 == bgp_global.get("local_asn")
+        assert self.dut_ip_2 == bgp_global.get("router_id")
+        assert self.vrf_name == bgp_global.get("vrf_name")
 
-        del_bgp_global_from_device(self.dut_ip_3, self.vrf_name)
-        assert not get_bgp_global_of_vrf_from_device(self.dut_ip_3, self.vrf_name)
-        config_bgp_global_on_device(
-            self.dut_ip_3, self.asn2, self.dut_ip_3, vrf_name=self.vrf_name
-        )
+        ################# Configure BGP on leaf-2 #################
 
-        for bgp_global in (
-            get_bgp_global_of_vrf_from_device(self.dut_ip_3, self.vrf_name).get(
-                "sonic-bgp-global:BGP_GLOBALS_LIST"
+        try:
+            del_bgp_global(self.dut_ip_3, self.vrf_name)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_bgp_global(self.dut_ip_3, self.vrf_name)
+        try:
+            config_bgp_global(
+                self.dut_ip_3, self.asn2, self.dut_ip_3, vrf_name=self.vrf_name
             )
-            or []
-        ):
-            assert self.asn2 == bgp_global.get("local_asn")
-            assert self.dut_ip_3 == bgp_global.get("router_id")
-            assert self.vrf_name == bgp_global.get("vrf_name")
+        except _InactiveRpcError as err:
+            self.fail(err)
 
-        ############################ Config bgp AF on all nodes
+        bgp_global = get_bgp_global(self.dut_ip_3, self.vrf_name)
+        assert self.asn2 == bgp_global.get("local_asn")
+        assert self.dut_ip_3 == bgp_global.get("router_id")
+        assert self.vrf_name == bgp_global.get("vrf_name")
+
+        ############################ Config bgp global AF on all nodes ####################
         for dev in [self.dut_ip_2, self.dut_ip_1, self.dut_ip_3]:
-            del_all_bgp_global_af_from_device(dev)
-            assert not get_all_bgp_af_list_from_device(dev)
+            try:
+                del_bgp_global_af_all(dev)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
 
-            config_bgp_global_af_on_device(dev, self.afi_safi, self.vrf_name)
+            assert not get_bgp_global_af_list(dev)
 
-            for af in (
-                get_all_bgp_af_list_from_device(dev).get(
-                    "sonic-bgp-global:BGP_GLOBALS_AF_LIST"
-                )
-                or []
-            ):
+            try:
+                config_bgp_global_af(dev, self.afi_safi, self.vrf_name)
+            except _InactiveRpcError as err:
+                self.fail(err)
+
+            for af in get_bgp_global_af_list(dev) or []:
                 assert af.get("afi_safi") == self.afi_safi
                 assert af.get("vrf_name") == self.vrf_name
+        ############################ Setup neighbor and neighbor AF on Spine #######################
+        try:
+            del_all_bgp_neighbors(self.dut_ip_1)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        ############################ Setup neighbor on Spine #######################
-        del_all_bgp_neighbors_from_device(self.dut_ip_1)
-        assert not get_bgp_neighbor_from_device(self.dut_ip_1)
+        assert not get_bgp_neighbors_subinterfaces(self.dut_ip_1, self.asn0)
+        assert not get_neighbour_bgp(self.dut_ip_1, self.asn0)
 
-        config_bgp_neighbors_on_device(
-            self.dut_ip_1, self.asn1, self.bgp_ip_0, self.vrf_name
-        )
-        config_bgp_neighbors_on_device(
-            self.dut_ip_1, self.asn2, self.bgp_ip_3, self.vrf_name
-        )
-        for nbr in get_bgp_neighbor_from_device(self.dut_ip_1).get(
-            "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
+        try:
+            config_bgp_neighbors(self.dut_ip_1, self.asn1, self.bgp_ip_0, self.vrf_name)
+            config_bgp_neighbors(self.dut_ip_1, self.asn2, self.bgp_ip_3, self.vrf_name)
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr_subinterface in get_bgp_neighbors_subinterfaces(
+            self.dut_ip_1, self.asn0
         ):
-            assert (
-                self.asn1 == nbr.get("asn") and self.bgp_ip_0 == nbr.get("neighbor")
-            ) or (self.asn2 == nbr.get("asn") and self.bgp_ip_3 == nbr.get("neighbor"))
-            assert self.vrf_name == nbr.get("vrf_name")
+            assert nbr_subinterface.get("ip_address") in [self.bgp_ip_0, self.bgp_ip_3]
 
-        del_all_neighbor_af_from_device(self.dut_ip_1)
-        assert not get_all_neighbor_af_list_from_device(self.dut_ip_1)
-        config_bgp_neighbor_af_on_device(
-            self.dut_ip_1, self.afi_safi, self.bgp_ip_0, self.vrf_name, True
-        )
-        config_bgp_neighbor_af_on_device(
-            self.dut_ip_1, self.afi_safi, self.bgp_ip_3, self.vrf_name, True
-        )
+        for nbr_bgp in get_neighbour_bgp(self.dut_ip_1, self.asn0):
+            assert nbr_bgp.get("local_asn") in [self.asn1, self.asn2]
 
-        for nbr_af in (
-            get_all_neighbor_af_list_from_device(self.dut_ip_1).get(
-                "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
+        try:
+            del_all_bgp_neighbour_af(self.dut_ip_1)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        for nbr in get_bgp_global(self.dut_ip_1, vrf_name="default").get(
+            "neighbor_prop"
+        ):
+            assert not nbr.get("afi_safi")
+
+        try:
+            config_bgp_neighbor_af(
+                self.dut_ip_1, self.afi_safi, self.bgp_ip_0, self.vrf_name, True
             )
-            or []
-        ):
-            assert nbr_af.get("admin_status") == True
-            assert nbr_af.get("afi_safi") == self.afi_safi
-            assert nbr_af.get("vrf_name") == self.vrf_name
-
-        ############################ Setup neighbor on Leaf-1 #######################
-        del_all_bgp_neighbors_from_device(self.dut_ip_2)
-        assert not get_bgp_neighbor_from_device(self.dut_ip_2)
-
-        config_bgp_neighbors_on_device(
-            self.dut_ip_2, self.asn0, self.bgp_ip_1, self.vrf_name
-        )
-        for nbr in get_bgp_neighbor_from_device(self.dut_ip_2).get(
-            "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
-        ):
-            assert self.asn0 == nbr.get("asn") and self.bgp_ip_1 == nbr.get("neighbor")
-            assert self.vrf_name == nbr.get("vrf_name")
-
-        del_all_neighbor_af_from_device(self.dut_ip_2)
-        assert not get_all_neighbor_af_list_from_device(self.dut_ip_2)
-        config_bgp_neighbor_af_on_device(
-            self.dut_ip_2, self.afi_safi, self.bgp_ip_1, self.vrf_name, True
-        )
-
-        for nbr_af in (
-            get_all_neighbor_af_list_from_device(self.dut_ip_2).get(
-                "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
+            config_bgp_neighbor_af(
+                self.dut_ip_1, self.afi_safi, self.bgp_ip_3, self.vrf_name, True
             )
-            or []
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr in get_bgp_global(self.dut_ip_1, vrf_name="default").get(
+            "neighbor_prop"
         ):
-            assert nbr_af.get("admin_status") == True
-            assert nbr_af.get("afi_safi") == self.afi_safi
-            assert nbr_af.get("vrf_name") == self.vrf_name
+            assert {"ipv4_unicast": True} in nbr.get("afi_safi")
 
-        ############################ Setup neighbor on Leaf-2 #######################
-        del_all_bgp_neighbors_from_device(self.dut_ip_3)
-        assert not get_bgp_neighbor_from_device(self.dut_ip_3)
+        ############################ Setup neighbor and neighbor AF on Leaf-1 #######################
+        try:
+            del_all_bgp_neighbors(self.dut_ip_2)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
 
-        config_bgp_neighbors_on_device(
-            self.dut_ip_3, self.asn0, self.bgp_ip_2, self.vrf_name
-        )
-        for nbr in get_bgp_neighbor_from_device(self.dut_ip_3).get(
-            "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST"
+        assert not get_bgp_neighbors_subinterfaces(self.dut_ip_2, self.asn1)
+        assert not get_neighbour_bgp(self.dut_ip_2, self.asn1)
+        try:
+            config_bgp_neighbors(self.dut_ip_2, self.asn0, self.bgp_ip_1, self.vrf_name)
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr_subinterface in get_bgp_neighbors_subinterfaces(
+            self.dut_ip_2, self.asn1
         ):
-            assert self.asn0 == nbr.get("asn") and self.bgp_ip_2 == nbr.get("neighbor")
-            assert self.vrf_name == nbr.get("vrf_name")
+            assert nbr_subinterface.get("ip_address") == self.bgp_ip_1
 
-        del_all_neighbor_af_from_device(self.dut_ip_3)
-        assert not get_all_neighbor_af_list_from_device(self.dut_ip_3)
-        config_bgp_neighbor_af_on_device(
-            self.dut_ip_3, self.afi_safi, self.bgp_ip_2, self.vrf_name, True
-        )
+        for nbr_bgp in get_neighbour_bgp(self.dut_ip_2, self.asn1):
+            assert nbr_bgp.get("local_asn") == self.asn0
 
-        for nbr_af in (
-            get_all_neighbor_af_list_from_device(self.dut_ip_3).get(
-                "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST"
+        try:
+            del_all_bgp_neighbour_af(self.dut_ip_2)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        for nbr in get_bgp_global(self.dut_ip_2, vrf_name="default").get(
+            "neighbor_prop"
+        ):
+            assert not nbr.get("afi_safi")
+
+        try:
+            config_bgp_neighbor_af(
+                self.dut_ip_2, self.afi_safi, self.bgp_ip_1, self.vrf_name, True
             )
-            or []
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr in get_bgp_global(self.dut_ip_2, vrf_name="default").get(
+            "neighbor_prop"
         ):
-            assert nbr_af.get("admin_status") == True
-            assert nbr_af.get("afi_safi") == self.afi_safi
-            assert nbr_af.get("vrf_name") == self.vrf_name
-        # TODO pfx are not being sent and received with above config, neighbours are connected though.
+            assert {"ipv4_unicast": True} in nbr.get("afi_safi")
+
+        ############################ Setup neighbor and neighbor AF on Leaf-2 #######################
+
+        try:
+            del_all_bgp_neighbors(self.dut_ip_3)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_bgp_neighbors_subinterfaces(self.dut_ip_3, self.asn2)
+        assert not get_neighbour_bgp(self.dut_ip_3, self.asn2)
+        try:
+            config_bgp_neighbors(self.dut_ip_3, self.asn0, self.bgp_ip_2, self.vrf_name)
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr_subinterface in get_bgp_neighbors_subinterfaces(
+            self.dut_ip_3, self.asn2
+        ):
+            assert nbr_subinterface.get("ip_address") == self.bgp_ip_2
+
+        for nbr_bgp in get_neighbour_bgp(self.dut_ip_3, self.asn2):
+            assert nbr_bgp.get("local_asn") == self.asn0
+
+        try:
+            del_all_bgp_neighbour_af(self.dut_ip_3)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        for nbr in get_bgp_global(self.dut_ip_3, vrf_name="default").get(
+            "neighbor_prop"
+        ):
+            assert not nbr.get("afi_safi")
+
+        try:
+            config_bgp_neighbor_af(
+                self.dut_ip_3, self.afi_safi, self.bgp_ip_2, self.vrf_name, True
+            )
+        except _InactiveRpcError as err:
+            self.fail(err)
+
+        for nbr in get_bgp_global(self.dut_ip_3, vrf_name="default").get(
+            "neighbor_prop"
+        ):
+            assert {"ipv4_unicast": True} in nbr.get("afi_safi")
 
     def test_create_vlan_config(self):
-        del_vlan_from_device(self.dut_ip_1)
-        assert not get_vlan_details_from_device(self.dut_ip_1, self.vlan_name)
+        try:
+            del_vlan(self.dut_ip_1, self.vlan_name)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        try:
+            del_vlan(self.dut_ip_1, self.vlan_name_2)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_vlan(self.dut_ip_1, self.vlan_name)
+        assert not get_vlan(self.dut_ip_1, self.vlan_name_2)
+
         mem = {self.ethernet4: VlanTagMode.tagged, self.ethernet5: VlanTagMode.untagged}
         mem_2 = {
             self.ethernet6: VlanTagMode.tagged,
             self.ethernet7: VlanTagMode.untagged,
         }
+        try:
+            config_vlan(self.dut_ip_1, self.vlan_name, self.vlan_id, mem)
+            config_vlan(self.dut_ip_1, self.vlan_name_2, self.vlan_id_2, mem_2)
 
-        config_vlan_on_device(self.dut_ip_1, self.vlan_name, self.vlan_id, mem)
-        config_vlan_on_device(self.dut_ip_1, self.vlan_name_2, self.vlan_id_2, mem_2)
+            vlan_detail = get_vlan(self.dut_ip_1)
+            for vlan in vlan_detail or []:
+                assert vlan.get("name") in [self.vlan_name, self.vlan_name_2]
+                assert vlan.get("vlanid") in [self.vlan_id, self.vlan_id_2]
+                if vlan.get("vlanid") is self.vlan_id:
+                    assert set(vlan.get("members")) == set(mem.keys())
+                    for member_if, tagging_mode in get_vlan_members(
+                        self.dut_ip_1, vlan.get("name")
+                    ).items():
+                        assert tagging_mode == str(mem.get(member_if))
+                elif vlan.get("vlanid") is self.vlan_id_2:
+                    assert set(vlan.get("members")) == set(mem_2.keys())
+                    for member_if, tagging_mode in get_vlan_members(
+                        self.dut_ip_1, vlan.get("name")
+                    ).items():
+                        assert tagging_mode == str(mem_2.get(member_if))
 
-        vlan_detail = get_vlan_details_from_device(self.dut_ip_1)
-        assert len(vlan_detail.get("sonic-vlan:VLAN_LIST")) == 2
-        for v in vlan_detail.get("sonic-vlan:VLAN_LIST") or []:
-            assert v.get("members") == list(mem.keys()) or v.get("members") == list(
-                mem_2.keys()
-            )
-            assert v.get("name") == self.vlan_name or v.get("name") == self.vlan_name_2
-            assert v.get("vlanid") == self.vlan_id or v.get("vlanid") == self.vlan_id_2
-
-        for v in vlan_detail.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
-            if v.get("ifname") in [self.ethernet4, self.ethernet6]:
-                assert v.get("tagging_mode") == str(VlanTagMode.tagged)
-            elif v.get("ifname") in [self.ethernet5, self.ethernet7]:
-                assert v.get("tagging_mode") == str(VlanTagMode.untagged)
-            assert v.get("name") in [self.vlan_name, self.vlan_name_2]
+        except _InactiveRpcError as err:
+            self.fail(err)

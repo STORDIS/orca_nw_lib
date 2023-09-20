@@ -17,7 +17,6 @@ from .vlan_gnmi import (
     del_vlan_from_device,
     del_vlan_mem_interface_on_device,
 )
-from .device_db import get_device_db_obj
 from .utils import get_logging
 from .graph_db_models import Vlan
 
@@ -78,18 +77,41 @@ def _getJson(device_ip: str, v: Vlan):
 
 
 def get_vlan(device_ip, vlan_name: str = None):
+    """
+    Get VLAN information for a given device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        vlan_name (str, optional): The name of the VLAN. Defaults to None.
+
+    Returns:
+        list: A list of JSON objects representing the VLAN information.
+    """
     vlans = get_vlan_obj_from_db(device_ip, vlan_name)
-    op_dict = []
-    try:
-        for v in vlans or []:
-            op_dict.append(_getJson(device_ip, v))
-        return op_dict
-    except TypeError:
-        ## Its a single vlan object no need to iterate.
-        return _getJson(device_ip, vlans)
+    if vlans is None:
+        return []
+
+    if isinstance(vlans, list):
+        return [_getJson(device_ip, v) for v in vlans]
+
+    return _getJson(device_ip, vlans)
 
 
 def del_vlan(device_ip, vlan_name):
+    """
+    Deletes a VLAN from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN to be deleted.
+
+    Raises:
+        _InactiveRpcError: If the VLAN deletion fails.
+
+    Returns:
+        None
+    """
+
     try:
         del_vlan_from_device(device_ip, vlan_name)
     except _InactiveRpcError as err:
@@ -100,9 +122,25 @@ def del_vlan(device_ip, vlan_name):
     finally:
         discover_vlan(device_ip)
 
+
 def config_vlan(
     device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None
 ):
+    """
+    Configures a VLAN on a network device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        vlan_id (int): The ID of the VLAN.
+        mem_ifs (dict[str:VlanTagMode], optional): A dictionary mapping interface names to VLAN tag modes.
+
+    Raises:
+        _InactiveRpcError: If VLAN configuration fails.
+
+    Returns:
+        None
+    """
     try:
         config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs)
     except _InactiveRpcError as err:
@@ -113,7 +151,22 @@ def config_vlan(
     finally:
         discover_vlan(device_ip)
 
+
 def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode]):
+    """
+    Adds the specified VLAN as a member on the given device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        mem_ifs (dict[str:VlanTagMode]): A dictionary mapping interface names to VLAN tag modes.
+
+    Raises:
+        _InactiveRpcError: If the VLAN member addition fails on the device.
+
+    Returns:
+        None
+    """
     try:
         add_vlan_mem_interface_on_device(device_ip, vlan_name, mem_ifs)
     except _InactiveRpcError as err:
@@ -124,7 +177,18 @@ def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode])
     finally:
         discover_vlan(device_ip)
 
+
 def get_vlan_members(device_ip, vlan_name: str):
+    """
+    Retrieves the members of a VLAN on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+
+    Returns:
+        dict: A dictionary mapping member interface names to their corresponding tagging mode.
+    """
     members = get_vlan_mem_ifcs_from_db(device_ip, vlan_name)
     mem_intf_vs_tagging_mode = {}
     for mem in members or []:
@@ -138,6 +202,21 @@ def get_vlan_members(device_ip, vlan_name: str):
 def config_vlan_mem_tagging(
     device_ip: str, vlan_name: str, if_name: str, tagging_mode: VlanTagMode
 ):
+    """
+    Configures VLAN member tagging on a network device.
+
+    Args:
+        device_ip (str): The IP address of the network device.
+        vlan_name (str): The name of the VLAN.
+        if_name (str): The name of the interface.
+        tagging_mode (VlanTagMode): The tagging mode to be configured.
+
+    Raises:
+        _InactiveRpcError: If the VLAN member tagging configuration fails.
+
+    Returns:
+        None
+    """
     try:
         config_vlan_tagging_mode_on_device(device_ip, vlan_name, if_name, tagging_mode)
     except _InactiveRpcError as err:
@@ -150,6 +229,20 @@ def config_vlan_mem_tagging(
 
 
 def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
+    """
+    Deletes a VLAN member from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        if_name (str, optional): The name of the interface. Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If the VLAN member deletion fails.
+
+    Returns:
+        None
+    """
     try:
         del_vlan_mem_interface_on_device(device_ip, vlan_name, if_name)
     except _InactiveRpcError as err:
@@ -162,6 +255,20 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
 
 
 def discover_vlan(device_ip: str = None, vlan_name: str = None):
+    """
+    Discovers VLANs on a network device.
+
+    Args:
+        device_ip (str, optional): The IP address of the device. Defaults to None.
+        vlan_name (str, optional): The name of the VLAN. Defaults to None.
+
+    Raises:
+        _InactiveRpcError: If the VLAN discovery fails.
+
+    Returns:
+        None
+    """
+
     _logger.info("Discovering VLAN.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:

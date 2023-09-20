@@ -49,7 +49,7 @@ def get_vlan_mem_ifcs_from_db(device_ip: str, vlan_name: str) -> Optional[List[s
         vlan_name (str): The name of the VLAN.
 
     Returns:
-        List[str]: A list of member interfaces if the device and VLAN exist in the database, 
+        List[str]: A list of member interfaces if the device and VLAN exist in the database,
         otherwise None.
     """
 
@@ -85,7 +85,7 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
 
     Args:
         device (Device): The device object representing the device.
-        vlans_obj_vs_mem (dict): A dictionary containing VLAN objects as keys 
+        vlans_obj_vs_mem (dict): A dictionary containing VLAN objects as keys
         and a list of members as values.
 
     Returns:
@@ -107,7 +107,9 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
                 saved_vlan.memberInterfaces.connect(intf)
                 if saved_vlan
                 and (
-                    intf := get_interface_of_device_from_db(device.mgt_ip, mem.get("ifname"))
+                    intf := get_interface_of_device_from_db(
+                        device.mgt_ip, mem.get("ifname")
+                    )
                 )
                 else None
             )
@@ -118,5 +120,3 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
     for vlan_in_db in get_vlan_obj_from_db(device.mgt_ip):
         if vlan_in_db not in vlans_obj_vs_mem:
             del_vlan_from_db(device.mgt_ip, vlan_in_db.name)
-
-

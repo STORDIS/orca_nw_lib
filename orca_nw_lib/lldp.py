@@ -27,7 +27,9 @@ def get_lldp_neighbors(device_ip: str):
         local_port_name = intfs.get("name")
 
         if not intfs.get("neighbors") or not intfs.get("neighbors").get("neighbor"):
-            _logger.error(f"Can't find neighbor in {device_ip}:{local_port_name}")
+            ##_logger.debug(f"Can't find neighbor in {device_ip}:{local_port_name}")
+            ## not all interfaces are connected, in case interface is not connected to any neighbor
+            ## Just continue.
             continue
 
         for nbr in intfs.get("neighbors").get("neighbor") or []:
@@ -91,6 +93,15 @@ def get_lldp_enable_path() -> Path:
 
 
 def get_lldp_interfaces_from_device(device_ip: str):
+    """
+    Retrieves the LLDP interfaces from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        The result of the GNMI get request for the LLDP interfaces.
+    """
     return send_gnmi_get(device_ip=device_ip, path=[get_lldp_interfaces_path()])
 
 
