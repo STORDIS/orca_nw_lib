@@ -12,13 +12,15 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Supported SONiC versions](#supported-sonic-versions)
 
 ## Build and Install orca_nw_lib 
+ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed. Poetry can be easily installed using the following command :
+        
+    pip install poetry
+
+To build orca_nw_lib use the following commands :
 
     cd orca_nw_lib
     poetry build
     pip install dist/orca_nw_lib-****.whl
-
->**Note** - Poetry, Python3 and pip must be pre installed.
-
 
 ## orca_nw_lib configuration
 [orca.yml](orca_nw_lib/orca.yml) file contains all necessary configuration parameters required by orca_nw_lib. parameters are described in the file itself. [orca.yml](orca_nw_lib/orca.yml) is read by default by the function get_orca_config in [utils.py](orca_nw_lib/utils.py), Although applications can call get_orca_config with custom config files keeping same structure. \
