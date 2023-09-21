@@ -1,6 +1,6 @@
 # ORCA Network Library
-ORCA Network Library is a python package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
-ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics  
+ORCA Network Library is an open sourcepython package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
+ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
 - [ORCA Network Library](#orca-network-library)
   - [Build and Install orca\_nw\_lib](#build-and-install-orca_nw_lib)
   - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
@@ -10,6 +10,7 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
   - [Executing Tests](#executing-tests)
   - [Supported SONiC versions](#supported-sonic-versions)
+  - [Contribute](#contribute)
 
 ## Build and Install orca_nw_lib 
 ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed. Poetry can be easily installed using the following command :
@@ -22,13 +23,16 @@ To build orca_nw_lib use the following commands :
     poetry build
     pip install dist/orca_nw_lib-****.whl
 
+Once installed the orca_nw_lib package, orca_nw_lib can be used like any other python package in your application.
+
 ## orca_nw_lib configuration
 [orca.yml](orca_nw_lib/orca.yml) file contains all necessary configuration parameters required by orca_nw_lib. parameters are described in the file itself. [orca.yml](orca_nw_lib/orca.yml) is read by default by the function get_orca_config in [utils.py](orca_nw_lib/utils.py), Although applications can call get_orca_config with custom config files keeping same structure. \
+\
 [logging.yml](orca_nw_lib/logging.yml) contains logging configuration. [logging.yml](orca_nw_lib/logging.yml) is read by default by the function get_logging in [utils.py](orca_nw_lib/utils.py), Although applications can call get_logging with custom logging config files keeping same structure.
 
 
 ## Install Neo4j
-Easiest to install neo4j is to run in container with the following command :
+orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest is to run in container with the following command :
         
     docker run \
         --name testneo4j \
@@ -87,3 +91,6 @@ For performing tests creating a topology in GNS3 can be a good starting point.
 
 ## Supported SONiC versions
 - Broadcom Enterprise SONiC (Latest tested on 4.0.5)
+
+## Contribute
+You can contribute to the project by opening an issue or sending a pull request.
