@@ -517,7 +517,7 @@ class BGPTests(unittest.TestCase):
         except _InactiveRpcError as err:
             self.fail(err)
 
-    # TODO - Test global and neighbour AF, Test adding and removal of neighbors.
+    # TODO - Test global and neighbour AF, Test adding and removal of neighbors. Deletion of BGP_GLOBAL_AF, MCLAG_GW_MAC and subinterfaces.
     
 class VLANTests(unittest.TestCase):
     dut_ip = ""

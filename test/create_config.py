@@ -117,15 +117,36 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         assert cls.dut_ip_1 is not None
 
-    @classmethod
-    def tearDownClass(cls):
-        ## Once all config test cases are done discovefr all again,
-        ## Because, currently not all the nodes in DB are updated in real time.
-        discover_all()
-        # TODO: assert more on the nodes and relations discovered.
-        assert (
-            len(set(get_all_devices_ip_from_db())) >= 3
-        ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
+        ## cleanup existing configurations
+        for dut in [cls.dut_ip_1, cls.dut_ip_2, cls.dut_ip_3]:
+            try:
+                del_bgp_global(dut, cls.vrf_name)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
+            try:
+                del_mclag(dut)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
+            try:
+                [
+                    del_port_chnl(dut, chnl)
+                    for chnl in [
+                        cls.port_chnl_103,
+                        cls.peer_link_chnl_100,
+                        cls.mem_port_chnl_101,
+                        cls.mem_port_chnl_102,
+                    ]
+                ]
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
+            for vlan in [cls.vlan_name, cls.vlan_name_2]:
+                try:
+                    del_vlan(dut, vlan)
+                except _InactiveRpcError as err:
+                    assert err.details().lower() == "resource not found"
 
     def test_create_port_channel_config(self):
         for dut in [self.dut_ip_1, self.dut_ip_2, self.dut_ip_3]:
