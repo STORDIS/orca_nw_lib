@@ -1,4 +1,4 @@
-from orca_nw_lib.common import Speed
+from orca_nw_lib.common import PortFec, Speed
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
 from orca_nw_lib.gnmi_util import (
@@ -128,6 +128,22 @@ def get_intfc_config_path(intfc_name: str):
     return path
 
 
+def get_oc_ethernet_config_path(intfc_name: str):
+    """
+    Generates the path to the oc ethernet config for a given interface.
+
+    Args:
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        Path: The path to the config file.
+    """
+    path = get_interface_path(intfc_name)
+    path.elem.append(PathElem(name="openconfig-if-ethernet:ethernet"))
+    path.elem.append(PathElem(name="config"))
+    return path
+
+
 def get_intfc_speed_path(intfc_name: str):
     """
     Generates the path to retrieve the interface speed for a given interface.
@@ -138,10 +154,23 @@ def get_intfc_speed_path(intfc_name: str):
     Returns:
         Path: The path to retrieve the interface speed.
     """
-    path = get_interface_path(intfc_name)
-    path.elem.append(PathElem(name="openconfig-if-ethernet:ethernet"))
-    path.elem.append(PathElem(name="config"))
+    path = get_oc_ethernet_config_path(intfc_name)
     path.elem.append(PathElem(name="port-speed"))
+    return path
+
+
+def get_port_fec_path(intfc_name: str):
+    """
+    Generates the path to retrieve the interface fec for a given interface.
+
+    Args:
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        Path: The path to retrieve the interface fec.
+    """
+    path = get_oc_ethernet_config_path(intfc_name)
+    path.elem.append(PathElem(name="openconfig-if-ethernet-ext2:port-fec"))
     return path
 
 
@@ -171,6 +200,7 @@ def set_interface_config_on_device(
     ip: str = None,
     ip_prefix_len: int = 0,
     index: int = 0,
+    fec: PortFec = None,
 ):
     """
     Set the interface configuration on a device.
@@ -186,6 +216,8 @@ def set_interface_config_on_device(
         ip (str, optional): The IP address of the subinterface. Defaults to None.
         ip_prefix_len (int, optional): The prefix length of the IP address. Defaults to 0.
         index (int, optional): The index of the subinterface. Defaults to 0.
+        fec (bool, optional): Whether to enable forward error correction. Defaults to None.
+
 
     Returns:
         None: If no updates were made.
@@ -199,6 +231,16 @@ def set_interface_config_on_device(
             create_gnmi_update(
                 get_intfc_enabled_path(interface_name),
                 {"openconfig-interfaces:enabled": enable},
+            )
+        )
+
+    if fec is not None:
+        updates.append(
+            create_gnmi_update(
+                get_port_fec_path(interface_name),
+                {
+                    "openconfig-if-ethernet-ext2:port-fec": str(fec)
+                },
             )
         )
 

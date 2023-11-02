@@ -4,7 +4,7 @@ from grpc._channel import _InactiveRpcError
 
 import pytz
 
-from orca_nw_lib.common import Speed, getSpeedStrFromOCStr
+from orca_nw_lib.common import Speed, getSpeedStrFromOCStr, PortFec
 from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
@@ -39,7 +39,6 @@ def _create_interface_graph_objects(device_ip: str):
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
-        intfc_counters = intfc_state.get("counters", {})
         if_type = intfc.get("config").get("type")
 
         if (
@@ -50,9 +49,11 @@ def _create_interface_graph_objects(device_ip: str):
                 name=intfc_state.get("name"),
                 enabled=intfc_state.get("enabled"),
                 mtu=intfc_state.get("mtu"),
-                fec=intfc.get("openconfig-if-ethernet:ethernet", {})
-                .get("config", {})
-                .get("openconfig-if-ethernet-ext2:port-fec"),
+                fec=PortFec.getFecStrFromOCStr(
+                    intfc.get("openconfig-if-ethernet:ethernet", {})
+                    .get("config", {})
+                    .get("openconfig-if-ethernet-ext2:port-fec")
+                ),
                 speed=getSpeedStrFromOCStr(s)
                 if (
                     s := intfc.get("openconfig-if-ethernet:ethernet", {})
@@ -73,29 +74,6 @@ def _create_interface_graph_objects(device_ip: str):
                     )
                 ),
                 mac_addr=intfc_state.get("mac-address"),
-                in_bits_per_second=intfc_counters.get("in-bits-per-second"),
-                in_broadcast_pkts=intfc_counters.get("in-broadcast-pkts"),
-                in_discards=intfc_counters.get("in-discards"),
-                in_errors=intfc_counters.get("in-errors"),
-                in_multicast_pkts=intfc_counters.get("in-multicast-pkts"),
-                in_octets=intfc_counters.get("in-octets"),
-                in_octets_per_second=intfc_counters.get("in-octets-per-second"),
-                in_pkts=intfc_counters.get("in-pkts"),
-                in_pkts_per_second=intfc_counters.get("in-pkts-per-second"),
-                in_unicast_pkts=intfc_counters.get("in-unicast-pkts"),
-                in_utilization=intfc_counters.get("in-utilization"),
-                last_clear=intfc_counters.get("last-clear"),
-                out_bits_per_second=intfc_counters.get("out-bits-per-second"),
-                out_broadcast_pkts=intfc_counters.get("out-broadcast-pkts"),
-                out_discards=intfc_counters.get("out-discards"),
-                out_errors=intfc_counters.get("out-errors"),
-                out_multicast_pkts=intfc_counters.get("out-multicast-pkts"),
-                out_octets=intfc_counters.get("out-octets"),
-                out_octets_per_second=intfc_counters.get("out-octets-per-second"),
-                out_pkts=intfc_counters.get("out-pkts"),
-                out_pkts_per_second=intfc_counters.get("out-pkts-per-second"),
-                out_unicast_pkts=intfc_counters.get("out-unicast-pkts"),
-                out_utilization=intfc_counters.get("out-utilization"),
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", {}):
@@ -166,6 +144,7 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         ip (str, optional): The IP address of the interface. Defaults to None.
         ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
         index (int, optional): The index of the sub-interface. Defaults to 0.
+        fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
 
     raises:
         _InactiveRpcError: If the configuration of the interface fails.
