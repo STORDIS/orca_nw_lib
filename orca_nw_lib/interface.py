@@ -4,7 +4,7 @@ from grpc._channel import _InactiveRpcError
 
 import pytz
 
-from orca_nw_lib.common import Speed, getSpeedStrFromOCStr, PortFec
+from orca_nw_lib.common import Speed, PortFec
 from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
@@ -54,7 +54,7 @@ def _create_interface_graph_objects(device_ip: str):
                     .get("config", {})
                     .get("openconfig-if-ethernet-ext2:port-fec")
                 ),
-                speed=getSpeedStrFromOCStr(s)
+                speed=Speed.getSpeedStrFromOCStr(s)
                 if (
                     s := intfc.get("openconfig-if-ethernet:ethernet", {})
                     .get("config", {})

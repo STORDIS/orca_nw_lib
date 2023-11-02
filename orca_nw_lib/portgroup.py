@@ -1,4 +1,4 @@
-from orca_nw_lib.common import getSpeedStrFromOCStr
+from orca_nw_lib.common import Speed
 from orca_nw_lib.device_db import get_device_db_obj
 from orca_nw_lib.graph_db_models import PortGroup
 from orca_nw_lib.portgroup_gnmi import get_port_group_from_device
@@ -30,14 +30,14 @@ def _create_port_group_graph_objects(device_ip: str):
     port_group_graph_objs = {}
     for port_group in port_groups_json.get("openconfig-port-group:port-group") or []:
         port_group_state = port_group.get("state", {})
-        default_speed = getSpeedStrFromOCStr(port_group_state.get("default-speed"))
+        default_speed = Speed.getSpeedStrFromOCStr(port_group_state.get("default-speed"))
         member_if_start = port_group_state.get("member-if-start")
         member_if_end = port_group_state.get("member-if-end")
         valid_speeds = [
-            getSpeedStrFromOCStr(s) for s in port_group_state.get("valid-speeds")
+            Speed.getSpeedStrFromOCStr(s) for s in port_group_state.get("valid-speeds")
         ]
-        speed = getSpeedStrFromOCStr(port_group_state.get("speed"))
-        id = port_group_state.get("id")
+        speed = Speed.getSpeedStrFromOCStr(port_group_state.get("speed"))
+        gr_id = port_group_state.get("id")
 
         mem_infcs = []
         for eth_num in range(
@@ -48,7 +48,7 @@ def _create_port_group_graph_objects(device_ip: str):
 
         port_group_graph_objs[
             PortGroup(
-                port_group_id=id,
+                port_group_id=gr_id,
                 speed=speed,
                 valid_speeds=valid_speeds,
                 default_speed=default_speed,
