@@ -320,6 +320,16 @@ class SampleConfigDiscovery(unittest.TestCase):
             except _InactiveRpcError as err:
                 assert err.details().lower() == "resource not found"
 
+            try:
+                del_all_subinterfaces_of_interface(self.dut_ip_2, ether)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
+            try:
+                del_all_subinterfaces_of_interface(self.dut_ip_3, ether)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
         try:
             ############################ Setup two interfaces on spine #######################
             ##################### Setup first interface

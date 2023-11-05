@@ -71,9 +71,7 @@ class InterfaceTests(unittest.TestCase):
     def test_interface_enable_subscription_update(self):
         ##run following code 2 times to ensure the interface has its origional enable state after the test
         for _ in range(2):
-            enable_to_set = not get_interface(self.dut_ip, self.ethernet).get(
-                "enabled"
-            )
+            enable_to_set = not get_interface(self.dut_ip, self.ethernet).get("enabled")
             try:
                 config_interface(
                     self.dut_ip,
@@ -221,11 +219,40 @@ class PortChannelTests(unittest.TestCase):
         ## Cleanup PortChannel 1
         mem_infcs = [self.ethernet1, self.ethernet2]
         mem_infcs_2 = [self.ethernet3, self.ethernet4]
+
+        ## Cleanup PortChannel 1
+
+        try:
+            ## Cleanup MCLAG first , because port channels can be members of MCLAG
+            ## And later in the test while deleting such port channels
+            ##Error can be thrown that "resource in use"
+            del_mclag(self.dut_ip)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_mclags(self.dut_ip)
+
         try:
             del_port_chnl(self.dut_ip)
         except _InactiveRpcError as err:
-            ## Trying to remove port channels which doesn't exist, which is ok
             assert err.details().lower() == "resource not found"
+
+        assert not get_port_chnl(self.dut_ip, self.chnl_name)
+
+        for mem_name in mem_infcs_2:
+            try:
+                ## Cleanup PortChannel 2
+                del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
+            except _InactiveRpcError as err:
+                assert err.details().lower() == "resource not found"
+
+        assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
+
+        try:
+            del_port_chnl(self.dut_ip, self.chnl_name_2)
+        except _InactiveRpcError as err:
+            assert err.details().lower() == "resource not found"
+
+        assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
 
         ##Remove IPs from interfaces
         for mem_name in mem_infcs + mem_infcs_2:
@@ -237,6 +264,26 @@ class PortChannelTests(unittest.TestCase):
                 assert err.details().lower() == "resource not found"
 
         try:
+            for mem_name in mem_infcs + mem_infcs_2:
+                speed = get_interface(self.dut_ip, mem_name).get("speed")
+
+                if str(Speed.SPEED_100GB) == speed:
+                    speed_to_set = Speed.SPEED_40GB
+                elif Speed.SPEED_100GB == speed:
+                    speed_to_set = Speed.SPEED_40GB
+                elif Speed.SPEED_10GB == speed:
+                    speed_to_set = Speed.SPEED_25GB
+                elif Speed.SPEED_25GB == speed:
+                    speed_to_set = Speed.SPEED_10GB
+                else:
+                    speed_to_set = Speed.SPEED_40GB
+
+                config_interface(
+                    self.dut_ip,
+                    mem_name,
+                    speed=speed_to_set,
+                )
+
             ## Add PortChannel 1
             add_port_chnl(self.dut_ip, self.chnl_name)
             port_chnls = get_port_chnl(self.dut_ip, self.chnl_name)
@@ -304,7 +351,7 @@ class MclagTests(unittest.TestCase):
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
         assert not get_mclags(self.dut_ip, self.domain_id)
-        
+
         try:
             del_port_chnl(self.dut_ip, self.peer_link)
         except _InactiveRpcError as err:
@@ -400,13 +447,13 @@ class MclagTests(unittest.TestCase):
                 del_port_chnl(self.dut_ip, self.mem_port_chnl)
             except _InactiveRpcError as err:
                 assert err.details().lower() == "resource not found"
-                
+
             add_port_chnl(self.dut_ip, self.mem_port_chnl)
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
             except _InactiveRpcError as err:
                 assert err.details().lower() == "resource not found"
-                
+
             add_port_chnl(self.dut_ip, self.mem_port_chnl_2)
 
             config_mclag_mem_portchnl(self.dut_ip, self.domain_id, self.mem_port_chnl)
@@ -474,10 +521,12 @@ class BGPTests(unittest.TestCase):
             del_bgp_global(self.dut_ip, self.vrf_name)
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
-            
+
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
         try:
-            config_bgp_global(self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name)
+            config_bgp_global(
+                self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
+            )
 
             bgp_global = get_bgp_global(self.dut_ip, self.vrf_name)
             assert self.asn0 == bgp_global.get("local_asn")
@@ -494,16 +543,18 @@ class BGPTests(unittest.TestCase):
             del_bgp_global(self.dut_ip, self.vrf_name)
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
-            
+
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
-        
+
         try:
-            config_bgp_global(self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name)
+            config_bgp_global(
+                self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
+            )
             try:
                 del_all_bgp_neighbors(self.dut_ip)
             except _InactiveRpcError as err:
                 assert err.details().lower() == "resource not found"
-                
+
             assert not get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0)
 
             config_bgp_neighbors(self.dut_ip, self.asn1, self.bgp_ip_0, self.vrf_name)
@@ -518,7 +569,8 @@ class BGPTests(unittest.TestCase):
             self.fail(err)
 
     # TODO - Test global and neighbour AF, Test adding and removal of neighbors. Deletion of BGP_GLOBAL_AF, MCLAG_GW_MAC and subinterfaces.
-    
+
+
 class VLANTests(unittest.TestCase):
     dut_ip = ""
     vlan_name = "Vlan1"
@@ -553,7 +605,7 @@ class VLANTests(unittest.TestCase):
             del_vlan(self.dut_ip, self.vlan_name)
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
-            
+
         assert not get_vlan(self.dut_ip, self.vlan_name)
 
         members_to_add = {
@@ -617,7 +669,7 @@ class VLANTests(unittest.TestCase):
             del_vlan(self.dut_ip, self.vlan_name)
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
-            
+
         assert not get_vlan(self.dut_ip, self.vlan_name)
         try:
             config_vlan(self.dut_ip, self.vlan_name, self.vlan_id)
