@@ -43,7 +43,7 @@ def _get_port_groups_path():
     return path
 
 
-def _get_port_group_path(id: str = None):
+def _get_port_group_path(port_group_id:str = None):
     """
     Generates the base path for the port groups in the OpenConfig model.
 
@@ -51,26 +51,26 @@ def _get_port_group_path(id: str = None):
         Path: The base path for the port groups.
     """
     path = _get_port_groups_base_path()
-    if id:
-        path.elem.append(PathElem(name="port-group", key={"id": id}))
+    if port_group_id:
+        path.elem.append(PathElem(name="port-group", key={"id": port_group_id}))
     else:
         path.elem.append(PathElem(name="port-group"))
     return path
 
 
-def _get_port_group_config_path(id: str):
+def _get_port_group_config_path(port_group_id:str):
     """
     Generates the base path for the port groups in the OpenConfig model.
 
     Returns:
         Path: The base path for the port groups.
     """
-    path = _get_port_group_path(id)
+    path = _get_port_group_path(port_group_id)
     path.elem.append(PathElem(name="config"))
     return path
 
 
-def _get_port_group_speed_path(id: str):
+def _get_port_group_speed_path(port_group_id:str):
     """
     Generates the base path for the port groups in the OpenConfig model.
 
@@ -78,7 +78,7 @@ def _get_port_group_speed_path(id: str):
         Path: The base path for the port groups.
     """
 
-    path = _get_port_group_config_path(id)
+    path = _get_port_group_config_path(port_group_id)
     path.elem.append(PathElem(name="speed"))
     return path
 
@@ -98,7 +98,7 @@ def get_port_chnl_mem_base_path():
     )
 
 
-def get_port_group_from_device(device_ip: str, id: int = None):
+def get_port_group_from_device(device_ip: str, port_group_id: str = None):
     """
     Get the port group from a device.
 
@@ -111,10 +111,12 @@ def get_port_group_from_device(device_ip: str, id: int = None):
 
     """
 
-    return send_gnmi_get(device_ip=device_ip, path=[_get_port_group_path(id)])
+    return send_gnmi_get(
+        device_ip=device_ip, path=[_get_port_group_path(port_group_id)]
+    )
 
 
-def get_port_group_speed_from_device(device_ip: str, id: int):
+def get_port_group_speed_from_device(device_ip: str, port_group_id: str):
     """
     Retrieve the port group speed from a device.
 
@@ -128,10 +130,12 @@ def get_port_group_speed_from_device(device_ip: str, id: int):
     Raises:
         None.
     """
-    return send_gnmi_get(device_ip=device_ip, path=[_get_port_group_speed_path(id)])
+    return send_gnmi_get(
+        device_ip=device_ip, path=[_get_port_group_speed_path(port_group_id)]
+    )
 
 
-def set_port_group_speed_on_device(device_ip: str, id: int, speed: Speed):
+def set_port_group_speed_on_device(device_ip: str, port_group_id: str, speed: Speed):
     """
     Sets the speed of a port group on a device.
 
@@ -147,7 +151,7 @@ def set_port_group_speed_on_device(device_ip: str, id: int, speed: Speed):
         create_req_for_update(
             [
                 create_gnmi_update(
-                    _get_port_group_speed_path(id),
+                    _get_port_group_speed_path(port_group_id),
                     {"openconfig-port-group:speed": speed.get_oc_val()},
                 )
             ]

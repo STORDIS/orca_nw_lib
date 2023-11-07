@@ -87,15 +87,16 @@ class SampleConfigDiscovery(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        clean_db()
-        discover_all()
-
-        assert set(
+        orca_config_discovered = lambda:set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))
-        assert (
-            len(set(get_all_devices_ip_from_db())) >= 3
-        ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
+
+        minimum_device_discovered = lambda:len(get_all_devices_ip_from_db()) >= 3
+
+        if not orca_config_discovered() or not minimum_device_discovered():
+            discover_all()
+        assert orca_config_discovered()
+        assert (minimum_device_discovered()), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
         all_device_list = get_all_devices_ip_from_db()
         cls.dut_ip_1 = all_device_list[0]
         cls.dut_ip_2 = all_device_list[1]
@@ -148,6 +149,11 @@ class SampleConfigDiscovery(unittest.TestCase):
                 except _InactiveRpcError as err:
                     assert err.details().lower() == "resource not found"
 
+    @unittest.skip("Cleanup explicitely only when needed.")
+    def test_cleanup_db(self):
+        clean_db()
+        self.assertIsNone(get_all_devices_ip_from_db())
+        
     def test_create_port_channel_config(self):
         for dut in [self.dut_ip_1, self.dut_ip_2, self.dut_ip_3]:
             try:

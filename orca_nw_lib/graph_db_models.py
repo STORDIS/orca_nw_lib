@@ -228,7 +228,7 @@ class PortGroup(StructuredNode):
     Represents a port group in the database.
     """
 
-    port_group_id = IntegerProperty()
+    port_group_id = StringProperty()
     speed = StringProperty()
     valid_speeds = ArrayProperty()
     default_speed = StringProperty()

@@ -68,7 +68,7 @@ class InterfaceTests(unittest.TestCase):
         ][0]
         assert cls.dut_ip is not None and cls.ethernet is not None
 
-    def test_interface_enable_subscription_update(self):
+    def test_interface_enable_update(self):
         ##run following code 2 times to ensure the interface has its origional enable state after the test
         for _ in range(2):
             enable_to_set = not get_interface(self.dut_ip, self.ethernet).get("enabled")
@@ -85,7 +85,7 @@ class InterfaceTests(unittest.TestCase):
                 == enable_to_set
             )
 
-    def test_interface_speed_subscription_update(self):
+    def test_interface_speed_update(self):
         ##run following code 2 times to ensure the interface has its origional speed after the test
         for _ in range(2):
             speed = get_interface(self.dut_ip, self.ethernet).get("speed")
@@ -107,7 +107,7 @@ class InterfaceTests(unittest.TestCase):
                 speed_to_set
             )
 
-    def test_interface_mtu_subscription_update(self):
+    def test_interface_mtu_update(self):
         for i in range(1, 3):
             mtu_to_set = 9102 - i
             try:
@@ -120,7 +120,7 @@ class InterfaceTests(unittest.TestCase):
                 self.fail("Failed to set interface mtu")
             assert get_interface(self.dut_ip, self.ethernet).get("mtu") == mtu_to_set
 
-    def test_interface_description_subscription_update(self):
+    def test_interface_description_update(self):
         for _ in range(2):
             description_to_set = "description_" + str(random.randint(1, 100))
             try:
