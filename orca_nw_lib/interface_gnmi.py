@@ -28,22 +28,6 @@ def get_interface_base_path():
         ],
     )
 
-
-def get_interface_path(intfc_name: str):
-    """
-    Get the path of an interface.
-
-    Args:
-        intfc_name (str): The name of the interface.
-
-    Returns:
-        Path: The path of the interface.
-    """
-    path = get_interface_base_path()
-    path.elem.append(PathElem(name="interface", key={"name": intfc_name}))
-    return path
-
-
 def get_sub_interface_base_path(intfc_name: str):
     """
     Get the base path for the sub-interface of a given interface.
@@ -101,15 +85,19 @@ def get_sub_interface_index_path(intfc_name: str, index: int):
     return path
 
 
-def get_all_interfaces_path():
+def get_interface_path(intfc_name: str = None):
     """
-    Returns the path of all interfaces.
-
+    Get the path of an interface.
+    
+    Args:
+        intfc_name (str, optional): The name of the interface. Defaults to None.
+    
     Returns:
-        Path: The path of all interfaces.
+        Path: The path of the interface.
     """
+    
     path = get_interface_base_path()
-    path.elem.append(PathElem(name="interface"))
+    path.elem.append(PathElem(name="interface", key={"name": intfc_name}) if intfc_name else PathElem(name="interface"))
     return path
 
 
@@ -339,32 +327,20 @@ def set_interface_config_on_device(
         return None
 
 
-def get_all_interfaces_from_device(device_ip: str):
+def get_interface_from_device(device_ip: str, intfc_name:str=None):
     """
-    Get all interfaces from a device.
-
-    Parameters:
-        device_ip (str): The IP address of the device.
-
-    Returns:
-        The result of sending a GNMI get request to the device with the path being the path to get all interfaces.
-    """
-    return send_gnmi_get(device_ip=device_ip, path=[get_all_interfaces_path()])
-
-
-def get_interface_from_device(device_ip: str, intfc_name: str):
-    """
-    Get the interface from a device using its IP address and interface name.
+    Retrieves all interfaces from a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        intfc_name (str): The name of the interface.
+        intfc_name (str, optional): The name of the interface to retrieve. Defaults to None.
 
     Returns:
-        The interface information retrieved from the device.
-
+        The result of the GNMI get operation for the specified device and interface.
     """
+   
     return send_gnmi_get(device_ip=device_ip, path=[get_interface_path(intfc_name)])
+
 
 
 def get_interface_config_from_device(device_ip: str, intfc_name: str):

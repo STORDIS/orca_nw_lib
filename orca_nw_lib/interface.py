@@ -16,7 +16,7 @@ from orca_nw_lib.interface_db import (
 from orca_nw_lib.interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
     del_all_subinterfaces_of_interface_from_device,
-    get_all_interfaces_from_device,
+    get_interface_from_device,
     set_interface_config_on_device,
 )
 from orca_nw_lib.utils import get_logging
@@ -25,17 +25,18 @@ from orca_nw_lib.utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def _create_interface_graph_objects(device_ip: str):
+def _create_interface_graph_objects(device_ip: str,intfc_name: str = None):
     """
-    Retrieves all interface information from a given device IP and creates a graph object representation.
+    Retrieves interface information from a device and creates interface graph objects.
 
     Parameters:
-    - device_ip (str): The IP address of the device.
+        device_ip (str): The IP address of the device.
+        intfc_name (str, optional): The name of the interface. Defaults to None.
 
     Returns:
-    - intfc_graph_obj_list (Dict[Interface, List[SubInterface]]): A dictionary mapping Interface objects to lists of SubInterface objects.
+        Dict[Interface, List[SubInterface]]: A dictionary mapping Interface objects to a list of SubInterface objects.
     """
-    interfaces_json = get_all_interfaces_from_device(device_ip)
+    interfaces_json = get_interface_from_device(device_ip,intfc_name)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
@@ -160,7 +161,7 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         )
         raise
     finally:
-        discover_interfaces(device_ip)
+        discover_interfaces(device_ip,intfc_name)
 
 
 def del_ip_from_intf(device_ip: str, intfc_name: str):
@@ -183,33 +184,17 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
         )
         raise
     finally:
-        discover_interfaces(device_ip)
+        discover_interfaces(device_ip,intfc_name)
 
 
-def discover_interfaces(device_ip: str = None):
-    """
-    Discover the interfaces of a device.
-
-    This function discovers the interfaces of a device specified by its IP address.
-    If no IP address is provided, it discovers the interfaces of all devices.
-
-    Args:
-        device_ip (str, optional): The IP address of the device to discover the interfaces of.
-            Defaults to None.
-
-    Raises:
-        _InactiveRpcError: If the interface discovery fails on any device.
-
-    Returns:
-        None
-    """
+def discover_interfaces(device_ip: str = None, intfc_name: str = None):
     _logger.info("Interface Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         try:
-            _logger.info(f"Discovering interfaces of device {device}.")
+            _logger.info(f"Discovering {intfc_name if intfc_name else 'all interfaces'} of device {device}.")
             insert_device_interfaces_in_db(
-                device, _create_interface_graph_objects(device.mgt_ip)
+                device, _create_interface_graph_objects(device.mgt_ip,intfc_name)
             )
         except _InactiveRpcError as err:
             _logger.error(
@@ -255,7 +240,7 @@ def del_all_subinterfaces_of_interface(device_ip: str, if_name: str):
         )
         raise
     finally:
-        discover_interfaces(device_ip)
+        discover_interfaces(device_ip,if_name)
 
 
 def del_all_subinterfaces_of_all_interfaces(device_ip: str):
