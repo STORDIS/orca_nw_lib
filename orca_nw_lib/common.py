@@ -50,6 +50,11 @@ class VlanTagMode(str, Enum):
     tagged = auto()
     untagged = auto()
 
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return VlanTagMode[name] if name in VlanTagMode.__members__ else None
+    
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name

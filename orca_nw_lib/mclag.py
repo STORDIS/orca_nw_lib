@@ -177,13 +177,11 @@ def get_mclags(
 
     if domain_id:
         mclag = get_mclag_of_device_from_db(device_ip, domain_id)
-        return mclag.__properties__ if mclag else {}
+        return mclag.__properties__ if mclag else None
     else:
-        op_dict = []
-        mclags = get_mclag_of_device_from_db(device_ip)
-        for mclag in mclags or []:
-            op_dict.append(mclag.__properties__)
-        return op_dict
+        return [
+            mclag.__properties__ for mclag in get_mclag_of_device_from_db(device_ip)
+        ]
 
 
 def config_mclag(

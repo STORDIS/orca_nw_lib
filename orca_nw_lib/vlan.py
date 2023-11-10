@@ -89,7 +89,7 @@ def get_vlan(device_ip, vlan_name: str = None):
     """
     vlans = get_vlan_obj_from_db(device_ip, vlan_name)
     if vlans is None:
-        return []
+        return None
 
     if isinstance(vlans, list):
         return [_getJson(device_ip, v) for v in vlans]

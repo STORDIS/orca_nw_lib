@@ -268,8 +268,7 @@ def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = Non
             else None
         )
     else:
-        op_dict = []
-        port_chnl_mems = get_port_chnl_members_from_db(device_ip, port_chnl_name)
-        for mem in port_chnl_mems or []:
-            op_dict.append(mem.__properties__)
-        return op_dict
+        return [
+            mem.__properties__
+            for mem in get_port_chnl_members_from_db(device_ip, port_chnl_name) or []
+        ]
