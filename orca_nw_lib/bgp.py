@@ -372,55 +372,6 @@ def config_bgp_neighbor_af(
         discover_bgp()
 
 
-def config_bgp_neighbor_af(
-    device_ip: str,
-    afi_safi: str,
-    neighbor_ip: str,
-    vrf: str,
-    admin_status: bool = True,
-):
-    """
-    Configures BGP neighbor address family for a specific device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        afi_safi (str): The address family identifier and subsequent subaddress family identifier.
-        neighbor_ip (str): The IP address of the neighbor.
-        vrf (str): The virtual routing and forwarding instance name.
-        admin_status (bool, optional): The administrative status of the neighbor. Defaults to True.
-
-    Raises:
-        _InactiveRpcError: If there is an error configuring the address family on the neighbor.
-
-    Returns:
-        None
-
-    Description:
-        This function configures the BGP neighbor address family on a specific device. It takes the device IP address,
-        the address family identifier and subaddress family identifier, the neighbor IP address, and the virtual
-        routing and forwarding instance name as input parameters. The function also has an optional parameter for the
-        administrative status of the neighbor, which is set to True by default.
-
-        The function calls the `config_bgp_neighbor_af_on_device` function to perform the actual configuration. If an
-        error occurs during the configuration, an `_InactiveRpcError` exception is raised and logged. After the
-        configuration is complete, the function calls the `discover_bgp` function.
-
-        Note: The `config_bgp_neighbor_af_on_device` and `discover_bgp` functions are assumed to be defined elsewhere
-        in the codebase.
-    """
-    try:
-        config_bgp_neighbor_af_on_device(
-            device_ip, afi_safi, neighbor_ip, vrf, admin_status
-        )
-    except _InactiveRpcError as err:
-        _logger.error(
-            f"Failed to configure AF {afi_safi} on BGP neighbor {neighbor_ip}, Reason: {err.details()}."
-        )
-        raise
-    finally:
-        discover_bgp()
-
-
 def del_all_bgp_neighbour_af(device_ip: str):
     """
     Deletes all BGP neighbor AF from the specified device.
