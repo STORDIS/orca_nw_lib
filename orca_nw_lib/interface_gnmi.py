@@ -264,7 +264,7 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if orca_nw_lib.portgroup_db.get_all_port_groups_of_device_from_db(
+        if orca_nw_lib.portgroup_db.get_port_group_from_db(
             device_ip
         ) and orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
             device_ip, interface_name
