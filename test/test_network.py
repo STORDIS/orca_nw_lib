@@ -262,7 +262,7 @@ class PortChannelTests(unittest.TestCase):
             except _InactiveRpcError as err:
                 ## Trying to remove port channels which doesn't exist, which is ok
                 assert err.details().lower() == "resource not found"
-
+        mtu = 9100
         try:
             for mem_name in mem_infcs + mem_infcs_2:
                 speed = get_interface(self.dut_ip, mem_name).get("speed")
@@ -282,10 +282,13 @@ class PortChannelTests(unittest.TestCase):
                     self.dut_ip,
                     mem_name,
                     speed=speed_to_set,
+                    mtu=mtu,  # MTU must be same on portchannel and its members.
                 )
 
             ## Add PortChannel 1
-            add_port_chnl(self.dut_ip, self.chnl_name)
+            add_port_chnl(
+                self.dut_ip, self.chnl_name, mtu=mtu
+            )  # MTU must be same on portchannel and its members.
             port_chnls = get_port_chnl(self.dut_ip, self.chnl_name)
             assert port_chnls.get("lag_name") == self.chnl_name
 
@@ -296,7 +299,9 @@ class PortChannelTests(unittest.TestCase):
                 assert member.get("name") in mem_infcs
 
             ## Add PortChannel 2
-            add_port_chnl(self.dut_ip, self.chnl_name_2)
+            add_port_chnl(
+                self.dut_ip, self.chnl_name_2, mtu=mtu
+            )  # MTU must be same on portchannel and its members.
             port_chnls = get_port_chnl(self.dut_ip, self.chnl_name_2)
             assert port_chnls.get("lag_name") == self.chnl_name_2
 
