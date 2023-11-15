@@ -1,3 +1,4 @@
+import datetime
 import ipaddress
 
 from orca_nw_lib.interface import discover_interfaces
@@ -114,7 +115,7 @@ def discover_all():
     - True: If the discovery process was successful.
     - False: If the discovery process was unsuccessful.
     """
-    
+    discovery_start_time=datetime.datetime.now()
     if discover_topology():
         discover_interfaces()
         create_lldp_relations_in_db(topology)
@@ -125,9 +126,11 @@ def discover_all():
         discover_mclag_gw_macs()
         discover_bgp()
         discover_bgp_af_global()
-        
+    
+        discovery_end_time=datetime.datetime.now()
+       
 
-        _logger.info(f"!! Discovered successfully {len(topology)} Devices !!")
+        _logger.info(f"!! Discovered successfully {len(topology)} Devices in {discovery_end_time - discovery_start_time} !!")
         return True
     _logger.info("!! Discovery was Unsuccessful !!")
     return False
