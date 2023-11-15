@@ -95,28 +95,15 @@ def get_port_groups(device_ip: str, port_group_id=None):
         )
         return db_output
     else:
-        db_output = (
-            port_group.__properties__
-            if (port_group := get_port_group_from_db(device_ip))
-            else None
-        )
+        db_output = [
+            pg.__properties__ for pg in get_port_group_from_db(device_ip) or []
+        ]
         if db_output:
             for pg in db_output or []:
                 pg["mem_intfs"] = get_port_group_member_names_from_db(
                     device_ip, pg.get("port_group_id")
                 )
         return db_output
-
-    # op_dict = []
-    # port_groups = get_port_group_from_db(device_ip)
-    # if port_groups:
-    #     for pg in port_groups or []:
-    #         temp = pg.__properties__
-    #         temp["mem_intfs"] = get_port_group_member_names_from_db(
-    #             device_ip, pg.port_group_id
-    #         )
-    #         op_dict.append(temp)
-    # return op_dict
 
 
 def discover_port_groups(device_ip: str = None):
