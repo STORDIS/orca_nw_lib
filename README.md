@@ -2,9 +2,10 @@
 ORCA Network Library is an open sourcepython package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
 ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
 - [ORCA Network Library](#orca-network-library)
-  - [Build and Install orca\_nw\_lib](#build-and-install-orca_nw_lib)
+  - [Install Neo4j (Prerequisite)](#install-neo4j-prerequisite)
+  - [Install orca\_nw\_lib using pip](#install-orca_nw_lib-using-pip)
+  - [Build and Install orca\_nw\_lib from source](#build-and-install-orca_nw_lib-from-source)
   - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
-  - [Install Neo4j](#install-neo4j)
   - [Using the ORCA Network APIs](#using-the-orca-network-apis)
   - [Knowing API call status](#knowing-api-call-status)
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
@@ -12,7 +13,27 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Supported SONiC versions](#supported-sonic-versions)
   - [Contribute](#contribute)
 
-## Build and Install orca_nw_lib 
+## Install Neo4j (Prerequisite)
+orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest is to run in container with the following command :
+        
+    docker run \
+        --name testneo4j \
+        -p7474:7474 -p7687:7687 \
+        -d \
+        -v $HOME/neo4j/data:/data \
+        -v $HOME/neo4j/logs:/logs \
+        -v $HOME/neo4j/import:/var/lib/neo4j/import \
+        -v $HOME/neo4j/plugins:/plugins \
+        --env NEO4J_AUTH=neo4j/password \
+        neo4j:latest
+Then open https://localhost:7474 with credentials neo4j/password to browse the database.
+
+## Install orca_nw_lib using pip
+Latest release of ORCA Network Library can be simply installed using pip as follows :
+        
+    pip install orca_nw_lib
+
+## Build and Install orca_nw_lib from source
 ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed. Poetry can be easily installed using the following command :
         
     pip install poetry
@@ -29,22 +50,6 @@ Once installed the orca_nw_lib package, orca_nw_lib can be used like any other p
 [orca.yml](orca_nw_lib/orca.yml) file contains all necessary configuration parameters required by orca_nw_lib. parameters are described in the file itself. [orca.yml](orca_nw_lib/orca.yml) is read by default by the function get_orca_config in [utils.py](orca_nw_lib/utils.py), Although applications can call get_orca_config with custom config files keeping same structure. \
 \
 [logging.yml](orca_nw_lib/logging.yml) contains logging configuration. [logging.yml](orca_nw_lib/logging.yml) is read by default by the function get_logging in [utils.py](orca_nw_lib/utils.py), Although applications can call get_logging with custom logging config files keeping same structure.
-
-
-## Install Neo4j
-orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest is to run in container with the following command :
-        
-    docker run \
-        --name testneo4j \
-        -p7474:7474 -p7687:7687 \
-        -d \
-        -v $HOME/neo4j/data:/data \
-        -v $HOME/neo4j/logs:/logs \
-        -v $HOME/neo4j/import:/var/lib/neo4j/import \
-        -v $HOME/neo4j/plugins:/plugins \
-        --env NEO4J_AUTH=neo4j/password \
-        neo4j:latest
-Then open https://localhost:7474 with credentials neo4j/password to browse the database.
 
 
 ## Using the ORCA Network APIs
