@@ -19,13 +19,15 @@ from orca_nw_lib.interface_gnmi import (
     get_interface_from_device,
     set_interface_config_on_device,
 )
+from orca_nw_lib.portgroup import discover_port_groups
+from orca_nw_lib.portgroup_db import get_port_group_id_of_device_interface_from_db
 from orca_nw_lib.utils import get_logging
 
 
 _logger = get_logging().getLogger(__name__)
 
 
-def _create_interface_graph_objects(device_ip: str,intfc_name: str = None):
+def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     """
     Retrieves interface information from a device and creates interface graph objects.
 
@@ -36,7 +38,7 @@ def _create_interface_graph_objects(device_ip: str,intfc_name: str = None):
     Returns:
         Dict[Interface, List[SubInterface]]: A dictionary mapping Interface objects to a list of SubInterface objects.
     """
-    interfaces_json = get_interface_from_device(device_ip,intfc_name)
+    interfaces_json = get_interface_from_device(device_ip, intfc_name)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
@@ -161,7 +163,9 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         )
         raise
     finally:
-        discover_interfaces(device_ip,intfc_name)
+        ## If switch supports port groups, discover all member interfaces of the port-group
+        ## of which the intfc_name is the member of.
+        discover_interfaces(device_ip, intfc_name,config_triggered_discovery=True)
 
 
 def del_ip_from_intf(device_ip: str, intfc_name: str):
@@ -184,23 +188,47 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
         )
         raise
     finally:
-        discover_interfaces(device_ip,intfc_name)
+        discover_interfaces(device_ip, intfc_name)
 
 
-def discover_interfaces(device_ip: str = None, intfc_name: str = None):
+def discover_interfaces(
+    device_ip: str = None,
+    intfc_name: str = None,
+    config_triggered_discovery: bool = False,
+):
     _logger.info("Interface Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         try:
-            _logger.info(f"Discovering {intfc_name if intfc_name else 'all interfaces'} of device {device}.")
+            _logger.info(
+                f"Discovering {intfc_name if intfc_name else 'all interfaces'} of device {device}."
+            )
             insert_device_interfaces_in_db(
-                device, _create_interface_graph_objects(device.mgt_ip,intfc_name)
+                device, _create_interface_graph_objects(device.mgt_ip, intfc_name)
             )
         except _InactiveRpcError as err:
             _logger.error(
                 f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
             )
             raise
+
+        ## If discovery is triggered due to config update via ORCA and the
+        # device supports port-group then discover port-group
+        ## of which the intfc_name is the member of.
+        if (
+            intfc_name
+            and config_triggered_discovery
+            and (
+                pg_id := get_port_group_id_of_device_interface_from_db(
+                    device_ip, intfc_name
+                )
+            )
+        ):
+            discover_port_groups(
+                device_ip=device_ip,
+                port_group_id=pg_id,
+                config_triggered_discovery=config_triggered_discovery,
+            )
 
 
 def get_subinterfaces(device_ip: str, intfc_name: str):
@@ -240,7 +268,7 @@ def del_all_subinterfaces_of_interface(device_ip: str, if_name: str):
         )
         raise
     finally:
-        discover_interfaces(device_ip,if_name)
+        discover_interfaces(device_ip, if_name)
 
 
 def del_all_subinterfaces_of_all_interfaces(device_ip: str):

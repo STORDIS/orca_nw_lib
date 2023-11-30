@@ -8,6 +8,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_get,
     send_gnmi_set,
 )
+from orca_nw_lib.portgroup import discover_port_groups
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
 
@@ -27,6 +28,7 @@ def get_interface_base_path():
             )
         ],
     )
+
 
 def get_sub_interface_base_path(intfc_name: str):
     """
@@ -88,16 +90,20 @@ def get_sub_interface_index_path(intfc_name: str, index: int):
 def get_interface_path(intfc_name: str = None):
     """
     Get the path of an interface.
-    
+
     Args:
         intfc_name (str, optional): The name of the interface. Defaults to None.
-    
+
     Returns:
         Path: The path of the interface.
     """
-    
+
     path = get_interface_base_path()
-    path.elem.append(PathElem(name="interface", key={"name": intfc_name}) if intfc_name else PathElem(name="interface"))
+    path.elem.append(
+        PathElem(name="interface", key={"name": intfc_name})
+        if intfc_name
+        else PathElem(name="interface")
+    )
     return path
 
 
@@ -226,9 +232,7 @@ def set_interface_config_on_device(
         updates.append(
             create_gnmi_update(
                 get_port_fec_path(interface_name),
-                {
-                    "openconfig-if-ethernet-ext2:port-fec": str(fec)
-                },
+                {"openconfig-if-ethernet-ext2:port-fec": str(fec)},
             )
         )
 
@@ -264,16 +268,10 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if orca_nw_lib.portgroup_db.get_port_group_from_db(
-            device_ip
-        ) and orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
-            device_ip, interface_name
-        ):
-            pg_id = (
-                orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
-                    device_ip, interface_name
-                )
+        if (pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
+                device_ip, interface_name
             )
+        ):
             updates.append(
                 create_gnmi_update(
                     orca_nw_lib.portgroup_gnmi._get_port_group_speed_path(pg_id),
@@ -327,7 +325,7 @@ def set_interface_config_on_device(
         return None
 
 
-def get_interface_from_device(device_ip: str, intfc_name:str=None):
+def get_interface_from_device(device_ip: str, intfc_name: str = None):
     """
     Retrieves all interfaces from a device.
 
@@ -338,9 +336,8 @@ def get_interface_from_device(device_ip: str, intfc_name:str=None):
     Returns:
         The result of the GNMI get operation for the specified device and interface.
     """
-   
-    return send_gnmi_get(device_ip=device_ip, path=[get_interface_path(intfc_name)])
 
+    return send_gnmi_get(device_ip=device_ip, path=[get_interface_path(intfc_name)])
 
 
 def get_interface_config_from_device(device_ip: str, intfc_name: str):

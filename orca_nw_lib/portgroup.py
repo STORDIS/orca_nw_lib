@@ -18,7 +18,7 @@ from grpc._channel import _InactiveRpcError
 _logger = get_logging().getLogger(__name__)
 
 
-def _create_port_group_graph_objects(device_ip: str):
+def _create_port_group_graph_objects(device_ip: str, port_group_id=None):
     """
     Create port group graph objects based on the given device IP.
 
@@ -30,7 +30,7 @@ def _create_port_group_graph_objects(device_ip: str):
             and the values are lists of member interfaces.
 
     """
-    port_groups_json = get_port_group_from_device(device_ip)
+    port_groups_json = get_port_group_from_device(device_ip, port_group_id)
     port_group_graph_objs = {}
     for port_group in port_groups_json.get("openconfig-port-group:port-group") or []:
         port_group_state = port_group.get("state", {})
@@ -106,14 +106,25 @@ def get_port_groups(device_ip: str, port_group_id=None):
         return db_output
 
 
-def discover_port_groups(device_ip: str = None):
+def discover_port_groups(
+    device_ip: str = None,
+    port_group_id: str = None,
+    config_triggered_discovery: bool = False,
+):
     _logger.info("Port-groups Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
         _logger.info(f"Discovering port-groups of device {device}.")
         insert_device_port_groups_in_db(
-            device, _create_port_group_graph_objects(device.mgt_ip)
+            device, _create_port_group_graph_objects(device.mgt_ip, port_group_id)
         )
+        if config_triggered_discovery and port_group_id:
+            ## if discovery is triggered due to config update via ORCA.
+            ## Speed changes to port groups are also reflected in the member interfaces.
+            ## Discover member interfaces of the port group as well.
+            from orca_nw_lib.interface import discover_interfaces
+            for mem_if in get_port_group_members(device_ip, port_group_id):
+                discover_interfaces(device_ip, mem_if.get("name"))
 
 
 def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
@@ -125,4 +136,4 @@ def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
         )
         raise
     finally:
-        discover_port_groups(device_ip)
+        discover_port_groups(device_ip, port_group_id, config_triggered_discovery=True)
