@@ -1,0 +1,38 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Build and check version
+        env:
+          POETRY_PYPI_TOKEN: ${{ secrets.POETRY_PYPI_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+          poetry config pypi-token.pypi $POETRY_PYPI_TOKEN
+          export VERSION=$(poetry version | awk -F " " '{print $NF}' | awk -F "+" '{print $1}')
+          echo "Project version: $VERSION"
+          if twine check --verbose dist/* | grep -q "already exists"; then
+            echo "Same release version already exists on PyPI. Skipping publish step."
+          else
+            poetry build
+            poetry publish || if [[ $? -eq 1 ]]; then echo "Failed to publish to PyPI. Skipping publish step."; fi
+          fi
