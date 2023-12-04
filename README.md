@@ -10,6 +10,7 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Knowing API call status](#knowing-api-call-status)
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
   - [Executing Tests](#executing-tests)
+  - [Releases of orca\_nw\_lib](#releases-of-orca_nw_lib)
   - [Supported SONiC versions](#supported-sonic-versions)
   - [Contribute](#contribute)
 
@@ -93,6 +94,10 @@ For performing tests creating a topology in GNS3 can be a good starting point.
 - To print console messages from code 
   
         pytest orca_nw_lib/test/test_interface.py -k test_remove_port_chnl_members -s
+
+## Releases of orca_nw_lib
+orca_nw_lib releases are hosted at PyPI- https://pypi.org/project/orca_nw_lib/#history ,
+To create a new release, increase the release number in pyproject.toml. 
 
 ## Supported SONiC versions
 - Broadcom Enterprise SONiC (Latest tested on 4.0.5)
