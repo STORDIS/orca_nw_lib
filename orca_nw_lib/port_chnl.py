@@ -178,6 +178,9 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
     """
 
     try:
+        for mem_if in get_port_chnl_members(device_ip, chnl_name):
+            if mem_if.get('name'):
+                del_port_chnl_mem(device_ip, chnl_name, mem_if.get('name'))
         del_port_chnl_from_device(device_ip, chnl_name)
     except _InactiveRpcError as err:
         _logger.error(

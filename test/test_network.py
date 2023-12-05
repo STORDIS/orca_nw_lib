@@ -236,7 +236,7 @@ class PortChannelTests(unittest.TestCase):
         except _InactiveRpcError as err:
             assert err.details().lower() == "resource not found"
 
-        assert not get_port_chnl(self.dut_ip, self.chnl_name)
+        assert not get_port_chnl(self.dut_ip)
 
         for mem_name in mem_infcs_2:
             try:
