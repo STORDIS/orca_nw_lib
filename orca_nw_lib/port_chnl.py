@@ -1,6 +1,6 @@
 from time import sleep
 from typing import Any, Dict, List, Optional, Union
-from grpc._channel import _InactiveRpcError
+from grpc import RpcError
 
 
 from .port_chnl_db import (
@@ -80,7 +80,7 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
         None
 
     Raises:
-        _InactiveRpcError: If the port channel discovery fails on the specified device.
+        RpcError: If the port channel discovery fails on the specified device.
 
     """
 
@@ -92,7 +92,7 @@ def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
             insert_device_port_chnl_in_db(
                 device, _create_port_chnl_graph_object(device.mgt_ip, port_chnl_name)
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             _logger.error(
                 f"Port Channel Discovery Failed on device {device_ip}, Reason: {err.details()}"
             )
@@ -144,7 +144,7 @@ def add_port_chnl(
         mtu (int, optional): The maximum transmission unit (MTU) of the port channel. Defaults to None.
 
     Raises:
-        _InactiveRpcError: If the addition of the port channel fails.
+        RpcError: If the addition of the port channel fails.
 
     Returns:
         None
@@ -152,7 +152,7 @@ def add_port_chnl(
 
     try:
         add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"Port Channel {chnl_name} addition failed on device {device_ip}, Reason: {err.details()}"
         )
@@ -171,7 +171,7 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
         chnl_name (str, optional): The name of the port channel to delete. Defaults to None.
 
     Raises:
-        _InactiveRpcError: If the deletion of the port channel fails.
+        RpcError: If the deletion of the port channel fails.
 
     Returns:
         None
@@ -182,7 +182,7 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
             if mem_if.get('name'):
                 del_port_chnl_mem(device_ip, chnl_name, mem_if.get('name'))
         del_port_chnl_from_device(device_ip, chnl_name)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"Port Channel {chnl_name} deletion failed on device {device_ip}, Reason: {err.details()}"
         )
@@ -202,7 +202,7 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
         ifnames (list[str]): A list of interface names to be added as members to the port channel.
 
     Raises:
-        _InactiveRpcError: If the addition of port channel members fails.
+        RpcError: If the addition of port channel members fails.
 
     Returns:
         None
@@ -210,7 +210,7 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
 
     try:
         add_port_chnl_member(device_ip, chnl_name, ifnames)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"Port Channel {chnl_name} members {ifnames} addition failed on device {device_ip}, Reason: {err.details()}"
         )
@@ -232,14 +232,14 @@ def del_port_chnl_mem(device_ip: str, chnl_name: str, ifname: str):
         ifname (str): The name of the interface to be removed from the port channel.
 
     Raises:
-        _InactiveRpcError: If the deletion of the member fails.
+        RpcError: If the deletion of the member fails.
 
     Returns:
         None
     """
     try:
         remove_port_chnl_member(device_ip, chnl_name, ifname)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"Port Channel {chnl_name} member {ifname} deletion failed on device {device_ip}, Reason: {err.details()}"
         )

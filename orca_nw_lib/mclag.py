@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Union
 
 from orca_nw_lib.utils import get_logging
-from grpc._channel import _InactiveRpcError
+from grpc import RpcError
 
 from .device_db import get_device_db_obj
 from .mclag_db import (
@@ -110,7 +110,7 @@ def discover_mclag(device_ip: str = None):
         None
 
     Raises:
-        _InactiveRpcError: If the MCLAG discovery fails.
+        RpcError: If the MCLAG discovery fails.
 
     """
 
@@ -122,7 +122,7 @@ def discover_mclag(device_ip: str = None):
             insert_device_mclag_in_db(
                 device, _create_mclag_graph_objects(device.mgt_ip)
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             _logger.error(
                 f"MCLAG Discovery Failed on device {device_ip}, Reason: {err.details()}"
             )
@@ -142,8 +142,8 @@ def discover_mclag_gw_macs(device_ip: str = None):
         None
 
     Raises:
-        _InactiveRpcError: If the MCLAG gateway MAC discovery fails on a device,
-            an _InactiveRpcError is raised with the corresponding error message.
+        RpcError: If the MCLAG gateway MAC discovery fails on a device,
+            an RpcError is raised with the corresponding error message.
     """
     _logger.info("MCLAG GW MAC Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
@@ -153,7 +153,7 @@ def discover_mclag_gw_macs(device_ip: str = None):
             insert_device_mclag_gw_macs_in_db(
                 device, _create_mclag_gw_mac_obj(device.mgt_ip)
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             _logger.error(
                 f"MCLAG gateway MAC Discovery Failed on device {device_ip}, Reason: {err.details()}"
             )
@@ -210,7 +210,7 @@ def config_mclag(
         delay_restore (int, optional): The delay to restore MCLAG. Defaults to None.
 
     Raises:
-        _InactiveRpcError: If MCLAG configuration fails.
+        RpcError: If MCLAG configuration fails.
 
     Returns:
         None
@@ -229,7 +229,7 @@ def config_mclag(
             delay_restore,
         )
 
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f" MCLAG configuration failed on device_ip : {device_ip}, Reason: {err.details()}"
         )
@@ -246,14 +246,14 @@ def del_mclag(device_ip: str):
         device_ip (str): The IP address of the device.
 
     Raises:
-        _InactiveRpcError: If the MCLAG deletion fails.
+        RpcError: If the MCLAG deletion fails.
 
     Returns:
         None
     """
     try:
         del_mclag_from_device(device_ip)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f" MCLAG deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
         )
@@ -301,7 +301,7 @@ def config_mclag_gw_mac(device_ip: str, gw_mac: str):
         gw_mac (str): The gateway MAC address.
 
     Raises:
-        _InactiveRpcError: If the MCLAG gateway MAC address configuration fails.
+        RpcError: If the MCLAG gateway MAC address configuration fails.
 
     Returns:
         None
@@ -310,7 +310,7 @@ def config_mclag_gw_mac(device_ip: str, gw_mac: str):
 
     try:
         config_mclag_gateway_mac_on_device(device_ip, gw_mac)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"MCLAG GW MAC {gw_mac} configuration failed on device_ip : {device_ip}, Reason: {err.details()}"
         )
@@ -334,7 +334,7 @@ def del_mclag_gw_mac(device_ip: str):
     """
     try:
         del_mclag_gateway_mac_from_device(device_ip)
-    except _InactiveRpcError:
+    except RpcError:
         _logger.error(
             f"MCLAG GW MAC deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
         )
@@ -403,14 +403,14 @@ def config_mclag_mem_portchnl(
         port_chnl_name (str): The name of the port channel.
 
     Raises:
-        _InactiveRpcError: If the MCLAG member configuration fails.
+        RpcError: If the MCLAG member configuration fails.
 
     Returns:
         None
     """
     try:
         config_mclag_member_on_device(device_ip, mclag_domain_id, port_chnl_name)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"MCLAG member {port_chnl_name} configuration failed on mclag_domain_id : {mclag_domain_id} and device_ip : {device_ip}, Reason: {err.details()} "
         )
@@ -427,14 +427,14 @@ def del_mclag_member(device_ip: str):
         device_ip (str): The IP address of the device.
 
     Raises:
-        _InactiveRpcError: If the MCLAG member deletion fails.
+        RpcError: If the MCLAG member deletion fails.
 
     Returns:
         None
     """
     try:
         del_mclag_member_on_device(device_ip)
-    except _InactiveRpcError as err:
+    except RpcError as err:
         _logger.error(
             f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
         )

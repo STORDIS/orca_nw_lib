@@ -1,5 +1,5 @@
 [tool.poetry]
-version = "1.2"
+version = "1.2.1"
 name = "orca_nw_lib"
 description = "APIs to interact with SONiC NW"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
