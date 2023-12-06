@@ -1,7 +1,8 @@
 [tool.poetry]
-version = "1.2.1"
+version = "1.2.2"
 name = "orca_nw_lib"
 description = "APIs to interact with SONiC NW"
+readme = "readme.md"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
 include = ["orca_nw_lib/github/**/*", "orca_nw_lib/github.com/**/*"]
 
