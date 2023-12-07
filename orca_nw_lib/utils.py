@@ -2,9 +2,8 @@ import os
 import platform
 import subprocess
 import yaml
-import logging
 import logging.config
-import yaml
+import logging
 from .constants import conn_timeout
 
 _settings = {}

@@ -49,45 +49,46 @@ def insert_devices_in_db():
                 nbr_device.save()
 
 
-def discover_topology():
+def discover_nw_features(device_ip: str = None):
     """
-    Discover the topology of the network.
-
-    This function retrieves the network configuration from the ORCA config file and 
-    starts the network discovery process. 
-    The network to be discovered is specified in the configuration file. 
-
-    Parameters:
-    None
+    Discovers the network features of a device or all the devices
+    which are discovered using the `read_lldp_topo` function already.
+    Args:
+        device_ip (str): The IP address of the device to discover the network features for,
+        if not specified network features are discovered for all devices in the database.
 
     Returns:
-    bool: Returns True if the topology is successfully discovered and inserted into the database. 
-    Returns False otherwise.
+        None
+    """
+    discover_interfaces(device_ip)
+    create_lldp_relations_in_db(topology)
+    discover_port_groups(device_ip)
+    discover_vlan(device_ip)
+    discover_port_chnl(device_ip)
+    discover_mclag(device_ip)
+    discover_mclag_gw_macs(device_ip)
+    discover_bgp(device_ip)
+    discover_bgp_af_global(device_ip)
+
+
+def discover_lldp_topology(device_ip):
+    """
+    Discovers the LLDP topology for a given switch IP address or network and inserts it into the database.
+
+    Args:
+        device_ip (str): The IP address or network to discover the topology for.
+
+    Returns:
+        bool: True if the topology was discovered and inserted into the database, False otherwise.
     """
     global topology
-    nw_to_discover = get_orca_config().get(network)
-    _logger.info(
-        "Network Discovery Started using network provided {0}".format(nw_to_discover)
-    )
-    try:
-        for ip_or_nw in nw_to_discover:
-            ips = ipaddress.ip_network(ip_or_nw)
-            for ip in ips:
-                _logger.debug(f"Discovering device:{ip} and its neighbors.")
-                read_lldp_topo(str(ip),topology)
-        import pprint
-
-        _logger.info(
-            "Discovered topology using network provided {0}: \n{1}".format(
-                nw_to_discover, pprint.pformat(topology)
-            )
-        )
-        _logger.info(f"Total devices discovered:{len(topology)}")
-
-    except ValueError as ve:
-        _logger.error(ve)
-        return False
-
+    for ip in ipaddress.ip_network(device_ip):
+        _logger.debug(f"Discovering device:{ip} and its neighbors.")
+        try:
+            read_lldp_topo(str(ip), topology)
+        except Exception as err:
+            _logger.error(err)
+            return False
     if topology:
         _logger.info("Inserting Device LLDP topology to database.")
         insert_devices_in_db()
@@ -98,39 +99,40 @@ def discover_topology():
 
 def discover_all():
     """
-    Discover all network devices and their configurations.
+    Discover all networks and their features.
 
-    This function performs the following tasks:
-    - Calls the `discover_topology` function to discover the network topology.
-    - Calls the `discover_interfaces` function to discover the interfaces of each device.
-    - Calls the `create_lldp_relations_in_db` function to create the LLDP relations in the database.
-    - Calls the `discover_port_groups` function to discover the port groups.
-    - Calls the `discover_vlan` function to discover the VLAN configurations.
-    - Calls the `discover_port_chnl` function to discover the port channel configurations.
-    - Calls the `discover_mclag` function to discover the MCLAG configurations.
-    - Calls the `discover_mclag_gw_macs` function to discover the MAC addresses of MCLAG gateways.
-    - Calls the `discover_bgp` function to discover the BGP configurations.
+    This function retrieves the network configuration from the Orca configuration
+    and starts the network discovery process for each network. It logs the start
+    of the discovery process and the discovered topology for each network. If the
+    discovery process fails for a network, it logs an error message. Finally, it
+    logs the total number of devices discovered and the duration of the discovery
+    process.
 
     Returns:
-    - True: If the discovery process was successful.
-    - False: If the discovery process was unsuccessful.
+        None
     """
-    discovery_start_time=datetime.datetime.now()
-    if discover_topology():
-        discover_interfaces()
-        create_lldp_relations_in_db(topology)
-        discover_port_groups()
-        discover_vlan()
-        discover_port_chnl()
-        discover_mclag()
-        discover_mclag_gw_macs()
-        discover_bgp()
-        discover_bgp_af_global()
-    
-        discovery_end_time=datetime.datetime.now()
-       
+    nw_to_discover = get_orca_config().get(network)
+    _logger.info(
+        "Network Discovery Started using network provided {0}".format(nw_to_discover)
+    )
 
-        _logger.info(f"!! Discovered successfully {len(topology)} Devices in {discovery_end_time - discovery_start_time} !!")
-        return True
-    _logger.info("!! Discovery was Unsuccessful !!")
-    return False
+    discovery_start_time = datetime.datetime.now()
+    for ip_or_nw in nw_to_discover:
+        for ip in ipaddress.ip_network(ip_or_nw):
+            if discover_lldp_topology(ip):
+                discover_nw_features()
+                import pprint
+
+                _logger.info(
+                    "Discovered topology using network provided {0}: \n{1}".format(
+                        nw_to_discover, pprint.pformat(topology)
+                    )
+                )
+            else:
+                _logger.info(
+                    "!! Discovery was Unsuccessful for {0} !!".format(ip_or_nw)
+                )
+    discovery_end_time = datetime.datetime.now()
+    _logger.info(
+        f"!! Discovered successfully {len(topology)} Devices in {discovery_end_time - discovery_start_time} !!"
+    )

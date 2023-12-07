@@ -152,7 +152,7 @@ class SampleConfigDiscovery(unittest.TestCase):
     @unittest.skip("Cleanup explicitely only when needed.")
     def test_cleanup_db(self):
         clean_db()
-        self.assertIsNone(get_all_devices_ip_from_db())
+        self.assertEqual(get_all_devices_ip_from_db(),0)
         
     def test_create_port_channel_config(self):
         for dut in [self.dut_ip_1, self.dut_ip_2, self.dut_ip_3]:

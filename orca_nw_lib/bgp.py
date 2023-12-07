@@ -280,7 +280,7 @@ def del_all_bgp_neighbors(device_ip: str):
         discover_bgp()
 
 
-def discover_bgp():
+def discover_bgp(device_ip: str = None):
     """
     Discovers the BGP Global List.
     Retrieves the list of devices from the database and for each device,
@@ -294,7 +294,8 @@ def discover_bgp():
     None
     """
     _logger.info("Discovering BGP Global List.")
-    for device in get_device_db_obj():
+    devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
+    for device in devices:
         try:
             _logger.info(f"Discovering BGP on device {device}.")
             insert_device_bgp_in_db(device, _create_bgp_graph_objects(device.mgt_ip))
@@ -306,7 +307,7 @@ def discover_bgp():
     create_bgp_peer_link_rel()
 
 
-def discover_bgp_af_global():
+def discover_bgp_af_global(device_ip: str = None):
     """
     Discovers the BGP Global AF List.
     Retrieves the list of devices from the database and for each device,
@@ -321,7 +322,8 @@ def discover_bgp_af_global():
     """
 
     _logger.info("Discovering BGP Global AF List.")
-    for device in get_device_db_obj():
+    devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
+    for device in devices:
         try:
             _logger.info(f"Discovering BGP Global AF List on device {device.mgt_ip}.")
             insert_bgp_global_af_list_in_db(
