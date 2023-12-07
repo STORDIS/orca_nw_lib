@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List
 from grpc import RpcError
 
 
@@ -26,9 +26,7 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def _create_port_chnl_graph_object(
-    device_ip: str, port_chnl_name: str = None
-) -> Dict[PortChannel, List[str]]:
+def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str]]:
     """
     Retrieves the information of the port channels from the specified device.
 
@@ -39,7 +37,7 @@ def _create_port_chnl_graph_object(
     Returns:
         Dict[PortChannel, List[str]]: A dictionary mapping PortChannel objects to lists of interface names.
     """
-    port_chnl_json = get_port_chnls_info_from_device(device_ip, port_chnl_name)
+    port_chnl_json = get_port_chnls_info_from_device(device_ip)
     port_chnl_obj_list = {}
     if port_chnl_json:
         lag_table_json_list = port_chnl_json.get("sonic-portchannel:LAG_TABLE_LIST", {})
@@ -64,60 +62,39 @@ def _create_port_chnl_graph_object(
                     oper_sts_reason=lag.get("reason"),
                 )
             ] = ifname_list
-
     return port_chnl_obj_list
 
 
-def discover_port_chnl(device_ip: str = None, port_chnl_name: str = None):
-    """
-    Discover port channels of a device and insert them into the database.
-
-    Args:
-        device_ip (str, optional): The IP address of the device. Defaults to None.
-        port_chnl_name (str, optional): The name of the port channel. Defaults to None.
-
-    Returns:
-        None
-
-    Raises:
-        RpcError: If the port channel discovery fails on the specified device.
-
-    """
-
+def discover_port_chnl(device_ip: str = None):
     _logger.info("Port Channel Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
+        _logger.info(f"Discovering Port Channels of device {device}.")
         try:
-            _logger.info(f"Discovering Port Channels of device {device}.")
             insert_device_port_chnl_in_db(
-                device, _create_port_chnl_graph_object(device.mgt_ip, port_chnl_name)
+                device, _create_port_chnl_graph_object(device.mgt_ip)
             )
         except RpcError as err:
             _logger.error(
-                f"Port Channel Discovery Failed on device {device_ip}, Reason: {err.details()}"
+                f"Couldn't discover Port Channel on device {device_ip}, Reason: {err.details()}"
             )
             raise
 
 
-def get_port_chnl(
-    device_ip: str, port_chnl_name: Optional[str] = None
-) -> Union[List[Dict[str, Any]], Dict[str, Any], None]:
+def get_port_chnl(device_ip: str, port_chnl_name: str = None):
     """
-    Retrieves the port channel information for a given device.
+    Retrieves the port channel information for a given device IP.
 
     Args:
         device_ip (str): The IP address of the device.
-        port_chnl_name (Optional[str], optional): The name of the port channel. Defaults to None.
+        port_chnl_name (str, optional): The name of the port channel. Defaults to None.
 
     Returns:
-        Union[List[Dict[str, Any]], Dict[str, Any], None]: If `port_chnl_name` is provided,
-        returns the properties of the specified port channel as a dictionary.
-        If `port_chnl_name` is not provided, returns a list of dictionaries containing
-        the properties of all port channels associated with the device.
-        If no port channels are found, returns an empty list.
-        If the device or port channel is not found, returns None.
+        Union[List[Dict[str, Any]], Dict[str, Any], None]: If `port_chnl_name` is provided, 
+        returns the properties of the specified port channel if it exists, otherwise returns None. 
+        If `port_chnl_name` is not provided, returns a list of properties of all port channels associated with the device IP. 
+        If there are no port channels associated with the device IP, returns an empty list.
     """
-
     if port_chnl_name:
         return (
             port_chnl.__properties__
@@ -176,15 +153,20 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
     Returns:
         None
     """
-
+    port_chnl = get_port_chnl(device_ip, chnl_name)
+    port_chnl_list = port_chnl if isinstance(port_chnl, list) else [port_chnl]
     try:
-        for mem_if in get_port_chnl_members(device_ip, chnl_name):
-            if mem_if.get('name'):
-                del_port_chnl_mem(device_ip, chnl_name, mem_if.get('name'))
-        del_port_chnl_from_device(device_ip, chnl_name)
+        for chnl in [item for item in port_chnl_list if item is not None]:
+            for mem_if in get_port_chnl_members(device_ip, chnl.get("lag_name")):
+                if mem_if.get("name"):
+                    del_port_chnl_mem(
+                        device_ip, chnl.get("lag_name"), mem_if.get("name")
+                    )
+            if chnl.get("lag_name"):
+                del_port_chnl_from_device(device_ip, chnl.get("lag_name"))
     except RpcError as err:
         _logger.error(
-            f"Port Channel {chnl_name} deletion failed on device {device_ip}, Reason: {err.details()}"
+            f"Port Channel deletion failed on device {device_ip}, Reason: {err.details()}"
         )
         raise
     finally:

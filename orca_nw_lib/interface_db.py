@@ -177,17 +177,20 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             device.interfaces.connect(intfc)
 
         saved_i = get_interface_of_device_from_db(device.mgt_ip, intfc.name)
-
+        # Handle following cases:
+        # 1. Discover already configured sub-interfaces
+        # 2. New sub-interface added to interface
+        # 3. Existing sub-interface(s) removed from interface
+        # Easiest and efficient way is to delete all sub-interfaces and recreate all sub-interfaces
+        # received in the dictionary after discovery.
+        # because current implementation always discovers all the subinterfaces, 
+        # hence we have uptodate subinterfaces in the dictionary.
+        saved_i.subInterfaces.disconnect_all()
+        for si in saved_i.subInterfaces.all():
+            si.delete()
         for sub_i in sub_intfc:
-            if si := get_sub_interface_of_device_from_db(
-                device.mgt_ip, sub_i.ip_address
-            ):
-                si.ip_address = sub_i.ip_address
-                si.save()
-                saved_i.subInterfaces.connect(si) if saved_i else None
-            else:
-                sub_i.save()
-                saved_i.subInterfaces.connect(sub_i) if saved_i else None
+            sub_i.save()
+            saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
 
 def get_all_interfaces_name_of_device_from_db(device_ip: str):

@@ -79,13 +79,12 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                 mac_addr=intfc_state.get("mac-address"),
             )
             sub_intf_obj_list = []
-            for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", {}):
+            for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
                 sub_intf_obj = SubInterface()
                 for addr in (
                     sub_intfc.get("openconfig-if-ip:ipv4", {})
                     .get("addresses", {})
-                    .get("address")
-                    or []
+                    .get("address",[])
                 ):
                     if addr.get("ip"):
                         sub_intf_obj.ip_address = addr.get("ip")
