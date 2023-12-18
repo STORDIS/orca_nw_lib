@@ -35,7 +35,7 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
-from orca_nw_lib.utils import get_orca_config, ping_ok
+from orca_nw_lib.utils import *
 from orca_nw_lib.vlan import (
     add_vlan_mem,
     config_vlan,
@@ -53,6 +53,7 @@ class InterfaceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db())):
@@ -78,7 +79,7 @@ class InterfaceTests(unittest.TestCase):
                     self.ethernet,
                     enable=enable_to_set,
                 )
-            except _InactiveRpcError as err:
+            except Exception as err:
                 self.fail(err)
             assert (
                 get_interface(self.dut_ip, self.ethernet).get("enabled")
@@ -148,6 +149,7 @@ class PortChannelTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db())):
@@ -360,6 +362,7 @@ class MclagTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db())):
@@ -551,6 +554,7 @@ class BGPTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db())):
@@ -638,6 +642,7 @@ class VLANTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         if not set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db())):

@@ -16,7 +16,6 @@ from orca_nw_lib.bgp import (
 )
 from orca_nw_lib.common import VlanTagMode
 from orca_nw_lib.device_db import get_all_devices_ip_from_db
-from orca_nw_lib.graph_db_utils import clean_db
 from orca_nw_lib.interface import (
     config_interface,
     del_all_subinterfaces_of_interface,
@@ -42,7 +41,7 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl_members,
 )
 
-from orca_nw_lib.utils import get_orca_config, ping_ok
+from orca_nw_lib.utils import clean_db, get_orca_config, load_orca_config, ping_ok
 from orca_nw_lib.discovery import discover_all
 
 from orca_nw_lib.constants import network
@@ -87,6 +86,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        load_orca_config()
         orca_config_discovered = lambda:set(
             [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))

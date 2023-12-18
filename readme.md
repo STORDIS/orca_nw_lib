@@ -2,10 +2,11 @@
 ORCA Network Library is an open sourcepython package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
 ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
 - [ORCA Network Library](#orca-network-library)
-  - [Install Neo4j (Prerequisite)](#install-neo4j-prerequisite)
   - [Install orca\_nw\_lib using pip](#install-orca_nw_lib-using-pip)
+  - [Prerequisite](#prerequisite)
+    - [Install Neo4j](#install-neo4j)
+    - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
   - [Build and Install orca\_nw\_lib from source](#build-and-install-orca_nw_lib-from-source)
-  - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
   - [Using the ORCA Network APIs](#using-the-orca-network-apis)
   - [Knowing API call status](#knowing-api-call-status)
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
@@ -14,8 +15,15 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Supported SONiC versions](#supported-sonic-versions)
   - [Contribute](#contribute)
 
-## Install Neo4j (Prerequisite)
-orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest is to run in container with the following command :
+## Install orca_nw_lib using pip
+Latest release of ORCA Network Library can be simply installed using pip as follows :
+        
+    pip install orca_nw_lib
+
+## Prerequisite
+After installing the orca_nw_lib package, orca_nw_lib can be used like any other python package in your application. But before using orca_nw_lib, it is required to install Neo4j and do some basic configurations.
+### Install Neo4j
+orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest is to run Neo4j Docker image in container with the following command :
         
     docker run \
         --name testneo4j \
@@ -29,13 +37,15 @@ orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest i
         neo4j:latest
 Then open https://localhost:7474 with credentials neo4j/password to browse the database.
 
-## Install orca_nw_lib using pip
-Latest release of ORCA Network Library can be simply installed using pip as follows :
-        
-    pip install orca_nw_lib
+
+### orca_nw_lib configuration
+In the application where orca_nw_lib is used, `load_orca_config` function in [utils.py](orca_nw_lib/utils.py) must be called before using any APIs of orca_nw_lib. This function loads device and neo4j access information also the logging configuration by default from 
+[orca.yml](orca_nw_lib/orca.yml) and [logging.yml](orca_nw_lib/logging.yml) files.
+Although user can call load_orca_config with custom config files.
+The parameter information is documented in orca.yml file and logging.yml is standard python logging configuration file.
 
 ## Build and Install orca_nw_lib from source
-ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed. Poetry can be easily installed using the following command :
+Optionally if user want to build and install orca_nw_lib from source, ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed in this case. Poetry can be easily installed using the following command :
         
     pip install poetry
 
@@ -47,14 +57,11 @@ To build orca_nw_lib use the following commands :
 
 Once installed the orca_nw_lib package, orca_nw_lib can be used like any other python package in your application.
 
-## orca_nw_lib configuration
-[orca.yml](orca_nw_lib/orca.yml) file contains all necessary configuration parameters required by orca_nw_lib. parameters are described in the file itself. [orca.yml](orca_nw_lib/orca.yml) is read by default by the function get_orca_config in [utils.py](orca_nw_lib/utils.py), Although applications can call get_orca_config with custom config files keeping same structure. \
-\
-[logging.yml](orca_nw_lib/logging.yml) contains logging configuration. [logging.yml](orca_nw_lib/logging.yml) is read by default by the function get_logging in [utils.py](orca_nw_lib/utils.py), Although applications can call get_logging with custom logging config files keeping same structure.
 
 
 ## Using the ORCA Network APIs
 For normal usage following APIs in python modules in the package [orca_nw_lib](orca_nw_lib) are useful -\
+[utils.py](orca_nw_lib/utils.py) - load_orca_config() function must be called before using any APIs of orca_nw_lib.\
 [discovery.py](orca_nw_lib/discovery.py) - discover_all() function can be used to discover complete topology as per the network defined in orca.yml\
 [bgp.py](orca_nw_lib/bgp.py) - BGP CRUD operations\
 [device.py](orca_nw_lib/device.py) - Get device system info.\
@@ -70,17 +77,14 @@ e.g. interface.py have general operation on interfaces and users can achieve nor
 > [Test cases](./test) are a good starting point to know the usage of APIs in orca_nbw_lib.
 
 ## Knowing API call status
-Exception (grpc._channel._InactiveRpcError) raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
+Exception `grpc.RpcError` raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
 
 ## Keeping graph DB in sync with realtime Network state.
-gNMI subscription would have been the best way to achieve this, but due lack of support for gNMI subscription for all openconfig models in SONiC orca_nw_lib used the pull mechanism to keep graph DB in sync with realtime network state.
-
-For every write operation performed the API triggers the discovery of that network component.
-> NOTE :  To keep graph DB up to date with the changes done out side of application which uses orca_nw_lib i.e. changes done directly on the device, a recurring call to discover_all() should be performed by the application.
-
+Any configuration done on the device via orca_nw_lib APIs automatically keeps the DB in sync with the realtime network state by triggering the discovery method for the network component although gNMI subscriptions would have been the best way to achieve this, but due lack of support for gNMI subscription for all openconfig models in SONiC currently only pull mechanism can be used to keep graph DB in sync with realtime network state. 
+> NOTE : For changes done on the device out side of orca_nw_lib i.e. changes done directly on the device, Best way to keep graph DB in sync with realtime network state is to trigger full discovery at a pre-defined interval.
 
 ## Executing Tests
-Test cases are located under [test](./orca_nw_lib/test) directory. To execute tests a topology of 3 switches (1-spine, 2-leaves) is required. Prior to execute tests leaves should be connected to spine and respective interfaces should be enabled , so that by providing one of the switch IP in [orca.yml](./orca_nw_lib/orca.yml) whole topology gets discovered.\
+Tests are not only used for regular software testing but are a good example to know the usage of APIs in orca_nw_lib. When starting to use orca_nw_lib referring to tests can be a good starting point. Test cases are located under [test](./orca_nw_lib/test) directory. To execute tests a topology of 3 switches (1-spine, 2-leaves) is required. Prior to execute tests, leaves should be connected to spine and respective interfaces should be enabled, so that by providing one of the switch IP in [orca.yml](./orca_nw_lib/orca.yml) whole topology gets discovered.\
 For performing tests creating a topology in GNS3 can be a good starting point.
 
 - To execute tests
@@ -100,7 +104,7 @@ orca_nw_lib releases are hosted at PyPI- https://pypi.org/project/orca_nw_lib/#h
 To create a new release, increase the release number in pyproject.toml. 
 
 ## Supported SONiC versions
-- Broadcom Enterprise SONiC (Latest tested on 4.0.5)
+- Broadcom Enterprise SONiC (Latest tested on >=4.0.5)
 
 ## Contribute
 You can contribute to the project by opening an issue or sending a pull request.

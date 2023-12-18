@@ -20,12 +20,13 @@ stubs = {}
 
 def getGrpcStubs(
     device_ip,
-    grpc_port=get_orca_config().get(grpc_port),
-    username=get_orca_config().get(username),
-    password=get_orca_config().get(password),
+    grpcPort=get_orca_config().get(grpc_port),
+    user=get_orca_config().get(username),
+    passwd=get_orca_config().get(password),
 ):
     global stubs
-
+    print("*******",get_orca_config())
+    print("*******",device_ip)
     if not ping_ok(device_ip):
         raise ValueError(f"Device : {device_ip} is not pingable")
 
@@ -34,7 +35,7 @@ def getGrpcStubs(
     else:
         try:
             sw_cert = ssl.get_server_certificate(
-                (device_ip, grpc_port), timeout=get_orca_config().get(conn_timeout)
+                (device_ip, grpcPort), timeout=get_orca_config().get(conn_timeout)
             ).encode("utf-8")
             # Option 1
             # creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
@@ -44,7 +45,7 @@ def getGrpcStubs(
 
             # Option 2, In this case need not to send user/pass in metadata in get request.
             def auth_plugin(context, callback):
-                callback([("username", username), ("password", password)], None)
+                callback([("username", user), ("password", passwd)], None)
 
             creds = grpc.composite_channel_credentials(
                 grpc.ssl_channel_credentials(root_certificates=sw_cert),
@@ -53,7 +54,7 @@ def getGrpcStubs(
 
             optns = (("grpc.ssl_target_name_override", "localhost"),)
             channel = grpc.secure_channel(
-                f"{device_ip}:{grpc_port}", creds, options=optns
+                f"{device_ip}:{grpcPort}", creds, options=optns
             )
             stub = gNMIStub(channel)
             stubs[device_ip] = stub
