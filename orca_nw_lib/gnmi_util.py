@@ -18,15 +18,15 @@ _logger = get_logging().getLogger(__name__)
 stubs = {}
 
 
-def getGrpcStubs(
-    device_ip,
-    grpcPort=get_orca_config().get(grpc_port),
-    user=get_orca_config().get(username),
-    passwd=get_orca_config().get(password),
-):
+def getGrpcStubs(device_ip):
     global stubs
-    print("*******",get_orca_config())
-    print("*******",device_ip)
+    port = get_orca_config().get(grpc_port)
+    user = get_orca_config().get(username)
+    passwd = get_orca_config().get(password)
+    if None in (port, user, passwd):
+        raise ValueError(
+            "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
+        )
     if not ping_ok(device_ip):
         raise ValueError(f"Device : {device_ip} is not pingable")
 
@@ -35,7 +35,7 @@ def getGrpcStubs(
     else:
         try:
             sw_cert = ssl.get_server_certificate(
-                (device_ip, grpcPort), timeout=get_orca_config().get(conn_timeout)
+                (device_ip, port), timeout=get_orca_config().get(conn_timeout)
             ).encode("utf-8")
             # Option 1
             # creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
@@ -53,9 +53,7 @@ def getGrpcStubs(
             )
 
             optns = (("grpc.ssl_target_name_override", "localhost"),)
-            channel = grpc.secure_channel(
-                f"{device_ip}:{grpcPort}", creds, options=optns
-            )
+            channel = grpc.secure_channel(f"{device_ip}:{port}", creds, options=optns)
             stub = gNMIStub(channel)
             stubs[device_ip] = stub
             return stub
@@ -81,7 +79,7 @@ def send_gnmi_get(device_ip, path: list[Path]):
         )
         # resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
         # print(resp_cap)
-        
+
         for n in resp.notification:
             for u in n.update:
                 op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
@@ -112,12 +110,10 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
     try:
         if device_gnmi_stub:
             device_gnmi_stub.Set(req, timeout=get_orca_config().get(conn_timeout))
-        else :
+        else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
     except _InactiveRpcError as e:
-        _logger.debug(
-            f"{e} \n on device_ip : {device_ip} \n set request : {req}"
-        )
+        _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
 
 
@@ -152,6 +148,3 @@ def create_gnmi_path(path_arr: List[str]) -> List[Path]:
                 gnmi_path.elem.add(name=pe_entry)
             paths.append(gnmi_path)
     return paths
-
-
-    
