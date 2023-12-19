@@ -53,7 +53,6 @@ def load_orca_config_from_file(orca_config_file: str = f"{dname}/orca.yml", forc
         dict: The parsed settings from the Orca configuration file.
     """
     global _settings
-    print(f"loading from {orca_config_file}")
     if force_reload or not _settings:
         with open(orca_config_file, "r") as stream:
             try:
