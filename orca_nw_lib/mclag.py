@@ -334,7 +334,7 @@ def del_mclag_gw_mac(device_ip: str):
     """
     try:
         del_mclag_gateway_mac_from_device(device_ip)
-    except RpcError:
+    except RpcError as err:
         _logger.error(
             f"MCLAG GW MAC deletion failed on device_ip : {device_ip}, Reason: {err.details()}"
         )

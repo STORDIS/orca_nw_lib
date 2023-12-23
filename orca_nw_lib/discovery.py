@@ -1,9 +1,9 @@
 import datetime
 import ipaddress
 
-from orca_nw_lib.interface import discover_interfaces
-from orca_nw_lib.lldp import read_lldp_topo
-from orca_nw_lib.portgroup import discover_port_groups
+from .interface import discover_interfaces
+from .lldp import read_lldp_topo
+from .portgroup import discover_port_groups
 
 
 from .bgp import discover_bgp, discover_bgp_af_global
@@ -15,8 +15,7 @@ from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .graph_db_models import Device
 from .lldp import create_lldp_relations_in_db
-from .utils import get_logging, get_orca_config
-from .constants import network
+from .utils import get_logging, get_networks
 
 
 _logger = get_logging().getLogger(__name__)
@@ -71,7 +70,7 @@ def discover_nw_features(device_ip: str = None):
     discover_bgp_af_global(device_ip)
 
 
-def discover_lldp_topology(device_ip):
+def discover_lldp_topology(device_ip: str):
     """
     Discovers the LLDP topology for a given switch IP address or network and inserts it into the database.
 
@@ -82,57 +81,73 @@ def discover_lldp_topology(device_ip):
         bool: True if the topology was discovered and inserted into the database, False otherwise.
     """
     global topology
-    for ip in ipaddress.ip_network(device_ip):
-        _logger.debug(f"Discovering device:{ip} and its neighbors.")
-        try:
-            read_lldp_topo(str(ip), topology)
-        except Exception as err:
-            _logger.error(err)
-            return False
+    _logger.debug(f"Discovering device:{device_ip} and its neighbors using LLDP.")
+    try:
+        read_lldp_topo(device_ip, topology)
+    except Exception as err:
+        _logger.error(err)
+        return False
+    
     if topology:
+        import pprint
+        _logger.info(
+            "Discovered topology using IP provided {0}: \n{1}".format(
+                device_ip, pprint.pformat(topology)
+            )
+        )
         _logger.info("Inserting Device LLDP topology to database.")
         insert_devices_in_db()
     else:
+        _logger.info(
+            "!! Discovery was Unsuccessful for {0} !!".format(device_ip)
+        )
         return False
+    
     return True
 
-
-def discover_all():
+def discover_device(ip_or_nw: str):
     """
-    Discover all networks and their features.
+    Discovers devices in a network using the provided IP address or network.
 
-    This function retrieves the network configuration from the Orca configuration
-    and starts the network discovery process for each network. It logs the start
-    of the discovery process and the discovered topology for each network. If the
-    discovery process fails for a network, it logs an error message. Finally, it
-    logs the total number of devices discovered and the duration of the discovery
-    process.
+    Args:
+        ip_or_nw (str): The IP address or network to perform the network discovery on.
 
     Returns:
         None
     """
-    nw_to_discover = get_orca_config().get(network)
     _logger.info(
-        "Network Discovery Started using network provided {0}".format(nw_to_discover)
-    )
+            "Network Discovery Started using network provided {0}".format(ip_or_nw)
+        )
+    for device_ip in ipaddress.ip_network(ip_or_nw):
+        device_ip=str(device_ip)
+        _logger.info(
+                "Discovering device :{}".format(device_ip)
+            )
+        discovery_start_time = datetime.datetime.now()
+        result=discover_lldp_topology(device_ip)
+        for device_obj in topology:
+            _logger.info(f"Discovering network features for {device_obj.mgt_ip}.")
+            discover_nw_features(device_obj.mgt_ip)
+        discovery_end_time = datetime.datetime.now()
+        _logger.info(
+            f"!! Discovered {len(topology)} Devices topology using {device_ip} in {discovery_end_time - discovery_start_time} !!"
+        )
+    ## topology dictionary should be emptied now, for further discovery requests
+    topology.clear()
+    
+    return result
 
-    discovery_start_time = datetime.datetime.now()
-    for ip_or_nw in nw_to_discover:
-        for ip in ipaddress.ip_network(ip_or_nw):
-            if discover_lldp_topology(ip):
-                discover_nw_features()
-                import pprint
+def discover_device_from_config() -> bool:
+    """
+    Discover devices from the configuration file.
 
-                _logger.info(
-                    "Discovered topology using network provided {0}: \n{1}".format(
-                        nw_to_discover, pprint.pformat(topology)
-                    )
-                )
-            else:
-                _logger.info(
-                    "!! Discovery was Unsuccessful for {0} !!".format(ip_or_nw)
-                )
-    discovery_end_time = datetime.datetime.now()
-    _logger.info(
-        f"!! Discovered successfully {len(topology)} Devices in {discovery_end_time - discovery_start_time} !!"
-    )
+    This function iterates over the network addresses obtained from the
+    'get_networks' function and calls the 'discover_device' function for each
+    address. After iterating over all the addresses, it returns True.
+
+    Returns:
+        bool: True indicating that the device discovery was successful.
+    """
+    for ip_or_nw in get_networks():
+        discover_device(ip_or_nw)
+    return True

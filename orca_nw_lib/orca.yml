@@ -1,7 +1,9 @@
 # device_ip(s) to start discovery with or subnet(s) separated by comma.
 # After discovering the current device next  LLDP neighbour is discovered if any.
 # Then move forward to next device in the network provided.
-network: ["10.10.130.210"]
+networks: 
+  - "10.10.10.10"
+  - "10.10.130.210"
 username: admin # username to make gNMI connection with device defined in network above
 password: YourPaSsWoRd # password to make gNMI connection with device defined in network above
 grpc_port: 8080 # port to make gNMI connection with device defined in network above

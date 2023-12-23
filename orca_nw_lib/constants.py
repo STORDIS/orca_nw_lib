@@ -1,5 +1,5 @@
 ##orca.yml
-network='network'
+networks='networks'
 grpc_port='grpc_port'
 username='username'
 password='password'

@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from grpc._channel import _InactiveRpcError
+from grpc import RpcError
 from orca_nw_lib.bgp import (
     config_bgp_global,
     config_bgp_neighbors,
@@ -11,9 +11,8 @@ from orca_nw_lib.bgp import (
     get_bgp_neighbors_subinterfaces,
 )
 from orca_nw_lib.common import Speed, VlanTagMode
-from orca_nw_lib.constants import network
 from orca_nw_lib.device_db import get_all_devices_ip_from_db
-from orca_nw_lib.discovery import discover_all
+from orca_nw_lib.discovery import discover_device_from_config, discover_device
 from orca_nw_lib.interface import config_interface, del_ip_from_intf, get_interface
 from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
 from orca_nw_lib.mclag import (
@@ -35,7 +34,12 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
-from orca_nw_lib.utils import *
+from orca_nw_lib.utils import (
+    get_networks,
+    load_orca_config,
+    ping_ok,
+    clean_db,
+)
 from orca_nw_lib.vlan import (
     add_vlan_mem,
     config_vlan,
@@ -54,13 +58,13 @@ class InterfaceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db()))
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.ethernet = [
             ether
@@ -79,7 +83,7 @@ class InterfaceTests(unittest.TestCase):
                     self.ethernet,
                     enable=enable_to_set,
                 )
-            except Exception as err:
+            except RpcError as err:
                 self.fail(err)
             assert (
                 get_interface(self.dut_ip, self.ethernet).get("enabled")
@@ -101,7 +105,7 @@ class InterfaceTests(unittest.TestCase):
                     self.ethernet,
                     speed=speed_to_set,
                 )
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 self.fail(err)
 
             assert get_interface(self.dut_ip, self.ethernet).get("speed") == str(
@@ -117,7 +121,7 @@ class InterfaceTests(unittest.TestCase):
                     self.ethernet,
                     mtu=mtu_to_set,
                 )
-            except _InactiveRpcError:
+            except RpcError:
                 self.fail("Failed to set interface mtu")
             assert get_interface(self.dut_ip, self.ethernet).get("mtu") == mtu_to_set
 
@@ -130,7 +134,7 @@ class InterfaceTests(unittest.TestCase):
                     self.ethernet,
                     description=description_to_set,
                 )
-            except _InactiveRpcError:
+            except RpcError:
                 self.fail("Failed to set interface description")
             assert (
                 get_interface(self.dut_ip, self.ethernet).get("description")
@@ -150,13 +154,13 @@ class PortChannelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db()))
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         assert cls.dut_ip is not None
         cls.ethernet1 = [
@@ -184,14 +188,14 @@ class PortChannelTests(unittest.TestCase):
         try:
             ## Cleanup PortChannels
             del_port_chnl(self.dut_ip, self.chnl_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             ## Trying to remove port channels which doesn't exist, which is ok
             assert err.details().lower() == "resource not found"
 
         try:
             ## Cleanup PortChannels
             del_port_chnl(self.dut_ip, self.chnl_name_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             ## Trying to remove port channels which doesn't exist, which is ok
             assert err.details().lower() == "resource not found"
 
@@ -210,18 +214,18 @@ class PortChannelTests(unittest.TestCase):
             ## Cleanup PortChannels
             try:
                 del_port_chnl(self.dut_ip, self.chnl_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
                 del_port_chnl(self.dut_ip, self.chnl_name_2)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert self.chnl_name and self.chnl_name_2 not in [
                 chnl.get("lag_name") for chnl in get_port_chnl(self.dut_ip)
             ]
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     def test_add_del_port_chnl_members(self):
@@ -236,13 +240,13 @@ class PortChannelTests(unittest.TestCase):
             ## And later in the test while deleting such port channels
             ##Error can be thrown that "resource in use"
             del_mclag(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         assert not get_mclags(self.dut_ip)
 
         try:
             del_port_chnl(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_port_chnl(self.dut_ip)
@@ -251,14 +255,14 @@ class PortChannelTests(unittest.TestCase):
             try:
                 ## Cleanup PortChannel 2
                 del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
         assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
 
         try:
             del_port_chnl(self.dut_ip, self.chnl_name_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
@@ -268,7 +272,7 @@ class PortChannelTests(unittest.TestCase):
             try:
                 del_ip_from_intf(self.dut_ip, mem_name)
                 ## TODO - Check if speed is same for interfaces going to become member of same port channel
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 ## Trying to remove port channels which doesn't exist, which is ok
                 assert err.details().lower() == "resource not found"
         mtu = 9100
@@ -324,12 +328,12 @@ class PortChannelTests(unittest.TestCase):
             for mem_name in mem_infcs:
                 try:
                     del_port_chnl_mem(self.dut_ip, self.chnl_name, mem_name)
-                except _InactiveRpcError as err:
+                except RpcError as err:
                     assert err.details().lower() == "resource not found"
             assert not get_port_chnl_members(self.dut_ip, self.chnl_name)
             try:
                 del_port_chnl(self.dut_ip, self.chnl_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_port_chnl(self.dut_ip, self.chnl_name)
@@ -337,16 +341,16 @@ class PortChannelTests(unittest.TestCase):
             for mem_name in mem_infcs_2:
                 try:
                     del_port_chnl_mem(self.dut_ip, self.chnl_name_2, mem_name)
-                except _InactiveRpcError as err:
+                except RpcError as err:
                     assert err.details().lower() == "resource not found"
             try:
                 del_port_chnl(self.dut_ip, self.chnl_name_2)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_port_chnl_members(self.dut_ip, self.chnl_name_2)
             assert not get_port_chnl(self.dut_ip, self.chnl_name_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
 
@@ -363,13 +367,13 @@ class MclagTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db()))
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.peer_address = get_all_devices_ip_from_db()[1]
         assert cls.dut_ip is not None
@@ -377,19 +381,19 @@ class MclagTests(unittest.TestCase):
     def test_mclag_domain(self):
         try:
             del_mclag(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         assert not get_mclags(self.dut_ip, self.domain_id)
 
         try:
             del_port_chnl(self.dut_ip, self.peer_link)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             ## Trying to remove port channels which doesn't exist, which is ok
             assert err.details().lower() == "resource not found"
 
         try:
             add_port_chnl(self.dut_ip, self.peer_link)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         chnl = get_port_chnl(self.dut_ip, self.peer_link)
@@ -413,22 +417,22 @@ class MclagTests(unittest.TestCase):
                 assert resp["source_address"] == self.dut_ip
             try:
                 del_mclag(self.dut_ip)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_mclags(self.dut_ip, self.domain_id)
 
             try:
                 del_port_chnl(self.dut_ip, self.peer_link)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_port_chnl(self.dut_ip, self.peer_link)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     def test_maclag_gateway_mac(self):
         try:
             del_mclag_gw_mac(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_mclag_gw_mac(self.dut_ip)
@@ -439,24 +443,24 @@ class MclagTests(unittest.TestCase):
 
             for mac in get_mclag_gw_mac(self.dut_ip):
                 assert mac.get("gateway_mac") == gw_mac
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         try:
             del_mclag_gw_mac(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         assert not get_mclag_gw_mac(self.dut_ip)
 
     def test_mclag_mem_port_chnl(self):
         try:
             del_mclag(self.dut_ip)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
             del_port_chnl(self.dut_ip, self.peer_link)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
@@ -482,13 +486,13 @@ class MclagTests(unittest.TestCase):
             assert resp["source_address"] == self.dut_ip
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             add_port_chnl(self.dut_ip, self.mem_port_chnl)
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             add_port_chnl(self.dut_ip, self.mem_port_chnl_2)
@@ -505,36 +509,36 @@ class MclagTests(unittest.TestCase):
                 ]
             try:
                 del_mclag_member(self.dut_ip)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_mclag_mem_portchnls(self.dut_ip, self.domain_id)
 
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_port_chnl(self.dut_ip, self.mem_port_chnl)
 
             try:
                 del_port_chnl(self.dut_ip, self.mem_port_chnl_2)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_port_chnl(self.dut_ip, self.mem_port_chnl_2)
 
             try:
                 del_mclag(self.dut_ip)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_mclags(self.dut_ip)
 
             try:
                 del_port_chnl(self.dut_ip, self.peer_link)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_port_chnl(self.dut_ip, self.peer_link)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
 
@@ -555,13 +559,13 @@ class BGPTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db()))
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        )
         assert (
             len(set(get_all_devices_ip_from_db())) >= 3
         ), f"Need atleast 3 devices, 1-spine and 2-leaves to run tests, but found : {len(set(get_all_devices_ip_from_db()))}"
@@ -574,10 +578,22 @@ class BGPTests(unittest.TestCase):
     def test_bgp_global_config(self):
         try:
             del_bgp_global(self.dut_ip, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
-
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
+
+        try:
+            del_bgp_global(self.dut_ip_2, self.vrf_name)
+        except RpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_bgp_global(self.dut_ip_2, self.vrf_name)
+
+        try:
+            del_bgp_global(self.dut_ip_3, self.vrf_name)
+        except RpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_bgp_global(self.dut_ip_3, self.vrf_name)
+
         try:
             config_bgp_global(
                 self.dut_ip, self.asn0, self.dut_ip, vrf_name=self.vrf_name
@@ -589,19 +605,30 @@ class BGPTests(unittest.TestCase):
             assert self.vrf_name == bgp_global.get("vrf_name")
             try:
                 del_bgp_global(self.dut_ip, self.vrf_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_bgp_global(self.dut_ip, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     def test_bgp_nbr_config(self):
         try:
             del_bgp_global(self.dut_ip, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
-
         assert not get_bgp_global(self.dut_ip, self.vrf_name)
+
+        try:
+            del_bgp_global(self.dut_ip_2, self.vrf_name)
+        except RpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_bgp_global(self.dut_ip_2, self.vrf_name)
+
+        try:
+            del_bgp_global(self.dut_ip_3, self.vrf_name)
+        except RpcError as err:
+            assert err.details().lower() == "resource not found"
+        assert not get_bgp_global(self.dut_ip_3, self.vrf_name)
 
         try:
             config_bgp_global(
@@ -609,7 +636,7 @@ class BGPTests(unittest.TestCase):
             )
             try:
                 del_all_bgp_neighbors(self.dut_ip)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0)
@@ -619,15 +646,15 @@ class BGPTests(unittest.TestCase):
                 assert self.bgp_ip_0 == nbr.get("ip_address")
             try:
                 del_all_bgp_neighbors(self.dut_ip)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_bgp_neighbors_subinterfaces(self.dut_ip, self.asn0)
             try:
                 del_bgp_global(self.dut_ip, self.vrf_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_bgp_global(self.dut_ip, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     # TODO - Test global and neighbour AF, Test adding and removal of neighbors. Deletion of BGP_GLOBAL_AF, MCLAG_GW_MAC and subinterfaces.
@@ -643,13 +670,13 @@ class VLANTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db())):
-            discover_all()
-        assert set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
-        ).issubset(set(get_all_devices_ip_from_db()))
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
         cls.eth1 = [
             ether
@@ -666,7 +693,7 @@ class VLANTests(unittest.TestCase):
     def test_vlan_config(self):
         try:
             del_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_vlan(self.dut_ip, self.vlan_name)
@@ -688,16 +715,16 @@ class VLANTests(unittest.TestCase):
                 assert members_to_add.get(mem).name == tagging_mode
             try:
                 del_vlan(self.dut_ip, self.vlan_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     def test_vlan_tagging_mode(self):
         try:
             del_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         assert not get_vlan(self.dut_ip, self.vlan_name)
 
@@ -725,16 +752,16 @@ class VLANTests(unittest.TestCase):
                 assert members_to_add.get(mem).name != tagging_mode
             try:
                 del_vlan(self.dut_ip, self.vlan_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
     def test_vlan_mem_add_del(self):
         try:
             del_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_vlan(self.dut_ip, self.vlan_name)
@@ -751,14 +778,51 @@ class VLANTests(unittest.TestCase):
                 assert mem in members_to_add
             try:
                 del_vlan_mem(self.dut_ip, self.vlan_name, self.eth1)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             members = get_vlan_members(self.dut_ip, self.vlan_name)
             assert self.vlan_name not in members
             try:
                 del_vlan(self.dut_ip, self.vlan_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
             assert not get_vlan(self.dut_ip, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
+            self.fail(err)
+
+
+class AdditionalDeviceDiscoveryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        load_orca_config()
+        clean_db()
+        assert not get_all_devices_ip_from_db()
+        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+            set(get_all_devices_ip_from_db())
+        ):
+            discover_device_from_config()
+
+    def test_device_discovery(self):
+        try:
+            new_device_ip = "10.10.130.227"
+            discover_device(new_device_ip)
+            import ipaddress
+
+            devices_discovered = []
+            for ip_or_nw in get_networks():
+                for ip in ipaddress.ip_network(ip_or_nw):
+                    if ping_ok(str(ip)):
+                        devices_discovered.append(str(ip))
+            devices_discovered.append(new_device_ip)
+            ## check all elements in devices_discovered are in get_all_devices_ip_from_db
+            for ip in devices_discovered:
+                assert ip in get_all_devices_ip_from_db()
+            ## Clean up due to a bug TODO when a new device discoverred which has bgp global config with same asn is as one of asn_id
+            # on one of the  already discoverred devices ,
+            # in the db same bgp node has bgp_global relation to both switches which is wrong.
+            # Hence causes test_bgp_global_config to fail because router_id in the bgp node is still from previously discovered switch.
+            # https://github.com/STORDIS/orca_nw_lib/issues/35
+            clean_db()
+            assert not get_all_devices_ip_from_db()
+        except RpcError as err:
             self.fail(err)

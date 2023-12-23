@@ -8,10 +8,7 @@ import grpc
 from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
 from .gnmi_pb2_grpc import gNMIStub
 
-from .utils import get_logging, get_orca_config, ping_ok
-
-
-from .constants import grpc_port, username, password, conn_timeout
+from .utils import get_conn_timeout, get_logging, ping_ok, get_device_grpc_port, get_device_username, get_device_password
 
 _logger = get_logging().getLogger(__name__)
 
@@ -20,9 +17,9 @@ stubs = {}
 
 def getGrpcStubs(device_ip):
     global stubs
-    port = get_orca_config().get(grpc_port)
-    user = get_orca_config().get(username)
-    passwd = get_orca_config().get(password)
+    port = get_device_grpc_port()
+    user = get_device_username()
+    passwd = get_device_password()
     if None in (port, user, passwd):
         raise ValueError(
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
@@ -35,7 +32,7 @@ def getGrpcStubs(device_ip):
     else:
         try:
             sw_cert = ssl.get_server_certificate(
-                (device_ip, port), timeout=get_orca_config().get(conn_timeout)
+                (device_ip, port), timeout=get_conn_timeout()
             ).encode("utf-8")
             # Option 1
             # creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
@@ -72,7 +69,7 @@ def send_gnmi_get(device_ip, path: list[Path]):
         resp = (
             device_gnmi_stub.Get(
                 GetRequest(path=path, type=GetRequest.ALL, encoding=JSON_IETF),
-                timeout=get_orca_config().get(conn_timeout),
+                timeout=get_conn_timeout(),
             )
             if device_gnmi_stub
             else _logger.error(f"no gnmi stub found for device {device_ip}")
@@ -109,7 +106,7 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
     device_gnmi_stub = getGrpcStubs(device_ip)
     try:
         if device_gnmi_stub:
-            device_gnmi_stub.Set(req, timeout=get_orca_config().get(conn_timeout))
+            device_gnmi_stub.Set(req, timeout=get_conn_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
     except _InactiveRpcError as e:

@@ -1,5 +1,5 @@
 import unittest
-from grpc._channel import _InactiveRpcError
+from grpc import RpcError
 from orca_nw_lib.bgp import (
     config_bgp_global,
     config_bgp_global_af,
@@ -41,10 +41,14 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl_members,
 )
 
-from orca_nw_lib.utils import clean_db, get_orca_config, load_orca_config, ping_ok
-from orca_nw_lib.discovery import discover_all
+from orca_nw_lib.utils import (
+    clean_db,
+    load_orca_config,
+    ping_ok,
+    get_networks,
+)
+from orca_nw_lib.discovery import discover_device_from_config
 
-from orca_nw_lib.constants import network
 from orca_nw_lib.mclag_gnmi import (
     del_mclag_from_device,
 )
@@ -87,16 +91,20 @@ class SampleConfigDiscovery(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        orca_config_discovered = lambda:set(
-            [ip for ip in get_orca_config().get(network) if ping_ok(ip)]
+        clean_db()
+        assert not get_all_devices_ip_from_db()
+        orca_config_discovered = lambda: set(
+            [ip for ip in get_networks() if ping_ok(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))
 
-        minimum_device_discovered = lambda:len(get_all_devices_ip_from_db()) >= 3
+        minimum_device_discovered = lambda: len(get_all_devices_ip_from_db()) >= 3
 
         if not orca_config_discovered() or not minimum_device_discovered():
-            discover_all()
+            discover_device_from_config()
         assert orca_config_discovered()
-        assert (minimum_device_discovered()), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
+        assert (
+            minimum_device_discovered()
+        ), "Need atleast 3 devices, 1-spine and 2-leaves to run tests."
         all_device_list = get_all_devices_ip_from_db()
         cls.dut_ip_1 = all_device_list[0]
         cls.dut_ip_2 = all_device_list[1]
@@ -122,12 +130,12 @@ class SampleConfigDiscovery(unittest.TestCase):
         for dut in [cls.dut_ip_1, cls.dut_ip_2, cls.dut_ip_3]:
             try:
                 del_bgp_global(dut, cls.vrf_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
                 del_mclag(dut)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
@@ -140,49 +148,52 @@ class SampleConfigDiscovery(unittest.TestCase):
                         cls.mem_port_chnl_102,
                     ]
                 ]
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             for vlan in [cls.vlan_name, cls.vlan_name_2]:
                 try:
                     del_vlan(dut, vlan)
-                except _InactiveRpcError as err:
+                except RpcError as err:
                     assert err.details().lower() == "resource not found"
 
-    @unittest.skip("Cleanup explicitely only when needed.")
-    def test_cleanup_db(self):
-        clean_db()
-        self.assertEqual(get_all_devices_ip_from_db(),0)
-        
+    @classmethod
+    def tearDownClass(cls):
+        ## Execute tests again to test any possible errors while overwritting DB.
+        cls.test_create_port_channel_config(cls)
+        cls.test_create_mclag_configuration(cls)
+        cls.test_create_bgp_config(cls)
+        cls.test_create_vlan_config(cls)
+
     def test_create_port_channel_config(self):
         for dut in [self.dut_ip_1, self.dut_ip_2, self.dut_ip_3]:
             try:
                 del_port_chnl(dut, self.port_chnl_103)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
                 add_port_chnl(dut, self.port_chnl_103, admin_status="up")
-                chnl = get_port_chnl(self.dut_ip_1, self.port_chnl_103)
+                chnl = get_port_chnl(dut, self.port_chnl_103)
                 assert chnl.get("lag_name") == self.port_chnl_103
                 mem_infcs = [self.ethernet2, self.ethernet3]
-                add_port_chnl_mem(self.dut_ip_1, self.port_chnl_103, mem_infcs)
-                members = get_port_chnl_members(self.dut_ip_1, self.port_chnl_103)
+                add_port_chnl_mem(dut, self.port_chnl_103, mem_infcs)
+                members = get_port_chnl_members(dut, self.port_chnl_103)
                 for mem in members:
                     assert mem.get("name") in mem_infcs
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 self.fail(err.details())
 
     def test_create_mclag_configuration(self):
         ## On device -1 mclag config
         try:
             del_mclag(self.dut_ip_1)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
             del_port_chnl(self.dut_ip_1, self.peer_link_chnl_100)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
@@ -205,17 +216,17 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert resp.get("mclag_sys_mac") == self.mclag_sys_mac
             assert resp.get("peer_addr") == self.dut_ip_2
             assert resp.get("peer_link") == self.peer_link_chnl_100
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
         ## member configuration
         try:
             del_port_chnl(self.dut_ip_1, chnl_name=self.mem_port_chnl_101)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
             del_port_chnl(self.dut_ip_1, chnl_name=self.mem_port_chnl_102)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
@@ -228,17 +239,17 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_mclag_mem_portchnl(
                 self.dut_ip_1, self.domain_id, self.mem_port_chnl_102
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
             ## On device -2 mclag config
         try:
             del_mclag_from_device(self.dut_ip_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         try:
             del_port_chnl(self.dut_ip_2, self.peer_link_chnl_100)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
@@ -262,16 +273,16 @@ class SampleConfigDiscovery(unittest.TestCase):
             assert resp.get("mclag_sys_mac") == self.mclag_sys_mac
             assert resp.get("peer_addr") == self.dut_ip_1
             assert resp.get("peer_link") == self.peer_link_chnl_100
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
         ## member configuration
         try:
             del_port_chnl(self.dut_ip_2, self.mem_port_chnl_101)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
         try:
             del_port_chnl(self.dut_ip_2, self.mem_port_chnl_102)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
@@ -284,27 +295,27 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_mclag_mem_portchnl(
                 self.dut_ip_2, self.domain_id, self.mem_port_chnl_102
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
             ## Create MCLAG GW mac
         try:
             del_mclag_gw_mac(self.dut_ip_1)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_mclag_gw_mac(self.dut_ip_1)
         gw_mac = "aa:bb:aa:bb:aa:bb"
         try:
             config_mclag_gw_mac(self.dut_ip_1, gw_mac)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
         assert get_mclag_gw_mac(self.dut_ip_1, gw_mac).get("gateway_mac") == gw_mac
 
     def test_create_bgp_config(self):
         try:
             del_bgp_global(self.dut_ip_1, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_global(self.dut_ip_1, self.vrf_name)
@@ -323,17 +334,17 @@ class SampleConfigDiscovery(unittest.TestCase):
         ]:
             try:
                 del_all_subinterfaces_of_interface(self.dut_ip_1, ether)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
                 del_all_subinterfaces_of_interface(self.dut_ip_2, ether)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             try:
                 del_all_subinterfaces_of_interface(self.dut_ip_3, ether)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
         try:
@@ -404,13 +415,13 @@ class SampleConfigDiscovery(unittest.TestCase):
                 get_subinterfaces(self.dut_ip_3, self.ethernet0)[0].get("ip_address")
                 == self.bgp_ip_3
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         ################# Configure BGP on spine #################
         try:
             del_bgp_global(self.dut_ip_1, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_global(self.dut_ip_1, self.vrf_name)
@@ -419,7 +430,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_global(
                 self.dut_ip_1, self.asn0, self.dut_ip_1, vrf_name=self.vrf_name
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         bgp_global = get_bgp_global(self.dut_ip_1, self.vrf_name)
@@ -431,7 +442,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_bgp_global(self.dut_ip_2, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_global(self.dut_ip_2, self.vrf_name)
@@ -440,7 +451,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_global(
                 self.dut_ip_2, self.asn1, self.dut_ip_2, vrf_name=self.vrf_name
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         bgp_global = get_bgp_global(self.dut_ip_2, self.vrf_name)
@@ -452,7 +463,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_bgp_global(self.dut_ip_3, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_global(self.dut_ip_3, self.vrf_name)
@@ -460,7 +471,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_global(
                 self.dut_ip_3, self.asn2, self.dut_ip_3, vrf_name=self.vrf_name
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         bgp_global = get_bgp_global(self.dut_ip_3, self.vrf_name)
@@ -472,14 +483,14 @@ class SampleConfigDiscovery(unittest.TestCase):
         for dev in [self.dut_ip_2, self.dut_ip_1, self.dut_ip_3]:
             try:
                 del_bgp_global_af_all(dev)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
             assert not get_bgp_global_af_list(dev)
 
             try:
                 config_bgp_global_af(dev, self.afi_safi, self.vrf_name)
-            except _InactiveRpcError as err:
+            except RpcError as err:
                 self.fail(err)
 
             for af in get_bgp_global_af_list(dev) or []:
@@ -488,7 +499,7 @@ class SampleConfigDiscovery(unittest.TestCase):
         ############################ Setup neighbor and neighbor AF on Spine #######################
         try:
             del_all_bgp_neighbors(self.dut_ip_1)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_neighbors_subinterfaces(self.dut_ip_1, self.asn0)
@@ -497,7 +508,7 @@ class SampleConfigDiscovery(unittest.TestCase):
         try:
             config_bgp_neighbors(self.dut_ip_1, self.asn1, self.bgp_ip_0, self.vrf_name)
             config_bgp_neighbors(self.dut_ip_1, self.asn2, self.bgp_ip_3, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr_subinterface in get_bgp_neighbors_subinterfaces(
@@ -510,7 +521,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_all_bgp_neighbour_af(self.dut_ip_1)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         for nbr in get_bgp_global(self.dut_ip_1, vrf_name="default").get(
@@ -525,7 +536,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_neighbor_af(
                 self.dut_ip_1, self.afi_safi, self.bgp_ip_3, self.vrf_name, True
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr in get_bgp_global(self.dut_ip_1, vrf_name="default").get(
@@ -536,14 +547,14 @@ class SampleConfigDiscovery(unittest.TestCase):
         ############################ Setup neighbor and neighbor AF on Leaf-1 #######################
         try:
             del_all_bgp_neighbors(self.dut_ip_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_neighbors_subinterfaces(self.dut_ip_2, self.asn1)
         assert not get_neighbour_bgp(self.dut_ip_2, self.asn1)
         try:
             config_bgp_neighbors(self.dut_ip_2, self.asn0, self.bgp_ip_1, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr_subinterface in get_bgp_neighbors_subinterfaces(
@@ -556,7 +567,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_all_bgp_neighbour_af(self.dut_ip_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         for nbr in get_bgp_global(self.dut_ip_2, vrf_name="default").get(
@@ -568,7 +579,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_neighbor_af(
                 self.dut_ip_2, self.afi_safi, self.bgp_ip_1, self.vrf_name, True
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr in get_bgp_global(self.dut_ip_2, vrf_name="default").get(
@@ -580,14 +591,14 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_all_bgp_neighbors(self.dut_ip_3)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_bgp_neighbors_subinterfaces(self.dut_ip_3, self.asn2)
         assert not get_neighbour_bgp(self.dut_ip_3, self.asn2)
         try:
             config_bgp_neighbors(self.dut_ip_3, self.asn0, self.bgp_ip_2, self.vrf_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr_subinterface in get_bgp_neighbors_subinterfaces(
@@ -600,7 +611,7 @@ class SampleConfigDiscovery(unittest.TestCase):
 
         try:
             del_all_bgp_neighbour_af(self.dut_ip_3)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         for nbr in get_bgp_global(self.dut_ip_3, vrf_name="default").get(
@@ -612,7 +623,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             config_bgp_neighbor_af(
                 self.dut_ip_3, self.afi_safi, self.bgp_ip_2, self.vrf_name, True
             )
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
 
         for nbr in get_bgp_global(self.dut_ip_3, vrf_name="default").get(
@@ -623,12 +634,12 @@ class SampleConfigDiscovery(unittest.TestCase):
     def test_create_vlan_config(self):
         try:
             del_vlan(self.dut_ip_1, self.vlan_name)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         try:
             del_vlan(self.dut_ip_1, self.vlan_name_2)
-        except _InactiveRpcError as err:
+        except RpcError as err:
             assert err.details().lower() == "resource not found"
 
         assert not get_vlan(self.dut_ip_1, self.vlan_name)
@@ -660,5 +671,5 @@ class SampleConfigDiscovery(unittest.TestCase):
                     ).items():
                         assert tagging_mode == str(mem_2.get(member_if))
 
-        except _InactiveRpcError as err:
+        except RpcError as err:
             self.fail(err)
