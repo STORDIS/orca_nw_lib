@@ -3,12 +3,19 @@ import re
 import ssl
 import sys
 from typing import List
-from grpc._channel import _InactiveRpcError
+from grpc import RpcError
 import grpc
 from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
 from .gnmi_pb2_grpc import gNMIStub
 
-from .utils import get_conn_timeout, get_logging, ping_ok, get_device_grpc_port, get_device_username, get_device_password
+from .utils import (
+    get_conn_timeout,
+    get_logging,
+    ping_ok,
+    get_device_grpc_port,
+    get_device_username,
+    get_device_password,
+)
 
 _logger = get_logging().getLogger(__name__)
 
@@ -16,16 +23,29 @@ stubs = {}
 
 
 def getGrpcStubs(device_ip):
+    """
+    Retrieves or creates gRPC stubs for a given device IP address.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        gNMIStub or None: The gRPC stub for the device IP address, or None if an error occurs.
+    """
+    
     global stubs
     port = get_device_grpc_port()
     user = get_device_username()
     passwd = get_device_password()
     if None in (port, user, passwd):
-        raise ValueError(
+        _logger.error(
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
+        return None
+
     if not ping_ok(device_ip):
-        raise ValueError(f"Device : {device_ip} is not pingable")
+        _logger.error(f"Device {device_ip} is not reachable !!")
+        return None
 
     if stubs and stubs.get(device_ip):
         return stubs.get(device_ip)
@@ -55,11 +75,11 @@ def getGrpcStubs(device_ip):
             stubs[device_ip] = stub
             return stub
         except TimeoutError as te:
-            raise te
-            # _logger.error(f"Connection Timeout on {device_ip}")
+            _logger.error(f"Connection Timeout on {device_ip} {te}")
+            return None
         except ConnectionRefusedError as cr:
-            raise cr
-            # _logger.error(f"Connection refused by {device_ip}")
+            _logger.error(f"Connection refused by {device_ip} {cr}")
+            return None
 
 
 def send_gnmi_get(device_ip, path: list[Path]):
@@ -76,12 +96,12 @@ def send_gnmi_get(device_ip, path: list[Path]):
         )
         # resp_cap=device_gnmi_stub.Capabilities(CapabilityRequest())
         # print(resp_cap)
-
-        for n in resp.notification:
-            for u in n.update:
-                op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
+        if resp:
+            for n in resp.notification:
+                for u in n.update:
+                    op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
         return op
-    except _InactiveRpcError as e:
+    except RpcError as e:
         _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
         )
@@ -109,7 +129,7 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
             device_gnmi_stub.Set(req, timeout=get_conn_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
-    except _InactiveRpcError as e:
+    except RpcError as e:
         _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
 

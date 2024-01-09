@@ -1,5 +1,5 @@
 # ORCA Network Library
-ORCA Network Library is an open sourcepython package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
+ORCA Network Library is an open source python package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
 ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
 - [ORCA Network Library](#orca-network-library)
   - [Install orca\_nw\_lib using pip](#install-orca_nw_lib-using-pip)
@@ -51,6 +51,7 @@ Optionally if user want to build and install orca_nw_lib from source, ORCA Netwo
 
 To build orca_nw_lib use the following commands :
 
+    git clone https://github.com/STORDIS/orca_nw_lib.git
     cd orca_nw_lib
     poetry build
     pip install dist/orca_nw_lib-****.whl

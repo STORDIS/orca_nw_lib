@@ -17,7 +17,7 @@ class Device(StructuredNode):
 
     img_name = StringProperty()
     mgt_intf = StringProperty()
-    mgt_ip = StringProperty()
+    mgt_ip = StringProperty(required = True)
     hwsku = StringProperty()
     mac = StringProperty(unique_index=True)
     platform = StringProperty()

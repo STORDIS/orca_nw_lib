@@ -19,7 +19,7 @@ def create_device_graph_object(ip_addr: str) -> Device:
     return Device(
         img_name=device_detail.get("img_name"),
         mgt_intf=device_detail.get("mgt_intf"),
-        mgt_ip=device_detail.get("mgt_ip").split("/")[0],
+        mgt_ip=mgt_ip.split("/")[0].strip() if (mgt_ip:=device_detail.get("mgt_ip")) else None,
         hwsku=device_detail.get("hwsku"),
         mac=device_detail.get("mac"),
         platform=device_detail.get("platform"),

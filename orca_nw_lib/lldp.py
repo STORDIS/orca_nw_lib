@@ -1,8 +1,10 @@
-from orca_nw_lib.device import create_device_graph_object
-from orca_nw_lib.interface_db import get_interface_of_device_from_db
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import send_gnmi_get
-from orca_nw_lib.utils import get_logging
+from .device import create_device_graph_object
+from .interface_db import get_interface_of_device_from_db
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import send_gnmi_get
+from .utils import get_logging
+from grpc import RpcError
+
 
 _logger = get_logging().getLogger(__name__)
 
@@ -156,55 +158,45 @@ def is_lldp_enabled(device_ip):
         raise e
 
 
-def read_lldp_topo(ip: str, topology):
+def read_lldp_topo(ip: str, topology, lldp_report:list):
     """
-    Starting from an IP address, Read LLDP table recursively
-    until all the connected devices are discovered.
-    Keeps the discovered devices in the `topology` dictionary.
-    Sample `topology` dictionary:
-    {
-        <Device: 10.10.130.212>: [
-            {
-                'local_port': 'Ethernet0',
-                'nbr_device': <Device: 10.10.130.210>,
-                'nbr_port': 'Ethernet1'
-            }
-        ]
-    }
-    Args:
+    Generate the function comment for the given function body in a markdown code block with the correct language syntax.
+    
+    Parameters:
         ip (str): The IP address of the device.
-
+        topology: The current topology dictionary.
+        lldp_report (list): The list to store the LLDP report.
+        
     Returns:
         None
-
-    Raises:
-        Exception: If there is an error while discovering the device.
-
-    Description:
-        This function reads the LLDP (Link Layer Discovery Protocol) topology of a device.
-        It takes an IP address as input and creates a device graph object
-        using the `create_device_graph_object` function.
-        If the device is not already in the `topology` dictionary,
-        it retrieves the LLDP neighbors of the device using the `get_lldp_neighbors` function.
-        For each neighbor, it creates a neighbor device graph object and
-        checks if the neighbor device has a management interface.
-        If it does, it appends the neighbor device and its corresponding ports to a temporary array.
-        The temporary array is then assigned to the `topology`
-        dictionary with the device as the key.
-        Finally, the function recursively calls itself for each neighbor
-        device to discover their LLDP topology.
     """
+    
     try:
         device = create_device_graph_object(ip)
-        if device not in topology:
+    except RpcError as rpcerr:
+        log_str = f"Device {ip} couldn't be discovered reason : {rpcerr.details()}."
+        _logger.info(log_str)
+        lldp_report.append(log_str)
+    
+
+    if device not in topology:
+        nbrs = []
+        try:
             nbrs = get_lldp_neighbors(ip)
-            temp_arr = []
-            for nbr in nbrs:
+        except RpcError as rpcerr:
+            log_str = f"Neighbors of Device {ip} couldn't be discovered reason : {rpcerr.details()}."
+            _logger.info(log_str)
+            lldp_report.append(log_str)
+
+        temp_arr = []
+        for nbr in nbrs:
+            try:
                 nbr_device = create_device_graph_object(nbr.get("nbr_ip"))
+
                 # Following check prevents adding an empty device object in topology.
                 # with no mgt_ip any no other properties as well.
                 # This may happen if device is pingable but gnmi connection can not be established.
-                if nbr_device.mgt_intf and nbr_device.mgt_intf:
+                if nbr_device.mgt_intf:
                     temp_arr.append(
                         {
                             "nbr_device": create_device_graph_object(nbr.get("nbr_ip")),
@@ -212,10 +204,12 @@ def read_lldp_topo(ip: str, topology):
                             "local_port": nbr.get("local_port"),
                         }
                     )
+            except RpcError as rpcerr:
+                log_str = f"Device {nbr.get('nbr_ip')} couldn't be discovered reason : {rpcerr.details()}."
+                _logger.info(log_str)
+                lldp_report.append(log_str)
 
-            topology[device] = temp_arr
+        topology[device] = temp_arr
 
-            for nbr in nbrs or []:
-                read_lldp_topo(nbr.get("nbr_ip"), topology)
-    except Exception as te:
-        _logger.info(f"Device {ip} couldn't be discovered reason : {te}.")
+        for nbr in nbrs or []:
+            read_lldp_topo(nbr.get("nbr_ip"), topology,lldp_report)

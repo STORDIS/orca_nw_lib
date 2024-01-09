@@ -15,7 +15,8 @@ from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .graph_db_models import Device
 from .lldp import create_lldp_relations_in_db
-from .utils import get_logging, get_networks
+from .utils import get_logging, get_networks, ping_ok
+from grpc import RpcError
 
 
 _logger = get_logging().getLogger(__name__)
@@ -48,48 +49,97 @@ def insert_devices_in_db():
                 nbr_device.save()
 
 
-def discover_nw_features(device_ip: str = None):
+def discover_nw_features(device_ip: str):
     """
-    Discovers the network features of a device or all the devices
-    which are discovered using the `read_lldp_topo` function already.
-    Args:
-        device_ip (str): The IP address of the device to discover the network features for,
-        if not specified network features are discovered for all devices in the database.
+    Discovers various network features on the device with the given IP address.
+
+    Parameters:
+    - device_ip (str): The IP address of the device to be discovered.
 
     Returns:
-        None
+    - report (list): A list of strings containing any errors or failures encountered during the discovery process.
     """
-    discover_interfaces(device_ip)
+    
+    report = []
+    try:
+        discover_interfaces(device_ip)
+    except RpcError as err:
+        report.append(
+            f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+
     create_lldp_relations_in_db(topology)
-    discover_port_groups(device_ip)
-    discover_vlan(device_ip)
-    discover_port_chnl(device_ip)
-    discover_mclag(device_ip)
-    discover_mclag_gw_macs(device_ip)
-    discover_bgp(device_ip)
-    discover_bgp_af_global(device_ip)
+
+    try:
+        discover_port_groups(device_ip)
+    except RpcError as err:
+        report.append(
+            f"Port Group Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+
+    try:
+        discover_vlan(device_ip)
+    except RpcError as err:
+        report.append(
+            f"VLAN Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+
+    try:
+        discover_port_chnl(device_ip)
+    except RpcError as err:
+        report.append(
+            f"Port Channel Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+
+    try:
+        discover_mclag(device_ip)
+    except RpcError as err:
+        report.append(
+            f"MCLAG Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+    try:
+        discover_mclag_gw_macs(device_ip)
+    except RpcError as err:
+        report.append(
+            f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+    try:
+        discover_bgp(device_ip)
+    except RpcError as err:
+        report.append(
+            f"BGP Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+    try:
+        discover_bgp_af_global(device_ip)
+    except RpcError as err:
+        report.append(
+            f"BGP Global Discovery Failed on device {device_ip}, Reason: {err.details()}"
+        )
+    return report
 
 
 def discover_lldp_topology(device_ip: str):
     """
-    Discovers the LLDP topology for a given switch IP address or network and inserts it into the database.
+    Discover the LLDP topology of a device.
 
     Args:
-        device_ip (str): The IP address or network to discover the topology for.
+        device_ip (str): The IP address of the device.
 
     Returns:
-        bool: True if the topology was discovered and inserted into the database, False otherwise.
+        list: A list of LLDP reports.
+
+    Raises:
+        None
     """
+    
     global topology
     _logger.debug(f"Discovering device:{device_ip} and its neighbors using LLDP.")
-    try:
-        read_lldp_topo(device_ip, topology)
-    except Exception as err:
-        _logger.error(err)
-        return False
-    
+    lldp_report = []
+    read_lldp_topo(device_ip, topology, lldp_report)
+
     if topology:
         import pprint
+
         _logger.info(
             "Discovered topology using IP provided {0}: \n{1}".format(
                 device_ip, pprint.pformat(topology)
@@ -99,45 +149,54 @@ def discover_lldp_topology(device_ip: str):
         insert_devices_in_db()
     else:
         _logger.info(
-            "!! Discovery was Unsuccessful for {0} !!".format(device_ip)
+            "!! LLDP Discovery was Unsuccessful triggered with IP {0} !!".format(
+                device_ip
+            )
         )
-        return False
-    
-    return True
+    return lldp_report
+
 
 def discover_device(ip_or_nw: str):
     """
-    Discovers devices in a network using the provided IP address or network.
+    Discover devices in a network given an IP address or network.
 
     Args:
-        ip_or_nw (str): The IP address or network to perform the network discovery on.
+        ip_or_nw (str): The IP address or network to perform the discovery on.
 
     Returns:
-        None
+        list: A list containing the discovery report, which includes information about the discovered devices and network features.
+
     """
+    
     _logger.info(
-            "Network Discovery Started using network provided {0}".format(ip_or_nw)
-        )
+        "Network Discovery Started using network provided {0}".format(ip_or_nw)
+    )
+    report = []
     for device_ip in ipaddress.ip_network(ip_or_nw):
-        device_ip=str(device_ip)
-        _logger.info(
-                "Discovering device :{}".format(device_ip)
-            )
+        device_ip = str(device_ip)
+        if not ping_ok(device_ip):
+            log_msg = f"Can not discover, Device {device_ip} is not reachable !!"
+            _logger.error(log_msg)
+            report.append(log_msg)
+            continue
+        _logger.info("Discovering device :{}".format(device_ip))
         discovery_start_time = datetime.datetime.now()
-        result=discover_lldp_topology(device_ip)
+        if lldp_report := discover_lldp_topology(device_ip):
+            report += lldp_report
         for device_obj in topology:
             _logger.info(f"Discovering network features for {device_obj.mgt_ip}.")
-            discover_nw_features(device_obj.mgt_ip)
+            if nw_feature_report := discover_nw_features(device_obj.mgt_ip):
+                report += nw_feature_report
         discovery_end_time = datetime.datetime.now()
         _logger.info(
             f"!! Discovered {len(topology)} Devices topology using {device_ip} in {discovery_end_time - discovery_start_time} !!"
         )
     ## topology dictionary should be emptied now, for further discovery requests
     topology.clear()
-    
-    return result
+    return report
 
-def discover_device_from_config() -> bool:
+
+def discover_device_from_config() -> []:
     """
     Discover devices from the configuration file.
 
@@ -146,8 +205,10 @@ def discover_device_from_config() -> bool:
     address. After iterating over all the addresses, it returns True.
 
     Returns:
-        bool: True indicating that the device discovery was successful.
+        report (list): A report of discovered devices and statuses.
     """
+    report = []
     for ip_or_nw in get_networks():
-        discover_device(ip_or_nw)
-    return True
+        if temp_report := discover_device(ip_or_nw):
+            report += temp_report
+    return report

@@ -120,15 +120,19 @@ def get_logging(logging_config_file: str = f"{dname}/logging.yml", force_reload=
     return logging
 
 
+class DeviceUnreachableError(Exception):
+    pass
+
+
 def ping_ok(device_ip) -> bool:
     """
-    Checks if a device is reachable by sending a ping request.
+    Check if the given device IP is reachable by sending a ping request.
 
     Args:
         device_ip (str): The IP address of the device to ping.
 
     Returns:
-        bool: True if the ping request was successful, False otherwise.
+        bool: True if the ping request is successful, False otherwise.
     """
 
     try:
@@ -136,6 +140,23 @@ def ping_ok(device_ip) -> bool:
             f'ping -{"n" if platform.system().lower() == "windows" else "c"} 1 -t {get_conn_timeout()} {device_ip}',
             shell=True,
         )
-    except Exception:
+        return True
+    except subprocess.CalledProcessError:
         return False
-    return True
+
+
+def validate_ipv4_address(ip):
+    """
+    Validates an IPv4 address.
+
+    Args:
+        ip (str): The IPv4 address to be validated.
+
+    Returns:
+        bool: True if the address is a valid IPv4 address, False otherwise.
+    """
+    try:
+        ipaddress.IPv4Address(ip)
+        return True
+    except ipaddress.AddressValueError:
+        return False

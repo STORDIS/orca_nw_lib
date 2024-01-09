@@ -1,5 +1,5 @@
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.gnmi_util import send_gnmi_get
+from .gnmi_pb2 import Path, PathElem
+from .gnmi_util import send_gnmi_get
 
 
 def get_device_meta_data(device_ip: str):
