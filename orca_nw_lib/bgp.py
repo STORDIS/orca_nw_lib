@@ -1,5 +1,3 @@
-from ast import Dict
-from grpc import RpcError
 from typing import List
 from .bgp_db import (
     create_bgp_peer_link_rel,
@@ -140,9 +138,9 @@ def config_bgp_global(
     """
     try:
         config_bgp_global_on_device(device_ip, local_asn, router_id, vrf_name)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to configure BGP with ASN {local_asn} on device {device_ip}, Reason: {err.details()}."
+            f"Failed to configure BGP with ASN {local_asn} on device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -160,9 +158,6 @@ def del_bgp_global(device_ip: str, vrf_name: str) -> None:
     Returns:
         None: This function does not return anything.
 
-    Raises:
-        RpcError: If an error occurs while deleting the BGP global configuration.
-
     Notes:
         This function first attempts to delete the BGP global configuration for the specified device IP and VRF.
         If an error occurs, it logs the error message and re-raises the exception.
@@ -171,9 +166,9 @@ def del_bgp_global(device_ip: str, vrf_name: str) -> None:
     """
     try:
         del_bgp_global_from_device(device_ip, vrf_name)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to delete BGP with VRF {vrf_name} on device {device_ip}, Reason: {err.details()}."
+            f"Failed to delete BGP with VRF {vrf_name} on device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -239,17 +234,14 @@ def config_bgp_neighbors(
         neighbor_ip (str): The IP address of the BGP neighbor.
         remote_vrf (str): The remote VRF name.
 
-    Raises:
-        RpcError: If there is an error while configuring the BGP neighbor.
-
     Returns:
         None
     """
     try:
         config_bgp_neighbors_on_device(device_ip, remote_asn, neighbor_ip, remote_vrf)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to configure BGP neighbor {neighbor_ip} with ASN {remote_asn} on device {device_ip}, Reason: {err.details()}."
+            f"Failed to configure BGP neighbor {neighbor_ip} with ASN {remote_asn} on device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -263,17 +255,14 @@ def del_all_bgp_neighbors(device_ip: str):
     Args:
         device_ip (str): The IP address of the device.
 
-    Raises:
-        RpcError: If there is an error deleting the BGP neighbors.
-
     Returns:
         None
     """
     try:
         del_all_bgp_neighbors_from_device(device_ip)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to delete BGP neighbors on device {device_ip}, Reason: {err.details()}."
+            f"Failed to delete BGP neighbors on device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -299,9 +288,9 @@ def discover_bgp(device_ip: str = None):
         try:
             _logger.info(f"Discovering BGP on device {device}.")
             insert_device_bgp_in_db(device, _create_bgp_graph_objects(device.mgt_ip))
-        except RpcError as err:
+        except Exception as e:
             _logger.error(
-                f"BGP Discovery Failed on device {device.mgt_ip}, Reason: {err.details()}"
+                f"BGP Discovery Failed on device {device.mgt_ip}, Reason: {e}"
             )
             raise
     create_bgp_peer_link_rel()
@@ -329,9 +318,9 @@ def discover_bgp_af_global(device_ip: str = None):
             insert_bgp_global_af_list_in_db(
                 device, _create_bgp_global_af_graph_objects(device.mgt_ip)
             )
-        except RpcError as err:
+        except Exception as e:
             _logger.error(
-                f"BGP Global AF List Discovery Failed on device {device.mgt_ip}, Reason: {err.details()}"
+                f"BGP Global AF List Discovery Failed on device {device.mgt_ip}, Reason: {e}"
             )
             raise
 
@@ -354,9 +343,6 @@ def config_bgp_neighbor_af(
         admin_status (bool, optional): The administrative status of the neighbor.
             Defaults to True.
 
-    Raises:
-        RpcError: If there is an error configuring the AF on the BGP neighbor.
-
     Returns:
         None
     """
@@ -365,9 +351,9 @@ def config_bgp_neighbor_af(
         config_bgp_neighbor_af_on_device(
             device_ip, afi_safi, neighbor_ip, vrf, admin_status
         )
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to configure AF {afi_safi} on BGP neighbor {neighbor_ip}, Reason: {err.details()}."
+            f"Failed to configure AF {afi_safi} on BGP neighbor {neighbor_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -381,17 +367,14 @@ def del_all_bgp_neighbour_af(device_ip: str):
     Args:
         device_ip (str): The IP address of the device.
 
-    Raises:
-        RpcError: If there is an error deleting the AF from the BGP neighbor.
-
     Returns:
         None
     """
     try:
         del_all_neighbor_af_from_device(device_ip)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to delete AF from BGP neighbor of device {device_ip}, Reason: {err.details()}."
+            f"Failed to delete AF from BGP neighbor of device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -423,17 +406,14 @@ def config_bgp_global_af(device_ip: str, afi_safi: str, vrf_name: str = "default
         afi_safi (str): The AF and SAFI (Address Family and Subsequent Address Family Identifier) to configure.
         vrf_name (str, optional): The name of the VRF (Virtual Routing and Forwarding) instance. Defaults to "default".
 
-    Raises:
-        RpcError: If there is an error configuring the AF on BGP.
-
     Returns:
         None
     """
     try:
         config_bgp_global_af_on_device(device_ip, afi_safi, vrf_name)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to configure AF {afi_safi} on BGP on device {device_ip}, Reason: {err.details()}."
+            f"Failed to configure AF {afi_safi} on BGP on device {device_ip}, Reason: {e}."
         )
         raise
     finally:
@@ -447,17 +427,14 @@ def del_bgp_global_af_all(device_ip: str):
     Parameters:
         device_ip (str): The IP address of the device.
 
-    Raises:
-        RpcError: If there is an error while deleting AF from BGP on the device.
-
     Returns:
         None
     """
     try:
         del_all_bgp_global_af_from_device(device_ip)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Failed to delete AF from BGP on device {device_ip}, Reason: {err.details()}."
+            f"Failed to delete AF from BGP on device {device_ip}, Reason: {e}."
         )
         raise
     finally:

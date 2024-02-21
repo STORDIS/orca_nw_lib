@@ -142,8 +142,7 @@ def ping_ok(device_ip) -> bool:
         )
         return True
     except subprocess.CalledProcessError:
-        return False
-
+        raise
 
 def validate_ipv4_address(ip):
     """

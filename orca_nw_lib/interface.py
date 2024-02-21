@@ -1,7 +1,5 @@
 import datetime
 from typing import Dict, List
-from grpc import RpcError
-
 import pytz
 
 from orca_nw_lib.common import Speed, PortFec
@@ -146,19 +144,16 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         ip (str, optional): The IP address of the interface. Defaults to None.
         ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
         index (int, optional): The index of the sub-interface. Defaults to 0.
-        fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
-
-    raises:
-        RpcError: If the configuration of the interface fails.
+        fec (PortFec, optional): Enable disable forward error correction. Defaults to None. 
 
     """
     _logger.debug(f"Configuring interface {intfc_name} on device {device_ip}")
     try:
         set_interface_config_on_device(device_ip, intfc_name, **kwargs)
         _logger.debug(f"Configured interface {intfc_name} on device {device_ip}")
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {err.details()}"
+            f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {e}"
         )
         raise
     finally:
@@ -175,15 +170,12 @@ def del_ip_from_intf(device_ip: str, intfc_name: str):
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
 
-    Raises:
-        RpcError: If the deletion of the IP address from the interface fails.
-
     """
     try:
         del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Deleting IP address from interface {intfc_name} on device {device_ip} failed, Reason: {err.details()}"
+            f"Deleting IP address from interface {intfc_name} on device {device_ip} failed, Reason: {e}"
         )
         raise
     finally:
@@ -205,9 +197,9 @@ def discover_interfaces(
             insert_device_interfaces_in_db(
                 device, _create_interface_graph_objects(device.mgt_ip, intfc_name)
             )
-        except RpcError as err:
+        except Exception as e:
             _logger.error(
-                f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
+                f"Interface Discovery Failed on device {device_ip}, Reason: {e}"
             )
             raise
 
@@ -252,18 +244,15 @@ def del_all_subinterfaces_of_interface(device_ip: str, if_name: str):
     """
     Delete all subinterfaces of all interfaces.
 
-    Raises:
-        RpcError: If the deletion of the subinterfaces fails.
-
     Returns:
         None
     """
     _logger.info("Deleting all subinterfaces of all interfaces.")
     try:
         del_all_subinterfaces_of_interface_from_device(device_ip, if_name)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Deleting all subinterfaces of all interfaces failed, Reason: {err.details()}"
+            f"Deleting all subinterfaces of all interfaces failed, Reason: {e}"
         )
         raise
     finally:
@@ -274,18 +263,16 @@ def del_all_subinterfaces_of_all_interfaces(device_ip: str):
     """
     Delete all subinterfaces of all interfaces.
 
-    Raises:
-        RpcError: If the deletion of the subinterfaces fails.
-
     Returns:
         None
     """
     _logger.info("Deleting all subinterfaces of all interfaces.")
     try:
         del_all_subinterfaces_of_all_interfaces_from_device(device_ip)
-    except RpcError as err:
+    
+    except Exception as e:
         _logger.error(
-            f"Deleting all subinterfaces of all interfaces failed, Reason: {err.details()}"
+            f"Deleting all subinterfaces of all interfaces failed, Reason: {e}"
         )
         raise
     finally:

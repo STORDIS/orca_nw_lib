@@ -3,7 +3,6 @@ from .interface_db import get_interface_of_device_from_db
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import send_gnmi_get
 from .utils import get_logging
-from grpc import RpcError
 
 
 _logger = get_logging().getLogger(__name__)
@@ -173,8 +172,8 @@ def read_lldp_topo(ip: str, topology, lldp_report:list):
     
     try:
         device = create_device_graph_object(ip)
-    except RpcError as rpcerr:
-        log_str = f"Device {ip} couldn't be discovered reason : {rpcerr.details()}."
+    except Exception as e:
+        log_str = f"Device {ip} couldn't be discovered reason : {e}."
         _logger.info(log_str)
         lldp_report.append(log_str)
     
@@ -183,8 +182,8 @@ def read_lldp_topo(ip: str, topology, lldp_report:list):
         nbrs = []
         try:
             nbrs = get_lldp_neighbors(ip)
-        except RpcError as rpcerr:
-            log_str = f"Neighbors of Device {ip} couldn't be discovered reason : {rpcerr.details()}."
+        except Exception as e:
+            log_str = f"Neighbors of Device {ip} couldn't be discovered reason : {e}."
             _logger.info(log_str)
             lldp_report.append(log_str)
 
@@ -204,8 +203,8 @@ def read_lldp_topo(ip: str, topology, lldp_report:list):
                             "local_port": nbr.get("local_port"),
                         }
                     )
-            except RpcError as rpcerr:
-                log_str = f"Device {nbr.get('nbr_ip')} couldn't be discovered reason : {rpcerr.details()}."
+            except Exception as e:
+                log_str = f"Device {nbr.get('nbr_ip')} couldn't be discovered reason : {e}."
                 _logger.info(log_str)
                 lldp_report.append(log_str)
 

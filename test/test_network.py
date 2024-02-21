@@ -50,19 +50,24 @@ from orca_nw_lib.vlan import (
     get_vlan_members,
 )
 
-
+def device_pingable(ip):
+    try:
+        ping_ok(ip)
+        return True
+    except:
+        return False
+        
 class InterfaceTests(unittest.TestCase):
     dut_ip = None
     ethernet = None
-
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
-        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        assert set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
@@ -154,11 +159,11 @@ class PortChannelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
-        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        assert set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
@@ -367,11 +372,11 @@ class MclagTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
-        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        assert set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
@@ -559,11 +564,11 @@ class BGPTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
-        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        assert set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         )
         assert (
@@ -670,11 +675,11 @@ class VLANTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         load_orca_config()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
-        assert set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        assert set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         )
         cls.dut_ip = get_all_devices_ip_from_db()[0]
@@ -797,7 +802,7 @@ class AdditionalDeviceDiscoveryTests(unittest.TestCase):
         load_orca_config()
         clean_db()
         assert not get_all_devices_ip_from_db()
-        if not set([ip for ip in get_networks() if ping_ok(ip)]).issubset(
+        if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
             discover_device_from_config()
@@ -811,7 +816,7 @@ class AdditionalDeviceDiscoveryTests(unittest.TestCase):
             devices_discovered = []
             for ip_or_nw in get_networks():
                 for ip in ipaddress.ip_network(ip_or_nw):
-                    if ping_ok(str(ip)):
+                    if device_pingable(str(ip)):
                         devices_discovered.append(str(ip))
             devices_discovered.append(new_device_ip)
             ## check all elements in devices_discovered are in get_all_devices_ip_from_db

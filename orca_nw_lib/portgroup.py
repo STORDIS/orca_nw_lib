@@ -12,8 +12,6 @@ from orca_nw_lib.portgroup_db import (
     get_port_group_from_db,
 )
 from orca_nw_lib.utils import get_logging
-from grpc import RpcError
-
 
 _logger = get_logging().getLogger(__name__)
 
@@ -130,9 +128,9 @@ def discover_port_groups(
 def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
     try:
         set_port_group_speed_on_device(device_ip, port_group_id, speed)
-    except RpcError as err:
+    except Exception as e:
         _logger.error(
-            f"Port Group {port_group_id} speed change failed on device {device_ip}, Reason: {err.details()}"
+            f"Port Group {port_group_id} speed change failed on device {device_ip}, Reason: {e}"
         )
         raise
     finally:

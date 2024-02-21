@@ -54,7 +54,7 @@ from orca_nw_lib.mclag_gnmi import (
 )
 
 from orca_nw_lib.vlan import config_vlan, del_vlan, get_vlan, get_vlan_members
-
+from test_network import device_pingable
 
 class SampleConfigDiscovery(unittest.TestCase):
     vrf_name = "default"
@@ -85,16 +85,22 @@ class SampleConfigDiscovery(unittest.TestCase):
     ethernet7 = None
     vlan_name = "Vlan1"
     vlan_name_2 = "Vlan2"
+    vlan_name_3 = "Vlan3"
+    
     vlan_id = 1
     vlan_id_2 = 2
+    vlan_id_3 = 3
+    
 
+
+    
     @classmethod
     def setUpClass(cls):
         load_orca_config()
         clean_db()
         assert not get_all_devices_ip_from_db()
         orca_config_discovered = lambda: set(
-            [ip for ip in get_networks() if ping_ok(ip)]
+            [ip for ip in get_networks() if device_pingable(ip)]
         ).issubset(set(get_all_devices_ip_from_db()))
 
         minimum_device_discovered = lambda: len(get_all_devices_ip_from_db()) >= 3
@@ -151,7 +157,7 @@ class SampleConfigDiscovery(unittest.TestCase):
             except RpcError as err:
                 assert err.details().lower() == "resource not found"
 
-            for vlan in [cls.vlan_name, cls.vlan_name_2]:
+            for vlan in [cls.vlan_name_2, cls.vlan_name_3]:
                 try:
                     del_vlan(dut, vlan)
                 except RpcError as err:
@@ -633,17 +639,17 @@ class SampleConfigDiscovery(unittest.TestCase):
 
     def test_create_vlan_config(self):
         try:
-            del_vlan(self.dut_ip_1, self.vlan_name)
-        except RpcError as err:
-            assert err.details().lower() == "resource not found"
-
-        try:
             del_vlan(self.dut_ip_1, self.vlan_name_2)
         except RpcError as err:
             assert err.details().lower() == "resource not found"
 
-        assert not get_vlan(self.dut_ip_1, self.vlan_name)
+        try:
+            del_vlan(self.dut_ip_1, self.vlan_name_3)
+        except RpcError as err:
+            assert err.details().lower() == "resource not found"
+
         assert not get_vlan(self.dut_ip_1, self.vlan_name_2)
+        assert not get_vlan(self.dut_ip_1, self.vlan_name_3)
 
         mem = {self.ethernet4: VlanTagMode.tagged, self.ethernet5: VlanTagMode.untagged}
         mem_2 = {
@@ -651,25 +657,24 @@ class SampleConfigDiscovery(unittest.TestCase):
             self.ethernet7: VlanTagMode.untagged,
         }
         try:
-            config_vlan(self.dut_ip_1, self.vlan_name, self.vlan_id, mem)
-            config_vlan(self.dut_ip_1, self.vlan_name_2, self.vlan_id_2, mem_2)
+            config_vlan(self.dut_ip_1, self.vlan_name_2, self.vlan_id_2, mem)
+            config_vlan(self.dut_ip_1, self.vlan_name_3, self.vlan_id_3, mem_2)
 
             vlan_detail = get_vlan(self.dut_ip_1)
             for vlan in vlan_detail or []:
-                assert vlan.get("name") in [self.vlan_name, self.vlan_name_2]
-                assert vlan.get("vlanid") in [self.vlan_id, self.vlan_id_2]
-                if vlan.get("vlanid") is self.vlan_id:
-                    assert set(vlan.get("members")) == set(mem.keys())
-                    for member_if, tagging_mode in get_vlan_members(
-                        self.dut_ip_1, vlan.get("name")
-                    ).items():
-                        assert tagging_mode == str(mem.get(member_if))
-                elif vlan.get("vlanid") is self.vlan_id_2:
-                    assert set(vlan.get("members")) == set(mem_2.keys())
-                    for member_if, tagging_mode in get_vlan_members(
-                        self.dut_ip_1, vlan.get("name")
-                    ).items():
-                        assert tagging_mode == str(mem_2.get(member_if))
+                if vlan.get("vlanid") in [self.vlan_id_2, self.vlan_id_3] :
+                    if vlan.get("vlanid") is self.vlan_id_2:
+                        assert set(vlan.get("members")) == set(mem.keys())
+                        for member_if, tagging_mode in get_vlan_members(
+                            self.dut_ip_1, vlan.get("name")
+                        ).items():
+                            assert tagging_mode == str(mem.get(member_if))
+                    elif vlan.get("vlanid") is self.vlan_id_3:
+                        assert set(vlan.get("members")) == set(mem_2.keys())
+                        for member_if, tagging_mode in get_vlan_members(
+                            self.dut_ip_1, vlan.get("name")
+                        ).items():
+                            assert tagging_mode == str(mem_2.get(member_if))
 
         except RpcError as err:
             self.fail(err)

@@ -78,7 +78,7 @@ e.g. interface.py have general operation on interfaces and users can achieve nor
 > [Test cases](./test) are a good starting point to know the usage of APIs in orca_nbw_lib.
 
 ## Knowing API call status
-Exception `grpc.RpcError` raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
+Exception objects raised by APIs in the modules above can be caught to know the API status. Exception object has all necessary details about the error.
 
 ## Keeping graph DB in sync with realtime Network state.
 Any configuration done on the device via orca_nw_lib APIs automatically keeps the DB in sync with the realtime network state by triggering the discovery method for the network component although gNMI subscriptions would have been the best way to achieve this, but due lack of support for gNMI subscription for all openconfig models in SONiC currently only pull mechanism can be used to keep graph DB in sync with realtime network state. 

@@ -16,7 +16,6 @@ from .vlan import discover_vlan
 from .graph_db_models import Device
 from .lldp import create_lldp_relations_in_db
 from .utils import get_logging, get_networks, ping_ok
-from grpc import RpcError
 
 
 _logger = get_logging().getLogger(__name__)
@@ -63,57 +62,57 @@ def discover_nw_features(device_ip: str):
     report = []
     try:
         discover_interfaces(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"Interface Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"Interface Discovery Failed on device {device_ip}, Reason: {e}"
         )
 
     create_lldp_relations_in_db(topology)
 
     try:
         discover_port_groups(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"Port Group Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"Port Group Discovery Failed on device {device_ip}, Reason: {e}"
         )
 
     try:
         discover_vlan(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"VLAN Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"VLAN Discovery Failed on device {device_ip}, Reason: {e}"
         )
 
     try:
         discover_port_chnl(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"Port Channel Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"Port Channel Discovery Failed on device {device_ip}, Reason: {e}"
         )
 
     try:
         discover_mclag(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"MCLAG Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}"
         )
     try:
         discover_mclag_gw_macs(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {e}"
         )
     try:
         discover_bgp(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"BGP Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"BGP Discovery Failed on device {device_ip}, Reason: {e}"
         )
     try:
         discover_bgp_af_global(device_ip)
-    except RpcError as err:
+    except Exception as e:
         report.append(
-            f"BGP Global Discovery Failed on device {device_ip}, Reason: {err.details()}"
+            f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}"
         )
     return report
 
@@ -174,7 +173,10 @@ def discover_device(ip_or_nw: str):
     report = []
     for device_ip in ipaddress.ip_network(ip_or_nw):
         device_ip = str(device_ip)
-        if not ping_ok(device_ip):
+        import subprocess
+        try:
+            ping_ok(device_ip)
+        except subprocess.CalledProcessError:
             log_msg = f"Can not discover, Device {device_ip} is not reachable !!"
             _logger.error(log_msg)
             report.append(log_msg)

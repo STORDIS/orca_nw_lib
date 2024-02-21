@@ -3,10 +3,11 @@ import re
 import ssl
 import sys
 from typing import List
-from grpc import RpcError
 import grpc
 from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
 from .gnmi_pb2_grpc import gNMIStub
+import subprocess
+
 
 from .utils import (
     get_conn_timeout,
@@ -23,16 +24,7 @@ stubs = {}
 
 
 def getGrpcStubs(device_ip):
-    """
-    Retrieves or creates gRPC stubs for a given device IP address.
 
-    Args:
-        device_ip (str): The IP address of the device.
-
-    Returns:
-        gNMIStub or None: The gRPC stub for the device IP address, or None if an error occurs.
-    """
-    
     global stubs
     port = get_device_grpc_port()
     user = get_device_username()
@@ -41,11 +33,15 @@ def getGrpcStubs(device_ip):
         _logger.error(
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
-        return None
+        raise ValueError(
+            "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
+        )
 
-    if not ping_ok(device_ip):
+    try:
+        ping_ok(device_ip)
+    except subprocess.CalledProcessError:
         _logger.error(f"Device {device_ip} is not reachable !!")
-        return None
+        raise
 
     if stubs and stubs.get(device_ip):
         return stubs.get(device_ip)
@@ -76,16 +72,16 @@ def getGrpcStubs(device_ip):
             return stub
         except TimeoutError as te:
             _logger.error(f"Connection Timeout on {device_ip} {te}")
-            return None
+            raise
         except ConnectionRefusedError as cr:
             _logger.error(f"Connection refused by {device_ip} {cr}")
-            return None
+            raise
 
 
 def send_gnmi_get(device_ip, path: list[Path]):
     op = {}
-    device_gnmi_stub = getGrpcStubs(device_ip)
     try:
+        device_gnmi_stub = getGrpcStubs(device_ip)
         resp = (
             device_gnmi_stub.Get(
                 GetRequest(path=path, type=GetRequest.ALL, encoding=JSON_IETF),
@@ -101,7 +97,7 @@ def send_gnmi_get(device_ip, path: list[Path]):
                 for u in n.update:
                     op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
         return op
-    except RpcError as e:
+    except Exception as e:
         _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
         )
@@ -123,13 +119,13 @@ def get_gnmi_del_req(path: Path):
 
 
 def send_gnmi_set(req: SetRequest, device_ip: str):
-    device_gnmi_stub = getGrpcStubs(device_ip)
     try:
+        device_gnmi_stub = getGrpcStubs(device_ip)
         if device_gnmi_stub:
             device_gnmi_stub.Set(req, timeout=get_conn_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
-    except RpcError as e:
+    except Exception as e:
         _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
 
