@@ -111,9 +111,7 @@ def del_vlan(device_ip, vlan_name):
     try:
         del_vlan_from_device(device_ip, vlan_name)
     except Exception as e:
-        _logger.error(
-            f"VLAN deletion failed on device {device_ip}, Reason: {e}"
-        )
+        _logger.error(f"VLAN deletion failed on device {device_ip}, Reason: {e}")
         raise
     finally:
         discover_vlan(device_ip)
@@ -137,9 +135,7 @@ def config_vlan(
     try:
         config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs)
     except Exception as e:
-        _logger.error(
-            f"VLAN configuration failed on device {device_ip}, Reason: {e}"
-        )
+        _logger.error(f"VLAN configuration failed on device {device_ip}, Reason: {e}")
         raise
     finally:
         discover_vlan(device_ip)
@@ -160,9 +156,7 @@ def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode])
     try:
         add_vlan_mem_interface_on_device(device_ip, vlan_name, mem_ifs)
     except Exception as e:
-        _logger.error(
-            f"VLAN member addition failed on device {device_ip}, Reason: {e}"
-        )
+        _logger.error(f"VLAN member addition failed on device {device_ip}, Reason: {e}")
         raise
     finally:
         discover_vlan(device_ip)
@@ -230,15 +224,13 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
     try:
         del_vlan_mem_interface_on_device(device_ip, vlan_name, if_name)
     except Exception as e:
-        _logger.error(
-            f"VLAN member deletion failed on device {device_ip}, Reason: {e}"
-        )
+        _logger.error(f"VLAN member deletion failed on device {device_ip}, Reason: {e}")
         raise
     finally:
         discover_vlan(device_ip)
 
 
-def discover_vlan(device_ip: str = None, vlan_name: str = None):
+def discover_vlan(device_ip: str = None):
     """
     Discovers VLANs on a network device.
 
@@ -255,9 +247,7 @@ def discover_vlan(device_ip: str = None, vlan_name: str = None):
     for device in devices:
         try:
             _logger.info(f"Discovering VLAN on device {device}.")
-            insert_vlan_in_db(device, _create_vlan_db_obj(device.mgt_ip, vlan_name))
+            insert_vlan_in_db(device, _create_vlan_db_obj(device.mgt_ip))
         except Exception as e:
-            _logger.error(
-                f"VLAN Discovery Failed on device {device_ip}, Reason: {e}"
-            )
+            _logger.error(f"VLAN Discovery Failed on device {device_ip}, Reason: {e}")
             raise

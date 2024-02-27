@@ -127,9 +127,16 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
             chnl.save()
             device.port_chnl.connect(chnl)
         saved_p_chnl = get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name)
+        ## For updating Port channel members in db, lets first disconnect any existing members and recreate membership in DB.
+        ## It will cater case when vlan has members are in db but not on device.
+        ## Also the case when members has been changed/updated.
+        saved_p_chnl.members.disconnect_all()
+        print(chnl, mem_list)
         for intf_name in mem_list:
+            print("retrieving intf from DB", intf_name)
             intf_obj = get_interface_of_device_from_db(device.mgt_ip, intf_name)
             if saved_p_chnl and intf_obj:
+                print("Found interface", intf_name)
                 saved_p_chnl.members.connect(intf_obj)
 
     ## Handle the case when some or all port_chnl has been deleted from device but remained in DB
@@ -137,8 +144,9 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
     for chnl_in_db in get_all_port_chnl_of_device_from_db(device.mgt_ip):
         if chnl_in_db not in portchnl_to_mem_list:
             del_port_chnl_of_device_from_db(device.mgt_ip, chnl_in_db.lag_name)
+            
         ## Also disconnect interfaces if not a member of channel
-        chnl_members_on_device = portchnl_to_mem_list.get(chnl_in_db)
-        for mem in chnl_in_db.members.all() or []:
-            if mem.name not in chnl_members_on_device:
-                chnl_in_db.members.disconnect(mem)
+        #chnl_members_on_device = portchnl_to_mem_list.get(chnl_in_db)
+        #for mem in chnl_in_db.members.all() or []:
+        #    if mem.name not in chnl_members_on_device:
+        #        chnl_in_db.members.disconnect(mem)

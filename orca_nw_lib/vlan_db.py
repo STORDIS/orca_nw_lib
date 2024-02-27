@@ -93,19 +93,25 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
     """
     for vlan, members in vlans_obj_vs_mem.items():
         if v := get_vlan_obj_from_db(device.mgt_ip, vlan.name):
-            # update existing vlan
+            # update existing vlan if already exists.
             copy_vlan_obj_prop(v, vlan)
             v.save()
             device.vlans.connect(v)
         else:
+            # Create a new vlan in database.
             vlan.save()
             device.vlans.connect(vlan)
 
         saved_vlan = get_vlan_obj_from_db(device.mgt_ip, vlan.name)
+        
+        ## For updating vlan members in db, lets first disconnect any existing members and recreate membership in DB.
+        ## It will cater case when vlan has members are in db but not on device.
+        ## Also the case when members has been changed/updated.
+        saved_vlan.memberInterfaces.disconnect_all()
         for mem in members:
             mem_rel = (
                 saved_vlan.memberInterfaces.connect(intf)
-                if saved_vlan
+                if saved_vlan and intf
                 and (
                     intf := get_interface_of_device_from_db(
                         device.mgt_ip, mem.get("ifname")
@@ -116,7 +122,7 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
             mem_rel.tagging_mode = mem.get("tagging_mode")
             mem_rel.save()
     ## Handle the case when some or all vlans has been deleted from device but remained in DB
-    ## Remove all vlans which are in DB but not on device
+    ## Remove all vlans which are in DB but not on device.
     for vlan_in_db in get_vlan_obj_from_db(device.mgt_ip):
         if vlan_in_db not in vlans_obj_vs_mem:
             del_vlan_from_db(device.mgt_ip, vlan_in_db.name)

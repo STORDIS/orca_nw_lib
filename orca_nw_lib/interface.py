@@ -122,7 +122,7 @@ def get_interface(device_ip: str, intfc_name=None):
             else None
         )
     return [
-        intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip)
+        intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip) if intf
     ]
 
 
