@@ -13,7 +13,7 @@ from .port_chnl_db import (
 )
 
 from .port_chnl_gnmi import (
-    add_port_chnl_member,
+    add_port_chnl_member_on_device,
     add_port_chnl_on_device,
     del_port_chnl_from_device,
     get_port_chnls_info_from_device,
@@ -36,6 +36,7 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
         Dict[PortChannel, List[str]]: A dictionary mapping PortChannel objects to lists of interface names.
     """
     port_chnl_json = get_port_chnls_info_from_device(device_ip)
+    _logger.debug(f"Retrieved port channels info from device {device_ip} {port_chnl_json}")
     port_chnl_obj_list = {}
     if port_chnl_json:
         lag_table_json_list = port_chnl_json.get("sonic-portchannel:LAG_TABLE_LIST", {})
@@ -180,15 +181,18 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
     """
 
     try:
-        add_port_chnl_member(device_ip, chnl_name, ifnames)
+        add_port_chnl_member_on_device(device_ip, chnl_name, ifnames)
     except Exception as e:
         _logger.error(
             f"Port Channel {chnl_name} members {ifnames} addition failed on device {device_ip}, Reason: {e}"
         )
         raise
     finally:
-        ## Note - A bit strange but despite of being single threaded process,
-        ## Need to keep a delay between creating channel members and getting them.
+        ## Note - Need to keep a delay between creating channel members and discovering them.
+        ## Issue is still valid untill in SONiC_4.2.0
+        ## Affected test case is - test_network.PortChannelTests.test_add_del_port_chnl_members
+        ## Related bug - https://github.com/STORDIS/orca_nw_lib/issues/45
+        ## Might be due to different path used for adding members above and below for discovery.
         sleep(1)
         discover_port_chnl(device_ip)
 

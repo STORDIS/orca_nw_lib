@@ -2,7 +2,9 @@ from typing import List
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Interface, PortChannel
 from .interface_db import get_interface_of_device_from_db
+from .utils import get_logging
 
+_logger = get_logging().getLogger(__name__)
 
 def get_port_chnl_of_device_from_db(device_ip: str, port_chnl_name: str) -> PortChannel:
     """
@@ -118,6 +120,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
         None
 
     """
+    _logger.debug(f"Inserting port channels in the DB for device {device.mgt_ip} {portchnl_to_mem_list}")
     for chnl, mem_list in portchnl_to_mem_list.items():
         if p_chnl := get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name):
             copy_port_chnl_prop(p_chnl, chnl)
@@ -131,12 +134,11 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
         ## It will cater case when vlan has members are in db but not on device.
         ## Also the case when members has been changed/updated.
         saved_p_chnl.members.disconnect_all()
-        print(chnl, mem_list)
         for intf_name in mem_list:
-            print("retrieving intf from DB", intf_name)
+            _logger.debug(f"retrieving intf from DB {intf_name}")
             intf_obj = get_interface_of_device_from_db(device.mgt_ip, intf_name)
             if saved_p_chnl and intf_obj:
-                print("Found interface", intf_name)
+                _logger.debug(f"Found interface {intf_name}")
                 saved_p_chnl.members.connect(intf_obj)
 
     ## Handle the case when some or all port_chnl has been deleted from device but remained in DB

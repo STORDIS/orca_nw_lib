@@ -6,6 +6,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
 )
 from orca_nw_lib.portgroup_gnmi import get_port_chnl_mem_base_path
+from orca_nw_lib.utils import get_logging
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_gnmi_update,
@@ -15,6 +16,7 @@ from .gnmi_util import (
     send_gnmi_set,
 )
 
+_logger = get_logging().getLogger(__name__)
 
 def get_port_chnl_root_path() -> Path:
     """
@@ -265,7 +267,7 @@ def del_port_chnl_from_device(device_ip: str, chnl_name: str = None):
     return send_gnmi_set(get_gnmi_del_req(get_port_chnl_path(chnl_name)), device_ip)
 
 
-def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames: list[str]):
+def add_port_chnl_member_on_device(device_ip: str, chnl_name: str, ifnames: list[str]):
     """
     Adds a member to a port channel on a device.
 
@@ -280,8 +282,9 @@ def add_port_chnl_member(device_ip: str, chnl_name: str, ifnames: list[str]):
     port_chnl_add = {"sonic-portchannel:PORTCHANNEL_MEMBER_LIST": []}
     for intf in ifnames:
         port_chnl_add.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append(
-            {"name": chnl_name, "ifname": intf}
+            {"ifname": intf,"name": chnl_name}
         )
+    _logger.debug(f"Adding port channel member on device {device_ip} {port_chnl_add}")
     return send_gnmi_set(
         create_req_for_update(
             [create_gnmi_update(get_port_chnl_mem_list_path(), port_chnl_add)]

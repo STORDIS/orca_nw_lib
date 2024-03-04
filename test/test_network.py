@@ -809,7 +809,7 @@ class AdditionalDeviceDiscoveryTests(unittest.TestCase):
 
     def test_device_discovery(self):
         try:
-            new_device_ip = "10.10.130.227"
+            new_device_ip = "10.10.229.58"
             discover_device(new_device_ip)
             import ipaddress
 
