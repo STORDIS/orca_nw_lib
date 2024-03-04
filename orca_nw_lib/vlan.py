@@ -96,7 +96,7 @@ def get_vlan(device_ip, vlan_name: str = None):
     return _getJson(device_ip, vlans)
 
 
-def del_vlan(device_ip, vlan_name):
+def del_vlan(device_ip, vlan_name:str=None):
     """
     Deletes a VLAN from a device.
 
