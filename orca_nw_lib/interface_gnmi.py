@@ -105,6 +105,21 @@ def get_interface_path(intfc_name: str = None):
     )
     return path
 
+def get_interface_counters_path(intfc_name: str):
+    """
+    Generates the path to the counters for a given interface.
+
+    Args:
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        Path: The path to the counters.
+    """
+    path = get_interface_path(intfc_name)
+    path.elem.append(PathElem(name="state"))
+    path.elem.append(PathElem(name="counters"))
+    return path
+
 
 def get_intfc_config_path(intfc_name: str):
     """

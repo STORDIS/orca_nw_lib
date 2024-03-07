@@ -18,10 +18,10 @@ def _get_port_groups_base_path():
 
     return Path(
         target="openconfig",
-        origin="openconfig-port-group",
+        #origin="openconfig-port-group",
         elem=[
             PathElem(
-                name="port-groups",
+                name="openconfig-port-group:port-groups",
             ),
         ],
     )

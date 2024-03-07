@@ -151,7 +151,7 @@ def set_interface_config_in_db(
             interface.speed = str(speed)
         if description is not None:
             interface.description = description
-    interface.save()
+        interface.save()
 
 
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):

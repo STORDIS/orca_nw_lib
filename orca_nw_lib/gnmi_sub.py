@@ -20,11 +20,15 @@ from orca_nw_lib.interface_db import set_interface_config_in_db
 
 from orca_nw_lib.interface_gnmi import (
     get_interface_base_path,
+    get_interface_counters_path,
     get_intfc_config_path,
     get_oc_ethernet_config_path,
 )
-from orca_nw_lib.portgroup_db import get_all_port_group_ids_from_db
-from orca_nw_lib.portgroup_gnmi import _get_port_group_speed_path
+from orca_nw_lib.portgroup_db import get_all_port_group_ids_from_db, set_port_group_speed_in_db
+from orca_nw_lib.portgroup_gnmi import (
+    _get_port_group_speed_path,
+    _get_port_groups_base_path,
+)
 from orca_nw_lib.utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
@@ -42,7 +46,8 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
             break
     if not ether:
         _logger.debug(
-            f"Ethernet interface not found in gNMI subscription response from {device_ip}"
+            "Ethernet interface not found in gNMI subscription response from %s",
+            device_ip,
         )
         return
     enable = None
@@ -51,16 +56,16 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
     description = None
     for u in resp.update.update:
         for ele in u.path.elem:
-            if ele.name == "enabled" and ether:
+            if ele.name == "enabled":
                 enable = u.val.bool_val
-            if ele.name == "mtu" and ether:
+            if ele.name == "mtu":
                 mtu = u.val.uint_val
             if ele.name == "port-speed":
                 speed = Speed.get_enum_from_str(u.val.string_val)
             if ele.name == "description":
                 description = u.val.string_val
     _logger.debug(
-        "updating interface config in DB device_ip: %s ether: %s enable: %s mtu: %s speed: %s description: %s ",
+        "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s .",
         device_ip,
         ether,
         enable,
@@ -76,6 +81,36 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         speed=speed,
         description=description,
     )
+
+
+def handle_port_group_config_update(device_ip: str, resp: SubscribeResponse):
+    pg_id = 0
+    for ele in resp.update.prefix.elem:
+        if ele.name == "port-group":
+            pg_id = ele.key.get("id")
+            break
+    if not pg_id:
+        _logger.debug(
+            "Ethernet interface not found in gNMI subscription response from %s",
+            device_ip,
+        )
+        return
+    for u in resp.update.update:
+        for ele in u.path.elem:
+            if ele.name == "speed":
+                speed_enum = Speed.get_enum_from_str(u.val.string_val)
+                if speed_enum:
+                    _logger.debug(
+                        "updating port-group config in DB, device_ip: %s, pg_id: %s, speed: %s .",
+                        device_ip,
+                        pg_id,
+                        speed_enum
+                    )
+                    set_port_group_speed_in_db(
+                        device_ip=device_ip,
+                        group_id=pg_id,
+                        speed=speed_enum
+                    )
 
 
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
@@ -98,7 +133,10 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                     if ele.name == get_interface_base_path().elem[0].name:
                         ## Its an interface config update
                         handle_interface_config_update(device_ip, resp)
-                        break
+                    if ele.name == _get_port_groups_base_path().elem[0].name:
+                        ## Its a port group config update
+                        handle_port_group_config_update(device_ip, resp)
+
         except Exception as e:
             _logger.error(e)
 
@@ -132,7 +170,9 @@ def gnmi_subscribe(device_ip: str):
     if thread_name in [thread.name for thread in threading.enumerate()]:
         _logger.debug("Already subscribed for %s", device_ip)
     else:
-        subscriptions = get_subscription_path(device_ip)
+        subscriptions = get_subscription_path_for_config_change(device_ip)
+        ## add get_subscription_path_for_config_change to subscritions
+        # subscriptions += get_subscription_path_for_monitoring(device_ip)
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
@@ -165,7 +205,7 @@ def gnmi_subscribe_for_all_devices_in_db():
         gnmi_subscribe(device_ip)
 
 
-def get_subscription_path(device_ip: str):
+def get_subscription_path_for_config_change(device_ip: str):
     """
     Get subscription path for the given device IP.
 
@@ -193,6 +233,28 @@ def get_subscription_path(device_ip: str):
         subscriptions.append(
             Subscription(
                 path=_get_port_group_speed_path(pg_id),
+                mode=SubscriptionMode.TARGET_DEFINED,
+            )
+        )
+
+    return subscriptions
+
+
+def get_subscription_path_for_monitoring(device_ip: str):
+    """
+    Get subscription path for the given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: A list of subscription paths.
+    """
+    subscriptions = []
+    for eth in get_all_interfaces_name_of_device_from_db(device_ip) or []:
+        subscriptions.append(
+            Subscription(
+                path=get_interface_counters_path(eth),
                 mode=SubscriptionMode.TARGET_DEFINED,
             )
         )

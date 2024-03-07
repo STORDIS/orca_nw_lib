@@ -1,4 +1,5 @@
 from typing import List
+from orca_nw_lib.common import Speed
 from orca_nw_lib.device_db import get_device_db_obj
 import orca_nw_lib.interface_db as orca_interfaces
 from orca_nw_lib.graph_db_models import Device, Interface, PortGroup
@@ -64,6 +65,22 @@ def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = N
                 )
             ) and saved_pg else None
 
+def set_port_group_speed_in_db(device_ip: str, group_id: str, speed: Speed):
+    """
+    Set the speed of a port group in the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        group_id (str): The ID of the port group.
+        speed (int): The speed of the port group.
+
+    Returns:
+        None
+    """
+    port_group_obj = get_port_group_from_db(device_ip, group_id)
+    if port_group_obj:
+        port_group_obj.speed = str(speed)
+        port_group_obj.save()
 
 def get_port_group_member_from_db(device_ip: str, group_id) -> List[Interface]:
     """
