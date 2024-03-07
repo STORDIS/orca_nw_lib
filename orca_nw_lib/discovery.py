@@ -1,6 +1,8 @@
 import datetime
 import ipaddress
 
+from orca_nw_lib.gnmi_sub import gnmi_subscribe
+
 from .interface import discover_interfaces
 from .lldp import read_lldp_topo
 from .portgroup import discover_port_groups
@@ -114,6 +116,8 @@ def discover_nw_features(device_ip: str):
         report.append(
             f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}"
         )
+    ## Once Discovered the device, Subscribe for notfications
+    gnmi_subscribe(device_ip)
     return report
 
 

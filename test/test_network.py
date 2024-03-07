@@ -56,7 +56,8 @@ def device_pingable(ip):
         return True
     except:
         return False
-        
+
+@unittest.skip("Test will be performed via orca_backend")      
 class InterfaceTests(unittest.TestCase):
     dut_ip = None
     ethernet = None

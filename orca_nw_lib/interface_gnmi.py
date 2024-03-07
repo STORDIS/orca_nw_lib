@@ -8,7 +8,6 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_get,
     send_gnmi_set,
 )
-from orca_nw_lib.portgroup import discover_port_groups
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
 
@@ -183,12 +182,40 @@ def get_intfc_enabled_path(intfc_name: str):
     return path
 
 
+def get_intfc_mtu_path(intfc_name: str):
+    """
+    Retrieves the interface MTU path for the specified interface name.
+
+    Args:
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        Path: The interface MTU path.
+    """
+    path = get_intfc_config_path(intfc_name)
+    path.elem.append(PathElem(name="mtu"))
+    return path
+
+
+def get_intfc_description_path(intfc_name: str):
+    """
+    Retrieves the interface description path for the specified interface name.
+
+    Args:
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        Path: The interface description path.
+    """
+    path = get_intfc_config_path(intfc_name)
+    path.elem.append(PathElem(name="description"))
+    return path
+
 def set_interface_config_on_device(
     device_ip: str,
     interface_name: str,
     enable: bool = None,
     mtu: int = None,
-    loopback: bool = None,
     description: str = None,
     speed: Speed = None,
     ip: str = None,
@@ -204,7 +231,6 @@ def set_interface_config_on_device(
         interface_name (str): The name of the interface.
         enable (bool, optional): Whether to enable the interface. Defaults to None.
         mtu (int, optional): The maximum transmission unit (MTU) size. Defaults to None.
-        loopback (bool, optional): Whether to enable loopback mode. Defaults to None.
         description (str, optional): The interface description. Defaults to None.
         speed (Speed, optional): The interface speed. Defaults to None.
         ip (str, optional): The IP address of the subinterface. Defaults to None.
@@ -237,8 +263,7 @@ def set_interface_config_on_device(
         )
 
     if mtu is not None:
-        base_config_path = get_intfc_config_path(interface_name)
-        base_config_path.elem.append(PathElem(name="mtu"))
+        base_config_path = get_intfc_mtu_path(interface_name)
         updates.append(
             create_gnmi_update(
                 base_config_path,
@@ -246,19 +271,8 @@ def set_interface_config_on_device(
             )
         )
 
-    if loopback is not None:
-        base_config_path = get_intfc_config_path(interface_name)
-        base_config_path.elem.append(PathElem(name="loopback-mode"))
-        updates.append(
-            create_gnmi_update(
-                base_config_path,
-                {"openconfig-interfaces:loopback-mode": loopback},
-            )
-        )
-
     if description is not None:
-        base_config_path = get_intfc_config_path(interface_name)
-        base_config_path.elem.append(PathElem(name="description"))
+        base_config_path = get_intfc_description_path(interface_name)
         updates.append(
             create_gnmi_update(
                 base_config_path,
@@ -268,9 +282,8 @@ def set_interface_config_on_device(
 
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
-        if (pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
-                device_ip, interface_name
-            )
+        if pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
+            device_ip, interface_name
         ):
             updates.append(
                 create_gnmi_update(

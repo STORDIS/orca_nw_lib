@@ -30,6 +30,10 @@ def get_port_group_from_db(device_ip: str, group_id=None):
             else device.port_groups.all()
         )
 
+def get_all_port_group_ids_from_db(device_ip: str):
+    device: Device = get_device_db_obj(device_ip)
+    if device:
+        return [pg.port_group_id for pg in get_port_group_from_db(device_ip) or []]
 
 def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = None):
     """

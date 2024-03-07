@@ -4,6 +4,7 @@ import pytz
 
 from orca_nw_lib.common import Speed, PortFec
 from orca_nw_lib.device_db import get_device_db_obj
+from orca_nw_lib.gnmi_sub import subscription_check_decorator
 from orca_nw_lib.graph_db_models import Interface, SubInterface
 from orca_nw_lib.interface_db import (
     get_all_interfaces_of_device_from_db,
@@ -125,7 +126,7 @@ def get_interface(device_ip: str, intfc_name=None):
         intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip) if intf
     ]
 
-
+@subscription_check_decorator
 def config_interface(device_ip: str, intfc_name: str, **kwargs):
     """
     Configure the interface of a device.
@@ -156,10 +157,6 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
             f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {e}"
         )
         raise
-    finally:
-        ## If switch supports port groups, discover all member interfaces of the port-group
-        ## of which the intfc_name is the member of.
-        discover_interfaces(device_ip, intfc_name,config_triggered_discovery=True)
 
 
 def del_ip_from_intf(device_ip: str, intfc_name: str):

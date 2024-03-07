@@ -8,6 +8,7 @@ import platform
 from neomodel import config, db, clear_neo4j_database
 import yaml
 import orca_nw_lib.constants as const
+import orca_nw_lib.gnmi_sub as gnmi_subscibe
 
 _settings = {}
 abspath = os.path.abspath(__file__)
@@ -32,6 +33,9 @@ def load_orca_config(
         init_db_connection()
         get_logging(logging_config_file=logging_config_file)
         orca_config_loaded = True
+    ## Also subscribe for gnmi events for all devices already discovered in the database.
+    ## This is the case when devices are already discovered but the application is restarted, due to any reason.
+    gnmi_subscibe.gnmi_subscribe_for_all_devices_in_db()
 
 
 def init_db_connection():
