@@ -24,12 +24,14 @@ from orca_nw_lib.interface_gnmi import (
     get_intfc_config_path,
     get_oc_ethernet_config_path,
 )
-from orca_nw_lib.portgroup_db import get_all_port_group_ids_from_db, set_port_group_speed_in_db
+from orca_nw_lib.portgroup_db import (
+    get_all_port_group_ids_from_db,
+    set_port_group_speed_in_db,
+)
 from orca_nw_lib.portgroup_gnmi import (
     _get_port_group_speed_path,
     _get_port_groups_base_path,
 )
-from orca_nw_lib.utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
 
@@ -104,12 +106,10 @@ def handle_port_group_config_update(device_ip: str, resp: SubscribeResponse):
                         "updating port-group config in DB, device_ip: %s, pg_id: %s, speed: %s .",
                         device_ip,
                         pg_id,
-                        speed_enum
+                        speed_enum,
                     )
                     set_port_group_speed_in_db(
-                        device_ip=device_ip,
-                        group_id=pg_id,
-                        speed=speed_enum
+                        device_ip=device_ip, group_id=pg_id, speed=speed_enum
                     )
 
 
@@ -125,33 +125,87 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
     for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
         try:
-            _logger.debug(
-                "gNMI subscription notification received from %s -> %s", device_ip, resp
-            )
             if not resp.sync_response:
                 for ele in resp.update.prefix.elem:
                     if ele.name == get_interface_base_path().elem[0].name:
-                        ## Its an interface config update
-                        handle_interface_config_update(device_ip, resp)
+                        _logger.debug(
+                            "gNMI subscription interface config update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        thread = Thread(
+                                    target=handle_interface_config_update,
+                                    args=(device_ip, resp),
+                                    daemon=True,
+                                )
+                        thread.start()
+                        #handle_interface_config_update(device_ip, resp)
                     if ele.name == _get_port_groups_base_path().elem[0].name:
                         ## Its a port group config update
+                        _logger.debug(
+                            "gNMI subscription port group config update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
                         handle_port_group_config_update(device_ip, resp)
+            elif resp.sync_response:
+                global device_sync_responses
+                _logger.info(
+                    "gNMI subscription sync response received from %s -> %s",
+                    device_ip,
+                    resp,
+                )
+                device_sync_responses[device_ip] = resp.sync_response
+                _logger.debug(
+                    "Overall Subscription sync status for devices %s",
+                    device_sync_responses,
+                )
+            else:
+                _logger.debug(
+                    "gNMI subscription response received from %s -> %s",
+                    device_ip,
+                    resp,
+                )
 
         except Exception as e:
             _logger.error(e)
+            raise
 
 
-def is_device_subscribed(device_ip: str) -> bool:
+def ready_to_receive_subs_resp(device_ip: str):
+    return sync_response_received(device_ip) and gnmi_subscribe(device_ip)
+
+
+device_sync_responses = {}
+
+
+def sync_response_received(device_ip: str):
+    if not device_sync_responses.get(device_ip):
+        _logger.error(
+            "Sync response not received for device %s , Hence not ready to receive subscription responses!!",
+            device_ip,
+        )
+        return False
+    return True
+
+
+def get_subscription_thread_name(device_ip: str):
     """
-    Check if the device is already subscribed to GNMI notifications.
+    Returns the name of the subscription thread for the given device IP.
 
-    Args:
-        device_ip (str): The IP address of the device to check.
+    Parameters:
+    device_ip (str): The IP address of the device.
 
     Returns:
-        bool: True if the device is already subscribed, False otherwise.
+    str: The name of the subscription thread.
     """
-    return gnmi_subscribe(device_ip)
+    return f"subscription_thread_{device_ip}"
+
+
+def get_running_thread_names():
+    running_threads = threading.enumerate()
+    thread_names = [thread.name for thread in running_threads]
+    return thread_names
 
 
 def gnmi_subscribe(device_ip: str):
@@ -165,10 +219,12 @@ def gnmi_subscribe(device_ip: str):
         bool: True if the subscription was successful or already exists, False otherwise.
     """
 
-    thread_name = f"subscription_thread_{device_ip}"
+    thread_name = get_subscription_thread_name(device_ip)
 
-    if thread_name in [thread.name for thread in threading.enumerate()]:
+    if thread_name in get_running_thread_names():
         _logger.debug("Already subscribed for %s", device_ip)
+        _logger.debug("Currently running threads %s", get_running_thread_names())
+        return True
     else:
         subscriptions = get_subscription_path_for_config_change(device_ip)
         ## add get_subscription_path_for_config_change to subscritions
@@ -181,20 +237,22 @@ def gnmi_subscribe(device_ip: str):
             return False
         _logger.info("Subscribing for %s", device_ip)
         thread = Thread(
-            name=thread_name, target=handle_update, args=(device_ip, subscriptions)
+            name=thread_name,
+            target=handle_update,
+            args=(device_ip, subscriptions),
+            daemon=True,
         )
         thread.start()
-
-    _logger.debug("Currently running threads %s", threading.enumerate())
-    if thread_name in [thread.name for thread in threading.enumerate()]:
-        _logger.debug(
-            "Subscribed for %s gnmi notifications from thread %s.",
-            device_ip,
-            thread_name,
-        )
-        return True
-    _logger.error("Failed to subscribe for %s gnmi notifications.", device_ip)
-    return False
+        _logger.debug("Currently running threads %s", get_running_thread_names())
+        if thread_name in get_running_thread_names():
+            _logger.debug(
+                "Subscribed for %s gnmi notifications from thread %s.",
+                device_ip,
+                thread_name,
+            )
+            return True
+        _logger.error("Failed to subscribe for %s gnmi notifications.", device_ip)
+        return False
 
 
 def gnmi_subscribe_for_all_devices_in_db():
@@ -262,42 +320,88 @@ def get_subscription_path_for_monitoring(device_ip: str):
     return subscriptions
 
 
+def gnmi_unsubscribe_for_all_devices_in_db():
+    """
+    Unsubscribes all devices in the database from GNMI.
+    """
+    for device_ip in get_all_devices_ip_from_db():
+        gnmi_unsubscribe(device_ip)
+
+
 def gnmi_unsubscribe(device_ip: str):
-    thread_name = f"subscription_{device_ip}"
+    """
+    Unsubscribes from the GNMI device with the specified IP address.
+
+    Args:
+        device_ip (str): The IP address of the GNMI device.
+
+    Returns:
+        None
+    """
+    thread_name = get_subscription_thread_name(device_ip)
     for thread in threading.enumerate():
         if thread.name == thread_name:
-            _logger.info(f"Removing subscription for {device_ip}")
+            _logger.info("Removing subscription for %s", device_ip)
             terminate_thread(thread)
-            _logger.debug(f"Removed subscription thread {thread_name}.")
             break
-    _logger.debug(f"Currently running threads {threading.enumerate()}")
+    if thread_name in get_running_thread_names():
+        _logger.error("Failed to remove subscription for %s", device_ip)
+    else:
+        _logger.info("Removed subscription for %s", device_ip)
+    _logger.debug("Currently running threads %s", get_running_thread_names())
 
 
 def terminate_thread(thread):
+    """
+    Terminate a thread by raising a SystemExit exception in the thread.
+
+    Args:
+        thread: The thread to be terminated.
+
+    Raises:
+        ValueError: If the thread id does not exist.
+        SystemError: If PyThreadState_SetAsyncExc failed.
+    """
     import ctypes
 
-    exc = ctypes.py_object(SystemExit)
-    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread.ident), exc)
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+        ctypes.c_long(thread.ident), ctypes.py_object(SystemExit)
+    )
     if res == 0:
-        raise ValueError("nonexistent thread id")
+        _logger.error("Failed to terminate thread %s", thread.name)
     elif res > 1:
         ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, None)
         raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
-def subscription_check_decorator(config_func):
+def ready_to_receive_updates(config_func):
     """
     A decorator function that checks if a device is subscribed to GNMI update notifications before allowing configuration.
     Takes a configuration function as input and returns a wrapper function that performs the subscription check before executing the configuration function.
     """
 
     def wrapper(*args, **kwargs):
-        if gnmi_subscribe(args[0]):
-            result = config_func(*args, **kwargs)
-            return result
+        if kwargs and (ip := kwargs.get("device_ip")):
+            _logger.debug(
+                "Before config checking if device %s is fully subscribed to GNMI update notifications.",
+                kwargs.get("device_ip"),
+            )
+            if ready_to_receive_subs_resp(ip):
+                result = config_func(*args, **kwargs)
+                return result
+            else:
+                _logger.error(
+                    "Device %s is not fully subscribed to GNMI update notifications. Configuration can't be done.",
+                    ip,
+                )
+                raise Exception(
+                    "Device is not ready to receive GNMI updates. Configuration can't be done."
+                )
         else:
             _logger.error(
-                f"Device {args[0]} is not subscribed to GNMI update notifications. Configuration can't be done."
+                "Device in %s, %s could not be found.",
+                args,
+                kwargs,
             )
             return None
 

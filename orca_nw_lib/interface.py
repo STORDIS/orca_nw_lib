@@ -2,25 +2,25 @@ import datetime
 from typing import Dict, List
 import pytz
 
-from orca_nw_lib.common import Speed, PortFec
-from orca_nw_lib.device_db import get_device_db_obj
-from orca_nw_lib.gnmi_sub import subscription_check_decorator
-from orca_nw_lib.graph_db_models import Interface, SubInterface
-from orca_nw_lib.interface_db import (
+from .common import Speed, PortFec
+from .device_db import get_device_db_obj
+from .gnmi_sub import ready_to_receive_updates
+from .graph_db_models import Interface, SubInterface
+from .interface_db import (
     get_all_interfaces_of_device_from_db,
     get_interface_of_device_from_db,
     get_sub_interface_of_intfc_from_db,
     insert_device_interfaces_in_db,
 )
-from orca_nw_lib.interface_gnmi import (
+from .interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
     del_all_subinterfaces_of_interface_from_device,
     get_interface_from_device,
     set_interface_config_on_device,
 )
-from orca_nw_lib.portgroup import discover_port_groups
-from orca_nw_lib.portgroup_db import get_port_group_id_of_device_interface_from_db
-from orca_nw_lib.utils import get_logging
+from .portgroup import discover_port_groups
+from .portgroup_db import get_port_group_id_of_device_interface_from_db
+from .utils import get_logging
 
 
 _logger = get_logging().getLogger(__name__)
@@ -126,7 +126,7 @@ def get_interface(device_ip: str, intfc_name=None):
         intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip) if intf
     ]
 
-@subscription_check_decorator
+@ready_to_receive_updates
 def config_interface(device_ip: str, intfc_name: str, **kwargs):
     """
     Configure the interface of a device.
@@ -138,7 +138,6 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
 
     kwargs:
         enable (bool, optional): The enable status of the interface. Defaults to None.
-        loopback (bool, optional): The loopback status of the interface. Defaults to None.
         mtu (int, optional): The maximum transmission unit of the interface. Defaults to None.
         speed (Speed, optional): The speed of the interface. Defaults to None.
         description (str, optional): The description of the interface. Defaults to None.
@@ -148,10 +147,10 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None. 
 
     """
-    _logger.debug(f"Configuring interface {intfc_name} on device {device_ip}")
+    _logger.debug("Configuring interface %s on device %s", intfc_name, device_ip)
     try:
         set_interface_config_on_device(device_ip, intfc_name, **kwargs)
-        _logger.debug(f"Configured interface {intfc_name} on device {device_ip}")
+        _logger.debug("Configured interface %s on device %s -> %s", intfc_name, device_ip, kwargs)
     except Exception as e:
         _logger.error(
             f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {e}"

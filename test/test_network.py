@@ -34,9 +34,9 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
+from orca_nw_lib.setup import setup
 from orca_nw_lib.utils import (
     get_networks,
-    load_orca_config,
     ping_ok,
     clean_db,
 )
@@ -63,7 +63,7 @@ class InterfaceTests(unittest.TestCase):
     ethernet = None
     @classmethod
     def setUpClass(cls):
-        load_orca_config()
+        setup()
         if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):

@@ -1,4 +1,5 @@
 """ Utils for ORCA Network Library """
+
 import os
 import ipaddress
 import subprocess
@@ -7,36 +8,14 @@ import logging
 import platform
 from neomodel import config, db, clear_neo4j_database
 import yaml
-import orca_nw_lib.constants as const
-import orca_nw_lib.gnmi_sub as gnmi_subscibe
+from . import constants as const
 
 _settings = {}
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
 dname = os.path.dirname(abspath)
-
-orca_config_loaded = False
-
-
-def get_config_status():
-    return orca_config_loaded
-
-
-def load_orca_config(
-    orca_config_file: str = f"{dname}/orca.yml",
-    logging_config_file: str = f"{dname}/logging.yml",
-    force_reload=False,
-):
-    global orca_config_loaded
-    if force_reload or not orca_config_loaded:
-        load_orca_config_from_file(orca_config_file=orca_config_file)
-        init_db_connection()
-        get_logging(logging_config_file=logging_config_file)
-        orca_config_loaded = True
-    ## Also subscribe for gnmi events for all devices already discovered in the database.
-    ## This is the case when devices are already discovered but the application is restarted, due to any reason.
-    gnmi_subscibe.gnmi_subscribe_for_all_devices_in_db()
-
+default_logging_config = f"{dname}/orca_nw_lib_logging.yml"
+default_orca_nw_lib_config= f"{dname}/orca_nw_lib.yml"
 
 def init_db_connection():
     config.DATABASE_URL = f"{_settings.get(const.protocol)}://{_settings.get(const.neo4j_user)}:{_settings.get(const.neo4j_password)}@{_settings.get(const.neo4j_url)}"
@@ -74,7 +53,7 @@ def get_device_grpc_port():
 
 
 def load_orca_config_from_file(
-    orca_config_file: str = f"{dname}/orca.yml", force_reload=False
+    orca_config_file: str = default_orca_nw_lib_config, force_reload=False
 ):
     """
     Read the Orca configuration file and return the parsed settings.
@@ -100,7 +79,7 @@ def load_orca_config_from_file(
 _logging_initialized: bool = False
 
 
-def get_logging(logging_config_file: str = f"{dname}/logging.yml", force_reload=False):
+def get_logging(logging_config_file: str = default_logging_config, force_reload=False):
     """
     Initializes the logging configuration and returns the logging module.
 
@@ -147,6 +126,7 @@ def ping_ok(device_ip) -> bool:
         return True
     except subprocess.CalledProcessError:
         raise
+
 
 def validate_ipv4_address(ip):
     """

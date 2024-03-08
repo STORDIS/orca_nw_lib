@@ -40,10 +40,10 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
+from orca_nw_lib.setup import setup
 
 from orca_nw_lib.utils import (
     clean_db,
-    load_orca_config,
     ping_ok,
     get_networks,
 )
@@ -96,7 +96,7 @@ class SampleConfigDiscovery(unittest.TestCase):
     
     @classmethod
     def setUpClass(cls):
-        load_orca_config()
+        setup()
         clean_db()
         assert not get_all_devices_ip_from_db()
         orca_config_discovered = lambda: set(

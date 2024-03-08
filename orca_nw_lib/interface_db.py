@@ -1,7 +1,9 @@
-from orca_nw_lib.common import Speed
-from orca_nw_lib.device_db import get_device_db_obj
-from orca_nw_lib.graph_db_models import Device, Interface, SubInterface
+from .common import Speed
+from .device_db import get_device_db_obj
+from .graph_db_models import Device, Interface, SubInterface
+from .utils import get_logging
 
+_logger = get_logging().getLogger(__name__)
 
 def get_all_interfaces_of_device_from_db(device_ip: str):
     """
@@ -144,14 +146,19 @@ def set_interface_config_in_db(
     interface = get_interface_of_device_from_db(device_ip, if_name)
     if interface:
         if enable is not None:
+            _logger.debug("Updating interface enable state in DB object to %s", enable)
             interface.enabled = enable
         if mtu is not None:
+            _logger.debug("Updating interface MTU in DB object to %s", mtu)
             interface.mtu = mtu
         if speed is not None:
+            _logger.debug("Updating interface speed in DB object to %s", speed)
             interface.speed = str(speed)
         if description is not None:
+            _logger.debug("Updating interface description in DB object to %s", description)
             interface.description = description
         interface.save()
+        _logger.debug("Saved interface config in DB %s", interface)
 
 
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):
