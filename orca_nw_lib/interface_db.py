@@ -1,9 +1,10 @@
-from .common import Speed
+from .common import PortFec, Speed
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Interface, SubInterface
 from .utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
+
 
 def get_all_interfaces_of_device_from_db(device_ip: str):
     """
@@ -126,6 +127,7 @@ def set_interface_config_in_db(
     mtu=None,
     speed: Speed = None,
     description: str = None,
+    fec: PortFec = None,
 ):
     """
     Sets the configuration of an interface in the database.
@@ -137,6 +139,7 @@ def set_interface_config_in_db(
         mtu (Any, optional): The maximum transmission unit (MTU) of the interface. Defaults to None.
         speed (Speed, optional): The speed of the interface. Defaults to None.
         description (str, optional): The description of the interface. Defaults to None.
+        fec (PortFec, optional): The Forward Error Correction (FEC) mode of the interface. Defaults to None.
 
     Returns:
         None
@@ -146,17 +149,34 @@ def set_interface_config_in_db(
     interface = get_interface_of_device_from_db(device_ip, if_name)
     if interface:
         if enable is not None:
-            _logger.debug("Updating interface enable state in DB object to %s", enable)
+            _logger.debug(
+                "Updating interface %s enable state in DB object to %s",
+                interface,
+                enable,
+            )
             interface.enabled = enable
         if mtu is not None:
-            _logger.debug("Updating interface MTU in DB object to %s", mtu)
+            _logger.debug(
+                "Updating interface %s MTU in DB object to %s", interface, mtu
+            )
             interface.mtu = mtu
         if speed is not None:
-            _logger.debug("Updating interface speed in DB object to %s", speed)
+            _logger.debug(
+                "Updating interface %sspeed in DB object to %s", interface, speed
+            )
             interface.speed = str(speed)
         if description is not None:
-            _logger.debug("Updating interface description in DB object to %s", description)
+            _logger.debug(
+                "Updating interface %s description in DB object to %s",
+                interface,
+                description,
+            )
             interface.description = description
+        if fec is not None:
+            _logger.debug(
+                "Updating interface %s FEC in DB object to %s", interface, fec
+            )
+            interface.fec = str(fec)
         interface.save()
         _logger.debug("Saved interface config in DB %s", interface)
 
@@ -190,7 +210,7 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
         # 3. Existing sub-interface(s) removed from interface
         # Easiest and efficient way is to delete all sub-interfaces and recreate all sub-interfaces
         # received in the dictionary after discovery.
-        # because current implementation always discovers all the subinterfaces, 
+        # because current implementation always discovers all the subinterfaces,
         # hence we have uptodate subinterfaces in the dictionary.
         saved_i.subInterfaces.disconnect_all()
         for si in saved_i.subInterfaces.all():

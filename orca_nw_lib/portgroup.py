@@ -1,5 +1,6 @@
 from orca_nw_lib.common import Speed
 from orca_nw_lib.device_db import get_device_db_obj
+from orca_nw_lib.gnmi_sub import ready_to_receive_subscription_response
 from orca_nw_lib.graph_db_models import PortGroup
 from orca_nw_lib.portgroup_gnmi import (
     get_port_group_from_device,
@@ -80,6 +81,23 @@ def get_port_group_members(device_ip: str, group_id):
             op_dict.append(mem_if.__properties__)
     return op_dict
 
+def get_port_group_of_interface(device_ip: str, if_name:str):
+    """
+    Retrieves the members of a port group based on the device IP and group ID.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        group_id: The ID of the port group.
+
+    Returns:
+        list: A list of dictionaries representing the properties of each member interface.
+    """
+    op_dict = []
+    mem_intfcs = get_port_group_member_from_db(device_ip, group_id)
+    if mem_intfcs:
+        for mem_if in mem_intfcs or []:
+            op_dict.append(mem_if.__properties__)
+    return op_dict
 
 def get_port_groups(device_ip: str, port_group_id=None):
     if port_group_id:
@@ -112,7 +130,7 @@ def discover_port_groups(
     _logger.info("Port-groups Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
-        _logger.info(f"Discovering port-groups of device {device}.")
+        _logger.info("Discovering  %s of device %s.", ('portgroup %s' % port_group_id if port_group_id else 'all portgroups'), device_ip)
         insert_device_port_groups_in_db(
             device, _create_port_group_graph_objects(device.mgt_ip, port_group_id)
         )
@@ -124,7 +142,7 @@ def discover_port_groups(
             for mem_if in get_port_group_members(device_ip, port_group_id):
                 discover_interfaces(device_ip, mem_if.get("name"))
 
-
+@ready_to_receive_subscription_response
 def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
     try:
         set_port_group_speed_on_device(device_ip, port_group_id, speed)
@@ -133,5 +151,3 @@ def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
             f"Port Group {port_group_id} speed change failed on device {device_ip}, Reason: {e}"
         )
         raise
-    finally:
-        discover_port_groups(device_ip, port_group_id, config_triggered_discovery=True)

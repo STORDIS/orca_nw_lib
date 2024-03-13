@@ -7,9 +7,12 @@ from orca_nw_lib.gnmi_util import (
     get_gnmi_del_req,
     send_gnmi_get,
     send_gnmi_set,
+    get_logging,
 )
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
+
+_logger = get_logging().getLogger(__name__)
 
 
 def get_interface_base_path():
@@ -104,6 +107,7 @@ def get_interface_path(intfc_name: str = None):
         else PathElem(name="interface")
     )
     return path
+
 
 def get_interface_counters_path(intfc_name: str):
     """
@@ -226,6 +230,7 @@ def get_intfc_description_path(intfc_name: str):
     path.elem.append(PathElem(name="description"))
     return path
 
+
 def set_interface_config_on_device(
     device_ip: str,
     interface_name: str,
@@ -300,14 +305,28 @@ def set_interface_config_on_device(
         if pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
             device_ip, interface_name
         ):
+            _logger.debug(
+                "Interface %s belongs to port-group %s. Speed of port-group will be updated for device_ip: %s, pg_id: %s, speed: %s.",
+                interface_name,
+                pg_id,
+                device_ip,
+                pg_id,
+                speed.get_oc_val(),
+            )
             updates.append(
                 create_gnmi_update(
-                    orca_nw_lib.portgroup_gnmi._get_port_group_speed_path(pg_id),
+                    orca_nw_lib.portgroup_gnmi.get_port_group_speed_path(pg_id),
                     {"openconfig-port-group:speed": speed.get_oc_val()},
                 )
             )
 
         else:
+            _logger.debug(
+                "Interface does not belong to port-group. Speed of interface will be updated for device_ip: %s, interface_name: %s, speed: %s.",
+                device_ip,
+                interface_name,
+                speed.get_oc_val(),
+            )
             updates.append(
                 create_gnmi_update(
                     get_intfc_speed_path(interface_name),

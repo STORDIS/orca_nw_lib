@@ -4,7 +4,7 @@ import pytz
 
 from .common import Speed, PortFec
 from .device_db import get_device_db_obj
-from .gnmi_sub import ready_to_receive_updates
+from .gnmi_sub import ready_to_receive_subscription_response
 from .graph_db_models import Interface, SubInterface
 from .interface_db import (
     get_all_interfaces_of_device_from_db,
@@ -19,7 +19,10 @@ from .interface_gnmi import (
     set_interface_config_on_device,
 )
 from .portgroup import discover_port_groups
-from .portgroup_db import get_port_group_id_of_device_interface_from_db
+from .portgroup_db import (
+    get_port_group_id_of_device_interface_from_db,
+    get_port_group_of_if_from_db,
+)
 from .utils import get_logging
 
 
@@ -56,13 +59,15 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     .get("config", {})
                     .get("openconfig-if-ethernet-ext2:port-fec")
                 ),
-                speed=Speed.getSpeedStrFromOCStr(s)
-                if (
-                    s := intfc.get("openconfig-if-ethernet:ethernet", {})
-                    .get("config", {})
-                    .get("port-speed")
-                )
-                else None,
+                speed=(
+                    Speed.getSpeedStrFromOCStr(s)
+                    if (
+                        s := intfc.get("openconfig-if-ethernet:ethernet", {})
+                        .get("config", {})
+                        .get("port-speed")
+                    )
+                    else None
+                ),
                 oper_sts=intfc_state.get("oper-status"),
                 admin_sts=intfc_state.get("admin-status"),
                 description=intfc_state.get("description"),
@@ -83,7 +88,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                 for addr in (
                     sub_intfc.get("openconfig-if-ip:ipv4", {})
                     .get("addresses", {})
-                    .get("address",[])
+                    .get("address", [])
                 ):
                     if addr.get("ip"):
                         sub_intf_obj.ip_address = addr.get("ip")
@@ -123,10 +128,31 @@ def get_interface(device_ip: str, intfc_name=None):
             else None
         )
     return [
-        intf.__properties__ for intf in get_all_interfaces_of_device_from_db(device_ip) if intf
+        intf.__properties__
+        for intf in get_all_interfaces_of_device_from_db(device_ip)
+        if intf
     ]
 
-@ready_to_receive_updates
+
+def get_pg_of_if(device_ip: str, intfc_name: str):
+    """
+    Retrieves the port group of the specified interface from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        The port group of the specified interface.
+    """
+    return (
+        pg.__properties__
+        if (pg := get_port_group_of_if_from_db(device_ip, intfc_name))
+        else None
+    )
+
+
+@ready_to_receive_subscription_response
 def config_interface(device_ip: str, intfc_name: str, **kwargs):
     """
     Configure the interface of a device.
@@ -144,13 +170,15 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         ip (str, optional): The IP address of the interface. Defaults to None.
         ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
         index (int, optional): The index of the sub-interface. Defaults to 0.
-        fec (PortFec, optional): Enable disable forward error correction. Defaults to None. 
+        fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
 
     """
     _logger.debug("Configuring interface %s on device %s", intfc_name, device_ip)
     try:
         set_interface_config_on_device(device_ip, intfc_name, **kwargs)
-        _logger.debug("Configured interface %s on device %s -> %s", intfc_name, device_ip, kwargs)
+        _logger.debug(
+            "Configured interface %s on device %s -> %s", intfc_name, device_ip, kwargs
+        )
     except Exception as e:
         _logger.error(
             f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {e}"
@@ -265,7 +293,7 @@ def del_all_subinterfaces_of_all_interfaces(device_ip: str):
     _logger.info("Deleting all subinterfaces of all interfaces.")
     try:
         del_all_subinterfaces_of_all_interfaces_from_device(device_ip)
-    
+
     except Exception as e:
         _logger.error(
             f"Deleting all subinterfaces of all interfaces failed, Reason: {e}"

@@ -31,10 +31,12 @@ def get_port_group_from_db(device_ip: str, group_id=None):
             else device.port_groups.all()
         )
 
+
 def get_all_port_group_ids_from_db(device_ip: str):
     device: Device = get_device_db_obj(device_ip)
     if device:
         return [pg.port_group_id for pg in get_port_group_from_db(device_ip) or []]
+
 
 def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = None):
     """
@@ -59,11 +61,17 @@ def insert_device_port_groups_in_db(device: Device = None, port_groups: dict = N
         saved_pg = get_port_group_from_db(device.mgt_ip, pg.port_group_id)
 
         for if_name in mem_intfcs:
-            saved_pg.memberInterfaces.connect(intf) if (
-                intf := orca_interfaces.get_interface_of_device_from_db(
-                    device.mgt_ip, if_name
+            (
+                saved_pg.memberInterfaces.connect(intf)
+                if (
+                    intf := orca_interfaces.get_interface_of_device_from_db(
+                        device.mgt_ip, if_name
+                    )
                 )
-            ) and saved_pg else None
+                and saved_pg
+                else None
+            )
+
 
 def set_port_group_speed_in_db(device_ip: str, group_id: str, speed: Speed):
     """
@@ -81,6 +89,7 @@ def set_port_group_speed_in_db(device_ip: str, group_id: str, speed: Speed):
     if port_group_obj:
         port_group_obj.speed = str(speed)
         port_group_obj.save()
+
 
 def get_port_group_member_from_db(device_ip: str, group_id) -> List[Interface]:
     """
@@ -113,21 +122,20 @@ def get_port_group_member_names_from_db(device_ip: str, group_id) -> List[str]:
     return [intf.name for intf in intfcs or []]
 
 
-def get_port_group_id_of_device_interface_from_db(device_ip: str, inertface_name: str):
-    """
-    Retrieves the port group ID of a device interface from the database.
+def get_port_group_of_if_from_db(device_ip: str, inertface_name: str) -> PortGroup:
 
-    Args:
-        device_ip (str): The IP address of the device.
-        inertface_name (str): The name of the interface.
-
-    Returns:
-        str: The port group ID of the device interface.
-        None: If the port group ID is not found.
-    """
     ## TODO: Following query certainly has scope of performance enhancement.
-    for pg in get_port_group_from_db(device_ip):
+    ## retrieve the port group object via relation.
+    for pg in get_port_group_from_db(device_ip) or []:
         for intf in pg.memberInterfaces.all():
             if intf.name == inertface_name:
-                return pg.port_group_id
+                return pg
     return None
+
+
+def get_port_group_id_of_device_interface_from_db(device_ip: str, inertface_name: str):
+    return (
+        pg.port_group_id
+        if (pg := get_port_group_of_if_from_db(device_ip, inertface_name))
+        else None
+    )

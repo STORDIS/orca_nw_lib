@@ -1,9 +1,9 @@
 from threading import Thread
 import threading
 from typing import List
-from orca_nw_lib.common import Speed
-from orca_nw_lib.device_db import get_all_devices_ip_from_db
-from orca_nw_lib.gnmi_pb2 import (
+from .common import PortFec, Speed
+from .device_db import get_all_devices_ip_from_db
+from .gnmi_pb2 import (
     Encoding,
     SubscribeRequest,
     SubscribeResponse,
@@ -29,7 +29,7 @@ from orca_nw_lib.portgroup_db import (
     set_port_group_speed_in_db,
 )
 from orca_nw_lib.portgroup_gnmi import (
-    _get_port_group_speed_path,
+    get_port_group_speed_path,
     _get_port_groups_base_path,
 )
 
@@ -56,6 +56,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
     mtu = None
     speed = None
     description = None
+    fec = None
     for u in resp.update.update:
         for ele in u.path.elem:
             if ele.name == "enabled":
@@ -66,6 +67,8 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
                 speed = Speed.get_enum_from_str(u.val.string_val)
             if ele.name == "description":
                 description = u.val.string_val
+            if ele.name == "port-fec":
+                fec = PortFec.get_enum_from_str(u.val.string_val)
     _logger.debug(
         "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s .",
         device_ip,
@@ -82,6 +85,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         mtu=mtu,
         speed=speed,
         description=description,
+        fec=fec,
     )
 
 
@@ -134,12 +138,12 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         thread = Thread(
-                                    target=handle_interface_config_update,
-                                    args=(device_ip, resp),
-                                    daemon=True,
-                                )
+                            target=handle_interface_config_update,
+                            args=(device_ip, resp),
+                            daemon=True,
+                        )
                         thread.start()
-                        #handle_interface_config_update(device_ip, resp)
+                        # handle_interface_config_update(device_ip, resp)
                     if ele.name == _get_port_groups_base_path().elem[0].name:
                         ## Its a port group config update
                         _logger.debug(
@@ -290,7 +294,7 @@ def get_subscription_path_for_config_change(device_ip: str):
     for pg_id in get_all_port_group_ids_from_db(device_ip) or []:
         subscriptions.append(
             Subscription(
-                path=_get_port_group_speed_path(pg_id),
+                path=get_port_group_speed_path(pg_id),
                 mode=SubscriptionMode.TARGET_DEFINED,
             )
         )
@@ -374,9 +378,9 @@ def terminate_thread(thread):
         raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
-def ready_to_receive_updates(config_func):
+def ready_to_receive_subscription_response(config_func):
     """
-    A decorator function that checks if a device is subscribed to GNMI update notifications before allowing configuration.
+    A decorator function that checks if a device is ready to receive subscriptions responses before allowing configuration.
     Takes a configuration function as input and returns a wrapper function that performs the subscription check before executing the configuration function.
     """
 
@@ -399,7 +403,7 @@ def ready_to_receive_updates(config_func):
                 )
         else:
             _logger.error(
-                "Device in %s, %s could not be found.",
+                "Device ip in args -> %s, kwargs -> %s could not be found.",
                 args,
                 kwargs,
             )
