@@ -161,7 +161,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                 )
                 device_sync_responses[device_ip] = resp.sync_response
                 _logger.debug(
-                    "Overall Subscription sync status for devices %s",
+                    "Subscription sync response status for devices %s",
                     device_sync_responses,
                 )
             else:
@@ -177,6 +177,8 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
 
 
 def ready_to_receive_subs_resp(device_ip: str):
+    ## Although sync response will only be received if the device is fully subscribed to gNMI updates,
+    ## Still cheking with gnmi_subscribe function will subscribe if not already due to any reason.
     return sync_response_received(device_ip) and gnmi_subscribe(device_ip)
 
 

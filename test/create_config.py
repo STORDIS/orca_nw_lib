@@ -1,4 +1,5 @@
 import unittest
+import time
 from grpc import RpcError
 from orca_nw_lib.bgp import (
     config_bgp_global,
@@ -40,11 +41,9 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
-from orca_nw_lib.setup import setup
 
 from orca_nw_lib.utils import (
     clean_db,
-    ping_ok,
     get_networks,
 )
 from orca_nw_lib.discovery import discover_device_from_config
@@ -91,12 +90,8 @@ class SampleConfigDiscovery(unittest.TestCase):
     vlan_id_2 = 2
     vlan_id_3 = 3
     
-
-
-    
     @classmethod
     def setUpClass(cls):
-        setup()
         clean_db()
         assert not get_all_devices_ip_from_db()
         orca_config_discovered = lambda: set(
@@ -358,14 +353,16 @@ class SampleConfigDiscovery(unittest.TestCase):
             ##################### Setup first interface
 
             config_interface(
-                self.dut_ip_1,
-                self.ethernet0,
+                device_ip=self.dut_ip_1,
+                if_name=self.ethernet0,
                 ip=self.bgp_ip_1,
                 ip_prefix_len=pfxLen,
                 index=idx,
                 enable=True,
             )
-
+            ##sleep because interface subscription updates are received asynchronously in different thread.
+            ## Better approach is implemented in orca_backend tests, where assert is done with timeout and retry.
+            time.sleep(5)
             assert get_interface(self.dut_ip_1, self.ethernet0).get("enabled") == True
             assert (
                 get_subinterfaces(self.dut_ip_1, self.ethernet0)[0].get("ip_address")
@@ -374,14 +371,14 @@ class SampleConfigDiscovery(unittest.TestCase):
 
             ##################### Setup second interface
             config_interface(
-                self.dut_ip_1,
-                self.ethernet1,
+                device_ip=self.dut_ip_1,
+                if_name=self.ethernet1,
                 ip=self.bgp_ip_2,
                 ip_prefix_len=pfxLen,
                 index=idx,
                 enable=True,
             )
-
+            time.sleep(5)
             assert get_interface(self.dut_ip_1, self.ethernet1).get("enabled") == True
             assert (
                 get_subinterfaces(self.dut_ip_1, self.ethernet1)[0].get("ip_address")
@@ -391,14 +388,14 @@ class SampleConfigDiscovery(unittest.TestCase):
             ############################ Setup one interfaces on leaf-1 #######################
 
             config_interface(
-                self.dut_ip_2,
-                self.ethernet0,
+                device_ip=self.dut_ip_2,
+                if_name=self.ethernet0,
                 ip=self.bgp_ip_0,
                 ip_prefix_len=pfxLen,
                 index=idx,
                 enable=True,
             )
-
+            time.sleep(5)
             assert get_interface(self.dut_ip_2, self.ethernet0).get("enabled") == True
             assert (
                 get_subinterfaces(self.dut_ip_2, self.ethernet0)[0].get("ip_address")
@@ -408,14 +405,14 @@ class SampleConfigDiscovery(unittest.TestCase):
             ############################ Setup one interfaces on leaf-2 #######################
 
             config_interface(
-                self.dut_ip_3,
-                self.ethernet0,
+                device_ip=self.dut_ip_3,
+                if_name=self.ethernet0,
                 ip=self.bgp_ip_3,
                 ip_prefix_len=pfxLen,
                 index=idx,
                 enable=True,
             )
-
+            time.sleep(5)
             assert get_interface(self.dut_ip_3, self.ethernet0).get("enabled") == True
             assert (
                 get_subinterfaces(self.dut_ip_3, self.ethernet0)[0].get("ip_address")

@@ -34,7 +34,6 @@ from orca_nw_lib.port_chnl import (
     get_port_chnl,
     get_port_chnl_members,
 )
-from orca_nw_lib.setup import setup
 from orca_nw_lib.utils import (
     get_networks,
     ping_ok,
@@ -63,7 +62,6 @@ class InterfaceTests(unittest.TestCase):
     ethernet = None
     @classmethod
     def setUpClass(cls):
-        setup()
         if not set([ip for ip in get_networks() if device_pingable(ip)]).issubset(
             set(get_all_devices_ip_from_db())
         ):
@@ -147,6 +145,7 @@ class InterfaceTests(unittest.TestCase):
                 == description_to_set
             )
 
+@unittest.skip("Test will be performed via orca_backend")      
 
 class PortChannelTests(unittest.TestCase):
     dut_ip = None
@@ -359,7 +358,7 @@ class PortChannelTests(unittest.TestCase):
         except RpcError as err:
             self.fail(err)
 
-
+@unittest.skip("Test will be performed via orca_backend")      
 class MclagTests(unittest.TestCase):
     peer_address = None
     peer_link = "PortChannel100"
@@ -547,7 +546,7 @@ class MclagTests(unittest.TestCase):
         except RpcError as err:
             self.fail(err)
 
-
+@unittest.skip("Test will be performed via orca_backend")      
 class BGPTests(unittest.TestCase):
     vrf_name = "default"
     dut_ip = ""
@@ -665,7 +664,7 @@ class BGPTests(unittest.TestCase):
 
     # TODO - Test global and neighbour AF, Test adding and removal of neighbors. Deletion of BGP_GLOBAL_AF, MCLAG_GW_MAC and subinterfaces.
 
-
+@unittest.skip("Test will be performed via orca_backend")      
 class VLANTests(unittest.TestCase):
     dut_ip = ""
     vlan_name = "Vlan1"
@@ -796,7 +795,7 @@ class VLANTests(unittest.TestCase):
         except RpcError as err:
             self.fail(err)
 
-
+@unittest.skip("Test will be performed via orca_backend")      
 class AdditionalDeviceDiscoveryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -14,8 +14,14 @@ _settings = {}
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
 dname = os.path.dirname(abspath)
-default_logging_config = f"{dname}/orca_nw_lib_logging.yml"
-default_orca_nw_lib_config= f"{dname}/orca_nw_lib.yml"
+# read env var or set default
+default_orca_nw_lib_config = os.environ.get(
+    "ORCA_NW_LIB_CONFIG_FILE", f"{dname}/orca_nw_lib.yml"
+)
+default_logging_config = os.environ.get(
+    "ORCA_NW_LIB_LOGGING_CONFIG_FILE", f"{dname}/orca_nw_lib_logging.yml"
+)
+
 
 def init_db_connection():
     config.DATABASE_URL = f"{_settings.get(const.protocol)}://{_settings.get(const.neo4j_user)}:{_settings.get(const.neo4j_password)}@{_settings.get(const.neo4j_url)}"
@@ -52,9 +58,7 @@ def get_device_grpc_port():
     return _settings.get(const.grpc_port)
 
 
-def load_orca_config_from_file(
-    orca_config_file: str = default_orca_nw_lib_config, force_reload=False
-):
+def load_orca_config(orca_config_file: str = default_orca_nw_lib_config):
     """
     Read the Orca configuration file and return the parsed settings.
 
@@ -66,20 +70,21 @@ def load_orca_config_from_file(
         dict: The parsed settings from the Orca configuration file.
     """
     global _settings
-    if force_reload or not _settings:
+    if not _settings:
         with open(orca_config_file, "r") as stream:
             try:
                 _settings = yaml.safe_load(stream)
                 print("Loaded ORCA config from {0}".format(orca_config_file))
             except yaml.YAMLError as exc:
                 print(exc)
+        init_db_connection()
     return _settings
 
 
 _logging_initialized: bool = False
 
 
-def get_logging(logging_config_file: str = default_logging_config, force_reload=False):
+def get_logging(logging_config_file: str = default_logging_config):
     """
     Initializes the logging configuration and returns the logging module.
 
@@ -91,7 +96,7 @@ def get_logging(logging_config_file: str = default_logging_config, force_reload=
         logging: The logging module.
     """
     global _logging_initialized
-    if force_reload or not _logging_initialized:
+    if not _logging_initialized:
         with open(logging_config_file, "r") as stream:
             config = yaml.load(stream, Loader=yaml.FullLoader)
             if config:

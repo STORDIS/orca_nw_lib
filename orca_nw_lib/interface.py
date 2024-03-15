@@ -153,13 +153,13 @@ def get_pg_of_if(device_ip: str, intfc_name: str):
 
 
 @ready_to_receive_subscription_response
-def config_interface(device_ip: str, intfc_name: str, **kwargs):
+def config_interface(device_ip: str, if_name: str, **kwargs):
     """
     Configure the interface of a device.
 
     Parameters:
         device_ip (str): The IP address of the device.
-        intfc_name (str): The name of the interface.
+        if_name (str): The name of the interface.
         kwargs (dict): The configuration parameters of the interface.
 
     kwargs:
@@ -173,15 +173,15 @@ def config_interface(device_ip: str, intfc_name: str, **kwargs):
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
 
     """
-    _logger.debug("Configuring interface %s on device %s", intfc_name, device_ip)
+    _logger.debug("Configuring interface %s on device %s", if_name, device_ip)
     try:
-        set_interface_config_on_device(device_ip, intfc_name, **kwargs)
+        set_interface_config_on_device(device_ip, if_name, **kwargs)
         _logger.debug(
-            "Configured interface %s on device %s -> %s", intfc_name, device_ip, kwargs
+            "Configured interface %s on device %s -> %s", if_name, device_ip, kwargs
         )
     except Exception as e:
         _logger.error(
-            f"Configuring interface {intfc_name} on device {device_ip} failed, Reason: {e}"
+            f"Configuring interface {if_name} on device {device_ip} failed, Reason: {e}"
         )
         raise
 

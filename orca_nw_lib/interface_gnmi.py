@@ -233,7 +233,7 @@ def get_intfc_description_path(intfc_name: str):
 
 def set_interface_config_on_device(
     device_ip: str,
-    interface_name: str,
+    if_name: str,
     enable: bool = None,
     mtu: int = None,
     description: str = None,
@@ -248,7 +248,7 @@ def set_interface_config_on_device(
 
     Args:
         device_ip (str): The IP address of the device.
-        interface_name (str): The name of the interface.
+        if_name (str): The name of the interface.
         enable (bool, optional): Whether to enable the interface. Defaults to None.
         mtu (int, optional): The maximum transmission unit (MTU) size. Defaults to None.
         description (str, optional): The interface description. Defaults to None.
@@ -269,7 +269,7 @@ def set_interface_config_on_device(
     if enable is not None:
         updates.append(
             create_gnmi_update(
-                get_intfc_enabled_path(interface_name),
+                get_intfc_enabled_path(if_name),
                 {"openconfig-interfaces:enabled": enable},
             )
         )
@@ -277,13 +277,13 @@ def set_interface_config_on_device(
     if fec is not None:
         updates.append(
             create_gnmi_update(
-                get_port_fec_path(interface_name),
+                get_port_fec_path(if_name),
                 {"openconfig-if-ethernet-ext2:port-fec": str(fec)},
             )
         )
 
     if mtu is not None:
-        base_config_path = get_intfc_mtu_path(interface_name)
+        base_config_path = get_intfc_mtu_path(if_name)
         updates.append(
             create_gnmi_update(
                 base_config_path,
@@ -292,7 +292,7 @@ def set_interface_config_on_device(
         )
 
     if description is not None:
-        base_config_path = get_intfc_description_path(interface_name)
+        base_config_path = get_intfc_description_path(if_name)
         updates.append(
             create_gnmi_update(
                 base_config_path,
@@ -303,11 +303,11 @@ def set_interface_config_on_device(
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
         if pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
-            device_ip, interface_name
+            device_ip, if_name
         ):
             _logger.debug(
                 "Interface %s belongs to port-group %s. Speed of port-group will be updated for device_ip: %s, pg_id: %s, speed: %s.",
-                interface_name,
+                if_name,
                 pg_id,
                 device_ip,
                 pg_id,
@@ -324,12 +324,12 @@ def set_interface_config_on_device(
             _logger.debug(
                 "Interface does not belong to port-group. Speed of interface will be updated for device_ip: %s, interface_name: %s, speed: %s.",
                 device_ip,
-                interface_name,
+                if_name,
                 speed.get_oc_val(),
             )
             updates.append(
                 create_gnmi_update(
-                    get_intfc_speed_path(interface_name),
+                    get_intfc_speed_path(if_name),
                     {"port-speed": speed.get_oc_val()},
                 )
             )
@@ -358,7 +358,7 @@ def set_interface_config_on_device(
         }
         updates.append(
             create_gnmi_update(
-                get_sub_interface_path(interface_name),
+                get_sub_interface_path(if_name),
                 ip_payload,
             )
         )
