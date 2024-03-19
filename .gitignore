@@ -7,7 +7,6 @@ openconfig_models/
 logs/
 orca_nw_lib_venv
 .venv
-.vscode/
 .idea
 bin
 *.log
