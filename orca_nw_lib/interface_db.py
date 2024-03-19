@@ -162,7 +162,7 @@ def set_interface_config_in_db(
             interface.mtu = mtu
         if speed is not None:
             _logger.debug(
-                "Updating interface %sspeed in DB object to %s", interface, speed
+                "Updating interface %s speed in DB object to %s", interface, speed
             )
             interface.speed = str(speed)
         if description is not None:

@@ -6,8 +6,6 @@ from typing import List
 import grpc
 from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
 from .gnmi_pb2_grpc import gNMIStub
-import subprocess
-
 
 from .utils import (
     get_conn_timeout,
@@ -24,7 +22,6 @@ stubs = {}
 
 
 def getGrpcStubs(device_ip):
-
     global stubs
     port = get_device_grpc_port()
     user = get_device_username()
@@ -37,11 +34,8 @@ def getGrpcStubs(device_ip):
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
 
-    try:
-        ping_ok(device_ip)
-    except subprocess.CalledProcessError:
-        _logger.error(f"Device {device_ip} is not reachable !!")
-        raise
+    if not ping_ok(device_ip):
+        raise Exception("Device %s is not reachable !!" % device_ip)
 
     if stubs and stubs.get(device_ip):
         return stubs.get(device_ip)

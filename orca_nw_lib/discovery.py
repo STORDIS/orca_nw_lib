@@ -177,10 +177,7 @@ def discover_device(ip_or_nw: str):
     report = []
     for device_ip in ipaddress.ip_network(ip_or_nw):
         device_ip = str(device_ip)
-        import subprocess
-        try:
-            ping_ok(device_ip)
-        except subprocess.CalledProcessError:
+        if not ping_ok(device_ip):
             log_msg = f"Can not discover, Device {device_ip} is not reachable !!"
             _logger.error(log_msg)
             report.append(log_msg)

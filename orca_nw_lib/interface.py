@@ -184,6 +184,12 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
             f"Configuring interface {if_name} on device {device_ip} failed, Reason: {e}"
         )
         raise
+    finally:
+        ## discover the interface esp. the subinterfaces if there is a request to set IP
+        # on the interface because currently there are no gNMI subscription available 
+        # for subinterface updates.
+        if kwargs.get("ip"):
+            discover_interfaces(device_ip, if_name)
 
 
 def del_ip_from_intf(device_ip: str, intfc_name: str):

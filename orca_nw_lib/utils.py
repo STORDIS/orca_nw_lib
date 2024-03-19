@@ -2,10 +2,8 @@
 
 import os
 import ipaddress
-import subprocess
 import logging.config
 import logging
-import platform
 from neomodel import config, db, clear_neo4j_database
 import yaml
 from . import constants as const
@@ -108,29 +106,31 @@ def get_logging(logging_config_file: str = default_logging_config):
     return logging
 
 
-class DeviceUnreachableError(Exception):
-    pass
+import socket
+import time
 
+_logger = get_logging().getLogger(__name__)
 
-def ping_ok(device_ip) -> bool:
-    """
-    Check if the given device IP is reachable by sending a ping request.
-
-    Args:
-        device_ip (str): The IP address of the device to ping.
-
-    Returns:
-        bool: True if the ping request is successful, False otherwise.
-    """
-
-    try:
-        subprocess.check_output(
-            f'ping -{"n" if platform.system().lower() == "windows" else "c"} 1 -t {get_conn_timeout()} {device_ip}',
-            shell=True,
-        )
-        return True
-    except subprocess.CalledProcessError:
-        raise
+def ping_ok(host, max_retries=1):
+    retry = 0
+    status = False
+    port = get_device_grpc_port()
+    while retry < max_retries:
+        # Create a TCP socket object
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.settimeout(get_conn_timeout())
+            sock.connect((host, port))
+            status = True
+            break
+        except socket.error as e:
+            _logger.error("Failed to connect to %s on port %s: %s", host, port, e)
+            retry += 1
+            status = False
+            time.sleep(1)  # Wait before retrying
+        finally:
+            sock.close()
+            return status
 
 
 def validate_ipv4_address(ip):
