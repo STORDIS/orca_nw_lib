@@ -155,7 +155,7 @@ def del_vlan_from_device(device_ip: str, vlan_list_name: str = None):
 
 
 def config_vlan_on_device(
-    device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None
+    device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None,mtu: int = None
 ):
     """
     Configures a VLAN on a device.
@@ -169,7 +169,10 @@ def config_vlan_on_device(
     Returns:
         Any: The result of the send_gnmi_set function.
     """
-    payload = {"sonic-vlan:VLAN_LIST": [{"name": vlan_name, "vlanid": vlan_id}]}
+    vlan_dict={"name": vlan_name, "vlanid": vlan_id}
+    if mtu:
+        vlan_dict["mtu"] = mtu
+    payload = {"sonic-vlan:VLAN_LIST": [vlan_dict]}
     if mem_ifs:
         payload.get("sonic-vlan:VLAN_LIST")[0]["members"] = list(mem_ifs.keys())
 

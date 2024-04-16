@@ -96,7 +96,7 @@ def get_vlan(device_ip, vlan_name: str = None):
     return _getJson(device_ip, vlans)
 
 
-def del_vlan(device_ip, vlan_name:str=None):
+def del_vlan(device_ip, vlan_name: str = None):
     """
     Deletes a VLAN from a device.
 
@@ -118,7 +118,11 @@ def del_vlan(device_ip, vlan_name:str=None):
 
 
 def config_vlan(
-    device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None
+    device_ip: str,
+    vlan_name: str,
+    vlan_id: int,
+    mem_ifs: dict[str:VlanTagMode] = None,
+    mtu: int = None,
 ):
     """
     Configures a VLAN on a network device.
@@ -128,12 +132,14 @@ def config_vlan(
         vlan_name (str): The name of the VLAN.
         vlan_id (int): The ID of the VLAN.
         mem_ifs (dict[str:VlanTagMode], optional): A dictionary mapping interface names to VLAN tag modes.
+                                                     Defaults to None.
+        mtu (int, optional): The MTU of the VLAN. Defaults to None.
 
     Returns:
         None
     """
     try:
-        config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs)
+        config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs,mtu)
     except Exception as e:
         _logger.error(f"VLAN configuration failed on device {device_ip}, Reason: {e}")
         raise
