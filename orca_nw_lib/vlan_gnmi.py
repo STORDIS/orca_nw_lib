@@ -1,4 +1,4 @@
-from orca_nw_lib.common import VlanTagMode
+from orca_nw_lib.common import IFMode, VlanAutoState
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
@@ -6,7 +6,9 @@ from orca_nw_lib.gnmi_util import (
     get_gnmi_del_req,
     send_gnmi_get,
     send_gnmi_set,
+    get_gnmi_path,
 )
+from .utils import validate_and_get_ip_prefix
 
 
 def get_sonic_vlan_base_path() -> Path:
@@ -41,10 +43,10 @@ def get_vlan_table_list_path(vlan_name=None):
     """
     path = get_sonic_vlan_base_path()
     path.elem.append(PathElem(name="VLAN_TABLE"))
-    path.elem.append(
-        PathElem(name="VLAN_TABLE_LIST")
-    ) if not vlan_name else path.elem.append(
-        PathElem(name="VLAN_TABLE_LIST", key={"name": vlan_name})
+    (
+        path.elem.append(PathElem(name="VLAN_TABLE_LIST"))
+        if not vlan_name
+        else path.elem.append(PathElem(name="VLAN_TABLE_LIST", key={"name": vlan_name}))
     )
     return path
 
@@ -63,10 +65,14 @@ def get_vlan_mem_path(vlan_name: str = None, intf_name: str = None):
 
     path = get_sonic_vlan_base_path()
     path.elem.append(PathElem(name="VLAN_MEMBER"))
-    path.elem.append(
-        PathElem(name="VLAN_MEMBER_LIST")
-    ) if not vlan_name or not intf_name else path.elem.append(
-        PathElem(name="VLAN_MEMBER_LIST", key={"name": vlan_name, "ifname": intf_name})
+    (
+        path.elem.append(PathElem(name="VLAN_MEMBER_LIST"))
+        if not vlan_name or not intf_name
+        else path.elem.append(
+            PathElem(
+                name="VLAN_MEMBER_LIST", key={"name": vlan_name, "ifname": intf_name}
+            )
+        )
     )
     return path
 
@@ -83,10 +89,10 @@ def get_vlan_list_path(vlan_list_name=None):
     """
     path = get_sonic_vlan_base_path()
     path.elem.append(PathElem(name="VLAN"))
-    path.elem.append(
-        PathElem(name="VLAN_LIST")
-    ) if not vlan_list_name else path.elem.append(
-        PathElem(name="VLAN_LIST", key={"name": vlan_list_name})
+    (
+        path.elem.append(PathElem(name="VLAN_LIST"))
+        if not vlan_list_name
+        else path.elem.append(PathElem(name="VLAN_LIST", key={"name": vlan_list_name}))
     )
     return path
 
@@ -131,141 +137,159 @@ def get_vlan_details_from_device(device_ip: str, vlan_name: str = None):
     )
 
 
-def del_vlan_from_device(device_ip: str, vlan_list_name: str = None):
-    """
-    Deletes a VLAN from a device.
+def get_vlan_ip_details_from_device(device_ip: str, vlan_name: str):
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[
+            get_gnmi_path(
+                f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4",
+            )
+        ],
+    )
 
-    Parameters:
-        device_ip (str): The IP address of the device.
-        vlan_list_name (str, optional): The name of the VLAN list to delete. If not provided,
-        the function will delete the VLAN using the default VLAN base path.
 
-    Returns:
-        The result of the GNMI set operation.
+def del_vlan_from_device(device_ip: str, vlan_name: str):
 
-    """
     return send_gnmi_set(
         get_gnmi_del_req(
-            get_sonic_vlan_base_path()
-            if not vlan_list_name
-            else get_vlan_list_path(vlan_list_name)
+            get_gnmi_path(
+                f"/openconfig-interfaces:interfaces/interface={{'name': {vlan_name}}}"
+            )
+            if not vlan_name
+            else get_vlan_list_path(vlan_name)
         ),
         device_ip,
     )
 
 
 def config_vlan_on_device(
-    device_ip: str, vlan_name: str, vlan_id: int, mem_ifs: dict[str:VlanTagMode] = None,mtu: int = None
+    device_ip: str,
+    vlan_name: str,
+    vlan_id: int,
+    autostate: VlanAutoState = None,
+    ip_addr_with_prefix: str = None,
+    anycast_addr: str = None,
+    enabled: bool = None,
+    descr: str = None,
+    mem_ifs: dict[str:IFMode] = None,
+    mtu: int = None,
 ):
-    """
-    Configures a VLAN on a device.
+    update_req = []
+    update_req.append(
+        create_gnmi_update(
+            get_gnmi_path("openconfig-interfaces:interfaces"),
+            {
+                "openconfig-interfaces:interfaces": {
+                    "interface": [{"name": vlan_name, "config": {"name": vlan_name}}]
+                }
+            },
+        )
+    )
 
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        vlan_id (int): The ID of the VLAN.
-        mem_ifs (dict[str:VlanTagMode], optional): A dictionary mapping interface names to VlanTagMode objects. Defaults to None.
-
-    Returns:
-        Any: The result of the send_gnmi_set function.
-    """
-    vlan_dict={"name": vlan_name, "vlanid": vlan_id}
+    config_payload = {}
+    if enabled:
+        config_payload.update({"openconfig-interfaces:enabled": enabled})
+    if descr:
+        config_payload.update({"openconfig-interfaces:description": descr})
     if mtu:
-        vlan_dict["mtu"] = mtu
-    payload = {"sonic-vlan:VLAN_LIST": [vlan_dict]}
-    if mem_ifs:
-        payload.get("sonic-vlan:VLAN_LIST")[0]["members"] = list(mem_ifs.keys())
+        config_payload.update({"openconfig-interfaces:mtu": mtu})
+    if config_payload:
+        update_req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface={{'name': {vlan_name}}}/config/mtu",
+                ),
+                config_payload,
+            )
+        )
 
-    payload2 = {"sonic-vlan:VLAN_MEMBER_LIST": []}
-    for m, tag in mem_ifs.items() if mem_ifs else []:
-        payload2.get("sonic-vlan:VLAN_MEMBER_LIST").append(
-            {"ifname": m, "name": vlan_name, "tagging_mode": str(tag)}
+    if ip_addr_with_prefix:
+        ip, prefix_len = validate_and_get_ip_prefix(ip_addr_with_prefix)
+        if ip and prefix_len:
+            update_req.append(
+                create_gnmi_update(
+                    get_gnmi_path(
+                        f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses",
+                    ),
+                    {
+                        "openconfig-if-ip:addresses": {
+                            "address": [
+                                {
+                                    "ip": ip,
+                                    "openconfig-if-ip:config": {
+                                        "ip": ip,
+                                        "prefix-length": prefix_len,
+                                    },
+                                }
+                            ]
+                        }
+                    },
+                )
+            )
+
+    if autostate:
+        update_req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"/sonic-vlan:sonic-vlan/VLAN/VLAN_LIST[name={vlan_name}]/autostate",
+                ),
+                {"sonic-vlan:autostate": str(autostate)},
+            )
+        )
+    if mem_ifs:
+        ## add an array to update_req returned by get_add_vlan_mem_req()
+        update_req.extend(get_add_vlan_mem_req(vlan_id, mem_ifs))
+
+    if anycast_addr:
+        update_req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+                ),
+                {"openconfig-interfaces-ext:static-anycast-gateway": [anycast_addr]},
+            )
         )
 
     return send_gnmi_set(
-        create_req_for_update(
-            [
-                create_gnmi_update(get_vlan_list_path(), payload),
-                create_gnmi_update(get_vlan_mem_path(), payload2),
-            ]
-        ),
+        create_req_for_update(update_req),
         device_ip,
     )
+
+
+def get_add_vlan_mem_req(vlan_id: int, mem_ifs: dict[str:IFMode]):
+    req = []
+    for if_name, if_mode in mem_ifs.items():
+        req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config"
+                ),
+                {
+                    "openconfig-vlan:config": {
+                        "interface-mode": str(if_mode),
+                        "access-vlan": vlan_id,
+                    }
+                },
+            )
+        )
+    return req
 
 
 def add_vlan_mem_interface_on_device(
-    device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode]
+    device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]
 ):
-    """
-    Generates a function comment for the given function body in a markdown code block with the correct language syntax.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        mem_ifs (dict[str:VlanTagMode]): A dictionary containing the member interfaces and their corresponding VLAN tag modes.
-
-    Returns:
-        The function comment for the given function body in a markdown code block with the correct language syntax.
-    """
-    payload2 = {"sonic-vlan:VLAN_MEMBER_LIST": []}
-    for m, tag in mem_ifs.items():
-        payload2.get("sonic-vlan:VLAN_MEMBER_LIST").append(
-            {"ifname": m, "name": vlan_name, "tagging_mode": str(tag)}
-        )
     return send_gnmi_set(
-        create_req_for_update(
-            [
-                create_gnmi_update(get_vlan_mem_path(), payload2),
-            ]
-        ),
+        create_req_for_update(get_add_vlan_mem_req(vlan_id, mem_ifs)),
         device_ip,
     )
 
 
-def del_vlan_mem_interface_on_device(
-    device_ip: str, vlan_name: str, if_name: str = None
-):
-    """
-    Deletes a VLAN membership interface on a device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        if_name (str, optional): The name of the interface. Defaults to None.
-
-    Returns:
-        The result of the GNMI set operation.
-
-    """
+def del_vlan_mem_interface_on_device(device_ip: str, vlan_id: int, if_name: str):
     return send_gnmi_set(
-        get_gnmi_del_req(get_vlan_mem_path(vlan_name, if_name)), device_ip
-    )
-
-
-def config_vlan_tagging_mode_on_device(
-    device_ip: str, vlan_name: str, if_name: str, tagging_mode: VlanTagMode
-):
-    """
-    Configures the VLAN tagging mode on a specific device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        if_name (str): The name of the interface.
-        tagging_mode (VlanTagMode): The VLAN tagging mode to be configured.
-
-    Returns:
-        None
-    """
-    payload = {"sonic-vlan:tagging_mode": str(tagging_mode)}
-
-    return send_gnmi_set(
-        create_req_for_update(
-            [
-                create_gnmi_update(
-                    get_vlan_mem_tagging_path(vlan_name, if_name), payload
-                ),
-            ]
+        get_gnmi_del_req(
+            get_gnmi_path(
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]"
+            )
         ),
         device_ip,
     )

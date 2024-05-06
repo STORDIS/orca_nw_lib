@@ -1,7 +1,7 @@
 from orca_nw_lib.graph_db_models import Vlan
 from orca_nw_lib.vlan_gnmi import get_vlan_details_from_device
 
-from .common import VlanTagMode
+from .common import IFMode, VlanAutoState
 
 from .device_db import get_device_db_obj
 from .vlan_db import (
@@ -12,9 +12,9 @@ from .vlan_db import (
 from .vlan_gnmi import (
     add_vlan_mem_interface_on_device,
     config_vlan_on_device,
-    config_vlan_tagging_mode_on_device,
     del_vlan_from_device,
     del_vlan_mem_interface_on_device,
+    get_vlan_ip_details_from_device,
 )
 from .utils import get_logging
 from .graph_db_models import Vlan
@@ -41,10 +41,29 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
     vlan_details = get_vlan_details_from_device(device_ip, vlan_name)
     vlans = []
     for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
+        v_name = vlan.get("name")
+        ip_details = get_vlan_ip_details_from_device(device_ip, v_name).get("openconfig-if-ip:ipv4", {})
+        ipv4_addresses = (
+            ip_details.get("addresses", {})
+            .get("address", [])
+        )
+        sag_ipv4_addresses = (
+            ip_details.get("openconfig-interfaces-ext:sag-ipv4", {}).get("config", {}).get("static-anycast-gateway", [])
+        )
+        
+        ipv4_addr = None
+        for ipv4 in ipv4_addresses:
+            if (ip:=ipv4.get("config", {}).get("ip", "")) and (pfx:=ipv4.get("config", {}).get("prefix-length", "")):
+                ipv4_addr = f"{ip}/{pfx}"
+                break
+
         vlans.append(
             Vlan(
                 vlanid=vlan.get("vlanid"),
-                name=vlan.get("name"),
+                name=v_name,
+                ip_address=ipv4_addr,
+                sag_ip_address=sag_ipv4_addresses[0] if sag_ipv4_addresses else None,
+                autostate = vlan.get("autostate",str(VlanAutoState.disable))
             )
         )
 
@@ -96,7 +115,7 @@ def get_vlan(device_ip, vlan_name: str = None):
     return _getJson(device_ip, vlans)
 
 
-def del_vlan(device_ip, vlan_name: str = None):
+def del_vlan(device_ip, vlan_name: str):
     """
     Deletes a VLAN from a device.
 
@@ -117,29 +136,9 @@ def del_vlan(device_ip, vlan_name: str = None):
         discover_vlan(device_ip)
 
 
-def config_vlan(
-    device_ip: str,
-    vlan_name: str,
-    vlan_id: int,
-    mem_ifs: dict[str:VlanTagMode] = None,
-    mtu: int = None,
-):
-    """
-    Configures a VLAN on a network device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        vlan_id (int): The ID of the VLAN.
-        mem_ifs (dict[str:VlanTagMode], optional): A dictionary mapping interface names to VLAN tag modes.
-                                                     Defaults to None.
-        mtu (int, optional): The MTU of the VLAN. Defaults to None.
-
-    Returns:
-        None
-    """
+def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
     try:
-        config_vlan_on_device(device_ip, vlan_name, vlan_id, mem_ifs,mtu)
+        config_vlan_on_device(device_ip, vlan_name, vlan_id, **kwargs)
     except Exception as e:
         _logger.error(f"VLAN configuration failed on device {device_ip}, Reason: {e}")
         raise
@@ -147,20 +146,10 @@ def config_vlan(
         discover_vlan(device_ip)
 
 
-def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:VlanTagMode]):
-    """
-    Adds the specified VLAN as a member on the given device.
+def add_vlan_mem(device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]):
 
-    Args:
-        device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        mem_ifs (dict[str:VlanTagMode]): A dictionary mapping interface names to VLAN tag modes.
-
-    Returns:
-        None
-    """
     try:
-        add_vlan_mem_interface_on_device(device_ip, vlan_name, mem_ifs)
+        add_vlan_mem_interface_on_device(device_ip, vlan_id, mem_ifs)
     except Exception as e:
         _logger.error(f"VLAN member addition failed on device {device_ip}, Reason: {e}")
         raise
@@ -189,33 +178,7 @@ def get_vlan_members(device_ip, vlan_name: str):
     return mem_intf_vs_tagging_mode
 
 
-def config_vlan_mem_tagging(
-    device_ip: str, vlan_name: str, if_name: str, tagging_mode: VlanTagMode
-):
-    """
-    Configures VLAN member tagging on a network device.
-
-    Args:
-        device_ip (str): The IP address of the network device.
-        vlan_name (str): The name of the VLAN.
-        if_name (str): The name of the interface.
-        tagging_mode (VlanTagMode): The tagging mode to be configured.
-
-    Returns:
-        None
-    """
-    try:
-        config_vlan_tagging_mode_on_device(device_ip, vlan_name, if_name, tagging_mode)
-    except Exception as e:
-        _logger.error(
-            f"VLAN member tagging configuration failed on device {device_ip}, Reason: {e}"
-        )
-        raise
-    finally:
-        discover_vlan(device_ip)
-
-
-def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
+def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str = None):
     """
     Deletes a VLAN member from a device.
 
@@ -228,7 +191,7 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str = None):
         None
     """
     try:
-        del_vlan_mem_interface_on_device(device_ip, vlan_name, if_name)
+        del_vlan_mem_interface_on_device(device_ip, vlan_id, if_name)
     except Exception as e:
         _logger.error(f"VLAN member deletion failed on device {device_ip}, Reason: {e}")
         raise

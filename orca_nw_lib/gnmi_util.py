@@ -1,12 +1,18 @@
 import json
-import re
 import ssl
-import sys
 from typing import List
 import grpc
-from .gnmi_pb2 import JSON_IETF, GetRequest, Path, SetRequest, TypedValue, Update
+from .gnmi_pb2 import (
+    JSON_IETF,
+    GetRequest,
+    Path,
+    PathElem,
+    SetRequest,
+    TypedValue,
+    Update,
+)
 from .gnmi_pb2_grpc import gNMIStub
-
+import ast
 from .utils import (
     get_conn_timeout,
     get_logging,
@@ -15,6 +21,7 @@ from .utils import (
     get_device_username,
     get_device_password,
 )
+import re
 
 _logger = get_logging().getLogger(__name__)
 
@@ -124,34 +131,43 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
         raise
 
 
-def create_gnmi_path(path_arr: List[str]) -> List[Path]:
-    """Returns a list of gnmi path object create from string formated path array"""
-    paths = []
-    for path in path_arr:
-        gnmi_path = Path()
+def get_gnmi_path(path: str) -> Path:
+    """
+    Generates a function comment for the given function body in a markdown code block with the correct language syntax.
 
-        path_elements = path.split("/")
-        print(path_elements)
+    Args:
+        path (str): The path to be processed.
+        Example : openconfig-interfaces:interfaces/interface[name=Vlan1]/openconfig-if-ethernet:ethernet/
 
-        for pe_entry in path_elements:
-            if not re.match(".+?:.+?", pe_entry) and len(path_elements) == 1:
-                sys.exit(
-                    f"You haven't specified either YANG module or the top-level container in '{pe_entry}'."
-                )
+    Returns:
+        Path: The generated gnmi path.
 
-            elif re.match(".+?:.+?", pe_entry):
-                gnmi_path.origin = pe_entry.split(":")[0]
-                gnmi_path.elem.add(name=pe_entry.split(":")[1])
-
-            elif re.match(".+?\[.+?\]", pe_entry):
-                gnmi_path.elem.add(
-                    name=pe_entry.split("[")[0],
-                    key={
-                        f'{pe_entry.split("[")[1].split("=")[0]}': f'{re.sub("]", "", pe_entry.split("[")[1].split("=")[1])}'
-                    },
-                )
-
-            else:
-                gnmi_path.elem.add(name=pe_entry)
-            paths.append(gnmi_path)
-    return paths
+    """
+    path = path.strip()
+    path_elements = path.split("/")
+    gnmi_path = Path(
+        target="openconfig",
+    )
+    for pe_entry in path_elements:
+        if pe_entry in ["", "restconf", "data"]:
+            continue
+        ## When filter key is given
+        if "[" in pe_entry and "]" in pe_entry and "=" in pe_entry:
+            match = re.search(r"\[(.*?)\]", pe_entry)
+            if match:
+                key_val = match.group(1)
+                try:
+                    gnmi_path.elem.append(
+                        PathElem(
+                            name=pe_entry[: match.start()],
+                            key={key_val.split("=")[0]: key_val.split("=")[1]},
+                        )
+                    )
+                except ValueError as ve:
+                    _logger.error(
+                        f"Invalid property identifier {pe_entry} : {ve} , filter arg should be a dict-> propertykey:value"
+                    )
+                    raise
+        else:
+            gnmi_path.elem.append(PathElem(name=pe_entry))
+    return gnmi_path

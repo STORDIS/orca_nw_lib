@@ -111,6 +111,7 @@ import time
 
 _logger = get_logging().getLogger(__name__)
 
+
 def ping_ok(host, max_retries=1):
     retry = 0
     status = False
@@ -133,18 +134,11 @@ def ping_ok(host, max_retries=1):
             return status
 
 
-def validate_ipv4_address(ip):
-    """
-    Validates an IPv4 address.
 
-    Args:
-        ip (str): The IPv4 address to be validated.
-
-    Returns:
-        bool: True if the address is a valid IPv4 address, False otherwise.
-    """
+def validate_and_get_ip_prefix(ip_address):
     try:
-        ipaddress.IPv4Address(ip)
-        return True
-    except ipaddress.AddressValueError:
-        return False
+        ip_network = ipaddress.ip_network(ip_address,strict=False)
+        return str(ip_network.network_address), ip_network.prefixlen
+    except ValueError:
+        _logger.error(f"Invalid IP address: {ip_address}")
+        return None, None

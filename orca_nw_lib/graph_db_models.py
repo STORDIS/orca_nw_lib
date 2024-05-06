@@ -278,6 +278,8 @@ class Vlan(StructuredNode):
     admin_status = StringProperty()
     oper_status = StringProperty()
     autostate = StringProperty()
+    ip_address = StringProperty()
+    sag_ip_address = StringProperty()
 
     memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
 

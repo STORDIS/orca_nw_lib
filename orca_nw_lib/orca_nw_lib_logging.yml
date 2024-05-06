@@ -10,7 +10,7 @@ handlers:
         level: INFO
     console:
         class: logging.StreamHandler
-        level: DEBUG
+        level: INFO
         formatter: format_1
         #args: (sys.stdout,)
 

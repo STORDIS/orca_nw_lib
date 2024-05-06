@@ -6,7 +6,6 @@ from .gnmi_util import (
     send_gnmi_get,
     send_gnmi_set,
 )
-from .gnmi_pb2 import Path, PathElem
 
 
 def get_bgp_neighbor_base_path() -> Path:
