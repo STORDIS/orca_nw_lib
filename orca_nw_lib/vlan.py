@@ -15,6 +15,8 @@ from .vlan_gnmi import (
     del_vlan_from_device,
     del_vlan_mem_interface_on_device,
     get_vlan_ip_details_from_device,
+    remove_anycast_addr_from_vlan_on_device,
+    remove_ip_from_vlan_on_device,
 )
 from .utils import get_logging
 from .graph_db_models import Vlan
@@ -42,18 +44,21 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
     vlans = []
     for vlan in vlan_details.get("sonic-vlan:VLAN_LIST") or []:
         v_name = vlan.get("name")
-        ip_details = get_vlan_ip_details_from_device(device_ip, v_name).get("openconfig-if-ip:ipv4", {})
-        ipv4_addresses = (
-            ip_details.get("addresses", {})
-            .get("address", [])
+        ip_details = get_vlan_ip_details_from_device(device_ip, v_name).get(
+            "openconfig-if-ip:ipv4", {}
         )
+        ipv4_addresses = ip_details.get("addresses", {}).get("address", [])
         sag_ipv4_addresses = (
-            ip_details.get("openconfig-interfaces-ext:sag-ipv4", {}).get("config", {}).get("static-anycast-gateway", [])
+            ip_details.get("openconfig-interfaces-ext:sag-ipv4", {})
+            .get("config", {})
+            .get("static-anycast-gateway", [])
         )
-        
+
         ipv4_addr = None
         for ipv4 in ipv4_addresses:
-            if (ip:=ipv4.get("config", {}).get("ip", "")) and (pfx:=ipv4.get("config", {}).get("prefix-length", "")):
+            if (ip := ipv4.get("config", {}).get("ip", "")) and (
+                pfx := ipv4.get("config", {}).get("prefix-length", "")
+            ):
                 ipv4_addr = f"{ip}/{pfx}"
                 break
 
@@ -63,7 +68,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
                 name=v_name,
                 ip_address=ipv4_addr,
                 sag_ip_address=sag_ipv4_addresses[0] if sag_ipv4_addresses else None,
-                autostate = vlan.get("autostate",str(VlanAutoState.disable))
+                autostate=vlan.get("autostate", str(VlanAutoState.disable)),
             )
         )
 
@@ -136,7 +141,74 @@ def del_vlan(device_ip, vlan_name: str):
         discover_vlan(device_ip)
 
 
+def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
+    """
+    Removes an IP address from a VLAN on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        ip_address (str, optional): The IP address to be removed from the VLAN. Defaults to None.
+
+    Raises:
+        Exception: If there is an error while removing the IP address from the VLAN on the device.
+
+    Returns:
+        None
+    """
+
+    try:
+        remove_ip_from_vlan_on_device(device_ip, vlan_name, ip_address)
+    except Exception as e:
+        _logger.error(f"VLAN IP removal failed on device {device_ip}, Reason: {e}")
+        raise
+    finally:
+        discover_vlan(device_ip)
+
+
+def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str = None):
+    """
+    Removes an anycast IP address from a VLAN on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        anycast_ip (str, optional): The anycast IP address to be removed from the VLAN. Defaults to None.
+
+    Raises:
+        Exception: If there is an error while removing the anycast IP address from the VLAN on the device.
+
+    Returns:
+        None
+    """
+
+    try:
+        remove_anycast_addr_from_vlan_on_device(device_ip, vlan_name, anycast_ip)
+    except Exception as e:
+        _logger.error(
+            f"VLAN Anycast IP removal failed on device {device_ip}, Reason: {e}"
+        )
+        raise
+    finally:
+        discover_vlan(device_ip)
+
+
 def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
+    """
+    Configures a VLAN on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        vlan_id (int): The ID of the VLAN.
+        **kwargs: Additional keyword arguments to be passed to the `config_vlan_on_device` function.
+
+    Raises:
+        Exception: If there is an error while configuring the VLAN on the device.
+
+    Returns:
+        None
+    """
     try:
         config_vlan_on_device(device_ip, vlan_name, vlan_id, **kwargs)
     except Exception as e:
@@ -147,6 +219,20 @@ def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
 
 
 def add_vlan_mem(device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]):
+    """
+    Adds VLAN members to a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_id (int): The ID of the VLAN.
+        mem_ifs (dict[str:IFMode]): A dictionary mapping interface names to their IFMode.
+
+    Raises:
+        Exception: If there is an error while adding VLAN members to the device.
+
+    Returns:
+        None
+    """
 
     try:
         add_vlan_mem_interface_on_device(device_ip, vlan_id, mem_ifs)
@@ -178,20 +264,22 @@ def get_vlan_members(device_ip, vlan_name: str):
     return mem_intf_vs_tagging_mode
 
 
-def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str = None):
+def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
     """
     Deletes a VLAN member from a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        vlan_name (str): The name of the VLAN.
-        if_name (str, optional): The name of the interface. Defaults to None.
+        vlan_id (int): The ID of the VLAN.
+        if_name (str): The name of the interface to be removed from the VLAN.
+        if_mode (IFMode): The mode of the interface to be removed from the VLAN.
 
     Returns:
         None
     """
-    try:
-        del_vlan_mem_interface_on_device(device_ip, vlan_id, if_name)
+    
+    try: 
+        del_vlan_mem_interface_on_device(device_ip, vlan_id, if_name, if_mode)
     except Exception as e:
         _logger.error(f"VLAN member deletion failed on device {device_ip}, Reason: {e}")
         raise

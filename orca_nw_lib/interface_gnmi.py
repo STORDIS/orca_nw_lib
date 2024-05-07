@@ -1,10 +1,11 @@
-from orca_nw_lib.common import PortFec, Speed
+from orca_nw_lib.common import IFMode, PortFec, Speed
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
     get_gnmi_del_req,
+    get_gnmi_path,
     send_gnmi_get,
     send_gnmi_set,
     get_logging,
@@ -242,6 +243,8 @@ def set_interface_config_on_device(
     ip_prefix_len: int = 0,
     index: int = 0,
     fec: PortFec = None,
+    if_mode: IFMode = None,
+    vlan_id: int = None,
 ):
     """
     Set the interface configuration on a device.
@@ -257,7 +260,8 @@ def set_interface_config_on_device(
         ip_prefix_len (int, optional): The prefix length of the IP address. Defaults to 0.
         index (int, optional): The index of the subinterface. Defaults to 0.
         fec (bool, optional): Whether to enable forward error correction. Defaults to None.
-
+        if_mode (IFMode, optional): The interface mode. Defaults to None.
+        vlan_id (int, optional): The VLAN ID of the interface. Defaults to None.
 
     Returns:
         None: If no updates were made.
@@ -362,7 +366,8 @@ def set_interface_config_on_device(
                 ip_payload,
             )
         )
-
+    if if_mode and vlan_id:
+        updates.append(get_if_mode_req(vlan_id, if_name, if_mode))
     if updates:
         return send_gnmi_set(
             create_req_for_update(updates),
@@ -525,3 +530,107 @@ def get_all_subinterfaces_from_device(device_ip: str, intfc_name: str):
     """
 
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(intfc_name)])
+
+
+def remove_vlan_from_if_from_device(device_ip: str, intfc_name: str, if_mode: IFMode):
+    """
+    Removes the interface mode from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+        if_mode (IFMode): The interface mode.
+
+    Returns:
+        The result of the GNMI delete operation.
+    """
+    path = None
+    if if_mode == IFMode.ACCESS:
+        path = get_gnmi_path(
+            f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/access-vlan"
+        )
+    else:
+        path = get_gnmi_path(
+            f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans"
+        )
+
+    return send_gnmi_set(
+        get_gnmi_del_req(path),
+        device_ip,
+    )
+
+
+def get_if_mode_from_device(device_ip: str, intfc_name: str):
+    """
+    Retrieves the interface mode from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+
+    Returns:
+        The interface mode as a string.
+    """
+
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[
+            get_gnmi_path(
+                f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/interface-mode"
+            )
+        ],
+    )
+
+
+def get_if_mode_req(vlan_id: int, if_name: str, if_mode: IFMode):
+    """
+    Creates a GNMI update request for the interface mode.
+
+    Args:
+        vlan_id (int): The VLAN ID.
+        if_name (str): The name of the interface.
+        if_mode (IFMode): The interface mode.
+
+    Returns:
+        The GNMI update request.
+    """
+    return create_gnmi_update(
+        get_gnmi_path(
+            f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config"
+        ),
+        (
+            {
+                "openconfig-vlan:config": {
+                    "interface-mode": str(if_mode),
+                    "access-vlan": vlan_id,
+                }
+            }
+            if if_mode == IFMode.ACCESS
+            else {
+                "openconfig-vlan:config": {
+                    "interface-mode": str(if_mode),
+                    "trunk-vlans": [vlan_id],
+                }
+            }
+        ),
+    )
+
+
+def set_vlan_if_mode_on_device(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
+    """
+    Sets the interface mode on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_name (str): The name of the interface.
+        if_mode (IFMode): The interface mode.
+        vlan_id (int): The VLAN ID.
+
+    Returns:
+        The result of the GNMI set operation.
+    """
+
+    return send_gnmi_set(
+        create_req_for_update([get_if_mode_req(vlan_id, if_name, if_mode)]),
+        device_ip,
+    )

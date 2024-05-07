@@ -2,7 +2,7 @@ import datetime
 from typing import Dict, List
 import pytz
 
-from .common import Speed, PortFec
+from .common import IFMode, Speed, PortFec
 from .device_db import get_device_db_obj
 from .gnmi_sub import ready_to_receive_subscription_response
 from .graph_db_models import Interface, SubInterface
@@ -16,7 +16,9 @@ from .interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
     del_all_subinterfaces_of_interface_from_device,
     get_interface_from_device,
+    set_vlan_if_mode_on_device,
     set_interface_config_on_device,
+    remove_vlan_from_if_from_device
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
@@ -80,7 +82,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                         else 0
                     )
                 ),
-                mac_addr=intfc_state.get("mac-address"),
+                mac_addr=intfc_state.get("mac-address")
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
@@ -186,7 +188,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         raise
     finally:
         ## discover the interface esp. the subinterfaces if there is a request to set IP
-        # on the interface because currently there are no gNMI subscription available 
+        # on the interface because currently there are no gNMI subscription available
         # for subinterface updates.
         if kwargs.get("ip"):
             discover_interfaces(device_ip, if_name)
@@ -307,3 +309,52 @@ def del_all_subinterfaces_of_all_interfaces(device_ip: str):
         raise
     finally:
         discover_interfaces(device_ip)
+
+
+def remove_vlan(device_ip: str, intfc_name: str, if_mode: IFMode):
+    """
+    Removes the VLAN from an interface.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+        if_mode (IFMode): The interface mode to remove.
+
+    Returns:
+        None
+    """
+    _logger.info(f"Removing interface mode {if_mode} from interface {intfc_name}.")
+    try:
+        remove_vlan_from_if_from_device(device_ip, intfc_name, if_mode)
+    except Exception as e:
+        _logger.error(
+            f"Removing interface mode {if_mode} from interface {intfc_name} on device {device_ip} failed, Reason: {e}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip, intfc_name)
+
+
+def set_if_mode(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
+    """
+    Sets the interface mode on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_name (str): The name of the interface.
+        if_mode (IFMode): The interface mode to set.
+        vlan_id (int): The VLAN ID to set.
+
+    Returns:
+        None
+    """
+    _logger.info(f"Setting interface mode {if_mode} on interface {if_name}.")
+    try:
+        set_vlan_if_mode_on_device(device_ip, if_name, if_mode, vlan_id)
+    except Exception as e:
+        _logger.error(
+            f"Setting interface mode {if_mode} on interface {if_name} on device {device_ip} failed, Reason: {e}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip, if_name)

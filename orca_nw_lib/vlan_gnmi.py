@@ -8,6 +8,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
     get_gnmi_path,
 )
+from orca_nw_lib.interface_gnmi import get_if_mode_req
 from .utils import validate_and_get_ip_prefix
 
 
@@ -174,6 +175,24 @@ def config_vlan_on_device(
     mem_ifs: dict[str:IFMode] = None,
     mtu: int = None,
 ):
+    """
+    Configures a VLAN on a network device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        vlan_id (int): The ID of the VLAN.
+        autostate (VlanAutoState, optional): The autostate of the VLAN. Defaults to None.
+        ip_addr_with_prefix (str, optional): The IP address with prefix of the VLAN. Defaults to None.
+        anycast_addr (str, optional): The anycast address of the VLAN. Defaults to None.
+        enabled (bool, optional): Whether the VLAN is enabled. Defaults to None.
+        descr (str, optional): The description of the VLAN. Defaults to None.
+        mem_ifs (dict[str:IFMode], optional): A dictionary mapping interface names to VLAN tag modes. Defaults to None.
+        mtu (int, optional): The MTU of the VLAN. Defaults to None.
+
+    Returns:
+        The result of the GNMI set operation.
+    """
     update_req = []
     update_req.append(
         create_gnmi_update(
@@ -186,20 +205,31 @@ def config_vlan_on_device(
         )
     )
 
-    config_payload = {}
     if enabled:
-        config_payload.update({"openconfig-interfaces:enabled": enabled})
-    if descr:
-        config_payload.update({"openconfig-interfaces:description": descr})
-    if mtu:
-        config_payload.update({"openconfig-interfaces:mtu": mtu})
-    if config_payload:
         update_req.append(
             create_gnmi_update(
                 get_gnmi_path(
-                    f"openconfig-interfaces:interfaces/interface={{'name': {vlan_name}}}/config/mtu",
+                    f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/config/enabled",
                 ),
-                config_payload,
+                {"openconfig-interfaces:enabled": enabled},
+            )
+        )
+    if descr:
+        update_req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/config/description",
+                ),
+                {"openconfig-interfaces:description": descr},
+            )
+        )
+    if mtu:
+        update_req.append(
+            create_gnmi_update(
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/config/mtu",
+                ),
+                {"openconfig-interfaces:mtu": mtu},
             )
         )
 
@@ -257,39 +287,122 @@ def config_vlan_on_device(
 
 
 def get_add_vlan_mem_req(vlan_id: int, mem_ifs: dict[str:IFMode]):
+    """
+    Generates a list of GNMI updates for adding VLAN member interfaces.
+
+    Args:
+        vlan_id (int): The ID of the VLAN.
+        mem_ifs (dict[str:IFMode]): A dictionary mapping interface names to their mode.
+
+    Returns:
+        list: A list of GNMI updates for adding VLAN member interfaces.
+    """
     req = []
     for if_name, if_mode in mem_ifs.items():
-        req.append(
-            create_gnmi_update(
-                get_gnmi_path(
-                    f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config"
-                ),
-                {
-                    "openconfig-vlan:config": {
-                        "interface-mode": str(if_mode),
-                        "access-vlan": vlan_id,
-                    }
-                },
-            )
-        )
+        req.append(get_if_mode_req(vlan_id, if_name, if_mode))
     return req
 
 
 def add_vlan_mem_interface_on_device(
     device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]
 ):
+    """
+    Adds a VLAN member interface on a device using the specified device IP, VLAN ID, and member interfaces dictionary.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_id (int): The ID of the VLAN.
+        mem_ifs (dict[str:IFMode]): A dictionary mapping interface names to their mode.
+
+    Returns:
+        The result of sending a GNMI set request to add the VLAN member interface.
+    """
     return send_gnmi_set(
         create_req_for_update(get_add_vlan_mem_req(vlan_id, mem_ifs)),
         device_ip,
     )
 
 
-def del_vlan_mem_interface_on_device(device_ip: str, vlan_id: int, if_name: str):
+def del_vlan_mem_interface_on_device(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
+    """
+    Deletes a VLAN member interface on a device using the specified device IP, VLAN ID, and interface name.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_id (int): The ID of the VLAN.
+        if_name (str): The name of the interface to be removed from the VLAN.
+        if_mode (IFMode): The mode of the interface to be removed from the VLAN.
+
+    Returns:
+        Result of sending a GNMI set request to delete the VLAN member interface.
+    """
     return send_gnmi_set(
         get_gnmi_del_req(
             get_gnmi_path(
-                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]"
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]" if if_mode == IFMode.TRUNK
+                else f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/access-vlan"
             )
+        ),
+        device_ip,
+    )
+
+
+def vlan_ip_addr_oc_path(vlan_name, ip_addr=None):
+    return (
+        f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address[ip={ip_addr}]"
+        if ip_addr
+        else f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses/address"
+    )
+
+
+def remove_ip_from_vlan_on_device(
+    device_ip: str, vlan_name: str, ip_addr_with_prefix: str = None
+):
+    """
+    Removes an IP address with prefix from a VLAN on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        ip_addr_with_prefix (str): The IP address with prefix to be removed from the VLAN.
+
+    Returns:
+        Result of sending a GNMI set request to remove the IP address from the VLAN on the device.
+    """
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            get_gnmi_path(vlan_ip_addr_oc_path(vlan_name, ip_addr_with_prefix))
+        ),
+        device_ip,
+    )
+
+
+def get_vlan_anycast_ip_oc_path(vlan_name, ip=None):
+    return (
+        f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway[static-anycast-gateway={ip}]"
+        if ip
+        else f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+    )
+
+
+def remove_anycast_addr_from_vlan_on_device(
+    device_ip: str, vlan_name: str, anycast_ip: str
+):
+    """
+    Removes an anycast IP address from a VLAN on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vlan_name (str): The name of the VLAN.
+        anycast_ip (str): The anycast IP address to be removed from the VLAN.
+
+    Returns:
+        The result of sending a GNMI set request to remove the anycast IP address from the VLAN on the device.
+    """
+
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            get_gnmi_path(get_vlan_anycast_ip_oc_path(vlan_name, anycast_ip))
         ),
         device_ip,
     )
