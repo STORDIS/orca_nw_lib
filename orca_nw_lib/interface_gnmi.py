@@ -532,26 +532,32 @@ def get_all_subinterfaces_from_device(device_ip: str, intfc_name: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_sub_interface_path(intfc_name)])
 
 
-def remove_vlan_from_if_from_device(device_ip: str, intfc_name: str, if_mode: IFMode):
+def remove_vlan_from_if_from_device(
+    device_ip: str, intfc_name: str, if_mode: IFMode = None
+):
     """
     Removes the interface mode from a device.
 
     Args:
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
-        if_mode (IFMode): The interface mode.
+        if_mode (IFMode): The interface mode. Defaults to None. When None is passed, All the trunk and access VLANs are removed from Interface.
 
     Returns:
-        The result of the GNMI delete operation.
+        The result of the gNMI delete operation.
     """
     path = None
     if if_mode == IFMode.ACCESS:
         path = get_gnmi_path(
             f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/access-vlan"
         )
-    else:
+    elif if_mode == IFMode.TRUNK:
         path = get_gnmi_path(
             f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans"
+        )
+    else:
+        path = get_gnmi_path(
+            f"/openconfig-interfaces:interfaces/interface[name={intfc_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan"
         )
 
     return send_gnmi_set(
@@ -616,7 +622,9 @@ def get_if_mode_req(vlan_id: int, if_name: str, if_mode: IFMode):
     )
 
 
-def set_vlan_if_mode_on_device(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
+def set_vlan_if_mode_on_device(
+    device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int
+):
     """
     Sets the interface mode on a device.
 

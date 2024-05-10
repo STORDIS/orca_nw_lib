@@ -18,7 +18,7 @@ from .interface_gnmi import (
     get_interface_from_device,
     set_vlan_if_mode_on_device,
     set_interface_config_on_device,
-    remove_vlan_from_if_from_device
+    remove_vlan_from_if_from_device,
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
@@ -82,7 +82,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                         else 0
                     )
                 ),
-                mac_addr=intfc_state.get("mac-address")
+                mac_addr=intfc_state.get("mac-address"),
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
@@ -311,14 +311,14 @@ def del_all_subinterfaces_of_all_interfaces(device_ip: str):
         discover_interfaces(device_ip)
 
 
-def remove_vlan(device_ip: str, intfc_name: str, if_mode: IFMode):
+def remove_vlan(device_ip: str, intfc_name: str, if_mode: IFMode = None):
     """
     Removes the VLAN from an interface.
 
     Args:
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
-        if_mode (IFMode): The interface mode to remove.
+        if_mode (IFMode): The interface mode to remove. Defaults to None. When None is passed, All the trunk and access VLANs are removed from Interface.
 
     Returns:
         None
