@@ -40,7 +40,7 @@ Then open https://localhost:7474 with credentials neo4j/password to browse the d
 
 ### orca_nw_lib configuration
 In the application where orca_nw_lib is used, `load_orca_config` function in [utils.py](orca_nw_lib/utils.py) must be called before using any APIs of orca_nw_lib. This function loads device and neo4j access information also the logging configuration by default from 
-[orca.yml](orca_nw_lib/orca.yml) and [logging.yml](orca_nw_lib/logging.yml) files.
+[orca_nw_lib.yml](orca_nw_lib/orca_nw_lib.yml) and [orca_nw_lib_logging.yml](orca_nw_lib/orca_nw_lib_logging.yml) files.
 Although user can call load_orca_config with custom config files.
 The parameter information is documented in orca.yml file and logging.yml is standard python logging configuration file.
 
