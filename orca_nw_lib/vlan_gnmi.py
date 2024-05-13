@@ -154,10 +154,8 @@ def del_vlan_from_device(device_ip: str, vlan_name: str):
     return send_gnmi_set(
         get_gnmi_del_req(
             get_gnmi_path(
-                f"/openconfig-interfaces:interfaces/interface={{'name': {vlan_name}}}"
+                f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]"
             )
-            if not vlan_name
-            else get_vlan_list_path(vlan_name)
         ),
         device_ip,
     )
@@ -205,7 +203,7 @@ def config_vlan_on_device(
         )
     )
 
-    if enabled:
+    if enabled is not None:
         update_req.append(
             create_gnmi_update(
                 get_gnmi_path(
@@ -234,7 +232,7 @@ def config_vlan_on_device(
         )
 
     if ip_addr_with_prefix:
-        ip, prefix_len = validate_and_get_ip_prefix(ip_addr_with_prefix)
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_addr_with_prefix)
         if ip and prefix_len:
             update_req.append(
                 create_gnmi_update(
@@ -271,17 +269,53 @@ def config_vlan_on_device(
         update_req.extend(get_add_vlan_mem_req(vlan_id, mem_ifs))
 
     if anycast_addr:
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(anycast_addr)
         update_req.append(
             create_gnmi_update(
                 get_gnmi_path(
                     f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
                 ),
-                {"openconfig-interfaces-ext:static-anycast-gateway": [anycast_addr]},
+                {
+                    "openconfig-interfaces-ext:static-anycast-gateway": [
+                        f"{ip}/{prefix_len}"
+                    ]
+                },
             )
         )
 
     return send_gnmi_set(
         create_req_for_update(update_req),
+        device_ip,
+    )
+
+
+def set_ip_addr_on_vlan_on_device(
+    device_ip: str, vlan_name: str, ip_addr_with_prefix: str
+):
+    ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_addr_with_prefix)
+    return send_gnmi_set(
+        create_req_for_update(
+            [
+                create_gnmi_update(
+                    get_gnmi_path(
+                        f"/openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/addresses",
+                    ),
+                    {
+                        "openconfig-if-ip:addresses": {
+                            "address": [
+                                {
+                                    "ip": ip,
+                                    "openconfig-if-ip:config": {
+                                        "ip": ip,
+                                        "prefix-length": prefix_len,
+                                    },
+                                }
+                            ]
+                        }
+                    },
+                )
+            ]
+        ),
         device_ip,
     )
 
@@ -323,7 +357,9 @@ def add_vlan_mem_interface_on_device(
     )
 
 
-def del_vlan_mem_interface_on_device(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
+def del_vlan_mem_interface_on_device(
+    device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode
+):
     """
     Deletes a VLAN member interface on a device using the specified device IP, VLAN ID, and interface name.
 
@@ -339,7 +375,8 @@ def del_vlan_mem_interface_on_device(device_ip: str, vlan_id: int, if_name: str,
     return send_gnmi_set(
         get_gnmi_del_req(
             get_gnmi_path(
-                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]" if if_mode == IFMode.TRUNK
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]"
+                if if_mode == IFMode.TRUNK
                 else f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/access-vlan"
             )
         ),

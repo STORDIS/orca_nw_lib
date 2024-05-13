@@ -275,11 +275,12 @@ class Vlan(StructuredNode):
     vlanid = IntegerProperty()
     name = StringProperty()
     mtu = IntegerProperty()
-    admin_status = StringProperty()
     oper_status = StringProperty()
     autostate = StringProperty()
     ip_address = StringProperty()
     sag_ip_address = StringProperty()
+    enabled = BooleanProperty()
+    description = StringProperty()
 
     memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
 

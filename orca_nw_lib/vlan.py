@@ -76,9 +76,10 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
         for v in vlans:
             if v.name == vlan.get("name"):
                 v.mtu = vlan.get("mtu")
-                v.admin_status = vlan.get("admin_status")
+                v.enabled = True if vlan.get("admin_status")== "up" else False
                 v.oper_status = vlan.get("oper_status")
                 v.autostate = vlan.get("autostate")
+                v.description=vlan.get("description")
 
     vlans_obj_vs_mem = {}
     for v in vlans:

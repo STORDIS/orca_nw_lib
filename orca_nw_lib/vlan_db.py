@@ -75,11 +75,12 @@ def copy_vlan_obj_prop(target_vlan_obj: Vlan, source_vlan_obj: Vlan):
     target_vlan_obj.vlanid = source_vlan_obj.vlanid
     target_vlan_obj.name = source_vlan_obj.name
     target_vlan_obj.mtu = source_vlan_obj.mtu
-    target_vlan_obj.admin_status = source_vlan_obj.admin_status
+    target_vlan_obj.enabled = source_vlan_obj.enabled
     target_vlan_obj.oper_status = source_vlan_obj.oper_status
     target_vlan_obj.autostate = source_vlan_obj.autostate
     target_vlan_obj.ip_address = source_vlan_obj.ip_address
     target_vlan_obj.sag_ip_address = source_vlan_obj.sag_ip_address
+    target_vlan_obj.description = source_vlan_obj.description
 
 
 def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):

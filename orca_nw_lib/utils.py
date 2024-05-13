@@ -1,6 +1,7 @@
 """ Utils for ORCA Network Library """
 
 import os
+import re
 import ipaddress
 import logging.config
 import logging
@@ -135,10 +136,28 @@ def ping_ok(host, max_retries=1):
 
 
 
-def validate_and_get_ip_prefix(ip_address):
+def validate_and_get_ip_prefix(network_address:str):
+    """
+    Validates and extracts the IP prefix from a given network address.
+
+    Args:
+        network_address (str): The network address to validate and extract the IP prefix from.
+
+    Returns:
+        Tuple[str, str, int] or Tuple[None, None, None]: A tuple containing the network address, the IP address, and the prefix length.
+        If the network address is invalid, returns (None, None, None).
+    """
     try:
-        ip_network = ipaddress.ip_network(ip_address,strict=False)
-        return str(ip_network.network_address), ip_network.prefixlen
+        ip_network = ipaddress.ip_network(network_address, strict=False)
+        return (
+            (
+                network_address.split(match.group(), 1)[0]
+                if (match := re.search("/", network_address))
+                else network_address
+            ),
+            str(ip_network.network_address),
+            ip_network.prefixlen
+        )
     except ValueError:
-        _logger.error(f"Invalid IP address: {ip_address}")
-        return None, None
+        _logger.error(f"Invalid network address: {network_address}")
+        return None, None, None
