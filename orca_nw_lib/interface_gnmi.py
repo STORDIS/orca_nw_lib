@@ -367,7 +367,7 @@ def set_interface_config_on_device(
             )
         )
     if if_mode and vlan_id:
-        updates.append(get_if_mode_req(vlan_id, if_name, if_mode))
+        updates.append(get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
     if updates:
         return send_gnmi_set(
             create_req_for_update(updates),
@@ -588,7 +588,7 @@ def get_if_mode_from_device(device_ip: str, intfc_name: str):
     )
 
 
-def get_if_mode_req(vlan_id: int, if_name: str, if_mode: IFMode):
+def get_if_vlan_gnmi_update_req(vlan_id: int, if_name: str, if_mode: IFMode):
     """
     Creates a GNMI update request for the interface mode.
 
@@ -600,6 +600,7 @@ def get_if_mode_req(vlan_id: int, if_name: str, if_mode: IFMode):
     Returns:
         The GNMI update request.
     """
+
     return create_gnmi_update(
         get_gnmi_path(
             f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config"
@@ -622,9 +623,7 @@ def get_if_mode_req(vlan_id: int, if_name: str, if_mode: IFMode):
     )
 
 
-def set_vlan_if_mode_on_device(
-    device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int
-):
+def set_if_vlan_on_device(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
     """
     Sets the interface mode on a device.
 
@@ -639,6 +638,6 @@ def set_vlan_if_mode_on_device(
     """
 
     return send_gnmi_set(
-        create_req_for_update([get_if_mode_req(vlan_id, if_name, if_mode)]),
+        create_req_for_update([get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode)]),
         device_ip,
     )

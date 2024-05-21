@@ -1,3 +1,4 @@
+from orca_nw_lib.common import IFMode
 from orca_nw_lib.gnmi_pb2 import PathElem
 from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
@@ -12,11 +13,13 @@ from .gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
     get_gnmi_del_req,
+    get_gnmi_path,
     send_gnmi_get,
     send_gnmi_set,
 )
 
 _logger = get_logging().getLogger(__name__)
+
 
 def get_port_chnl_root_path() -> Path:
     """
@@ -282,7 +285,7 @@ def add_port_chnl_member_on_device(device_ip: str, chnl_name: str, ifnames: list
     port_chnl_add = {"sonic-portchannel:PORTCHANNEL_MEMBER_LIST": []}
     for intf in ifnames:
         port_chnl_add.get("sonic-portchannel:PORTCHANNEL_MEMBER_LIST").append(
-            {"ifname": intf,"name": chnl_name}
+            {"ifname": intf, "name": chnl_name}
         )
     _logger.debug(f"Adding port channel member on device {device_ip} {port_chnl_add}")
     return send_gnmi_set(
@@ -322,6 +325,64 @@ def add_port_chnl_on_device(
     return send_gnmi_set(
         create_req_for_update(
             [create_gnmi_update(get_port_chnl_list_path(), port_chnl_add)]
+        ),
+        device_ip,
+    )
+
+
+def get_port_channel_vlan_gnmi_update_req(vlan_id: int, port_channel_name: str, if_mode: IFMode):
+    """
+    Generates a GNMI update request for configuring VLAN settings on a port channel.
+
+    Parameters:
+        vlan_id (int): The VLAN ID to be configured.
+        port_channel_name (str): The name of the port channel.
+        if_mode (IFMode): The interface mode to set, either ACCESS or TRUNK.
+
+    Returns:
+        The GNMI update request for setting VLAN configuration on the specified port channel.
+    """
+    return create_gnmi_update(
+        get_gnmi_path(
+            f"/openconfig-interfaces:interfaces/interface[name={port_channel_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config"
+        ),
+        (
+            {
+                "openconfig-vlan:config": {
+                    "interface-mode": str(if_mode),
+                    "access-vlan": vlan_id,
+                }
+            }
+            if if_mode == IFMode.ACCESS
+            else {
+                "openconfig-vlan:config": {
+                    "interface-mode": str(if_mode),
+                    "trunk-vlans": [vlan_id],
+                }
+            }
+        ),
+    )
+
+
+def set_port_channel_vlan_on_device(
+    device_ip: str, port_channel_name: str, if_mode: IFMode, vlan_id: int
+):
+    """
+    Sets the VLAN configuration on a port channel for a specified device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_channel_name (str): The name of the port channel.
+        if_mode (IFMode): The interface mode to set, either ACCESS or TRUNK.
+        vlan_id (int): The VLAN ID to be configured.
+
+    Returns:
+        The result of sending a GNMI set request for configuring the VLAN settings on the port channel.
+    """
+    
+    return send_gnmi_set(
+        create_req_for_update(
+            [get_port_channel_vlan_gnmi_update_req(vlan_id, port_channel_name, if_mode)]
         ),
         device_ip,
     )

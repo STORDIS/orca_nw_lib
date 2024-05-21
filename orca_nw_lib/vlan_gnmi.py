@@ -8,7 +8,8 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
     get_gnmi_path,
 )
-from orca_nw_lib.interface_gnmi import get_if_mode_req
+from orca_nw_lib.interface_gnmi import get_if_vlan_gnmi_update_req
+from orca_nw_lib.port_chnl_gnmi import get_port_channel_vlan_gnmi_update_req
 from .utils import validate_and_get_ip_prefix
 
 
@@ -333,7 +334,10 @@ def get_add_vlan_mem_req(vlan_id: int, mem_ifs: dict[str:IFMode]):
     """
     req = []
     for if_name, if_mode in mem_ifs.items():
-        req.append(get_if_mode_req(vlan_id, if_name, if_mode))
+        if "portchannel" in if_name.lower():
+            req.append(get_port_channel_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
+        else:
+            req.append(get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
     return req
 
 
@@ -361,7 +365,7 @@ def del_vlan_mem_interface_on_device(
     device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode
 ):
     """
-    Deletes a VLAN member interface on a device using the specified device IP, VLAN ID, and interface name.
+    Deletes a VLAN member interface on a device using the specified device IP, VLAN ID, interface name, and interface mode.
 
     Args:
         device_ip (str): The IP address of the device.
@@ -372,12 +376,18 @@ def del_vlan_mem_interface_on_device(
     Returns:
         Result of sending a GNMI set request to delete the VLAN member interface.
     """
+    
     return send_gnmi_set(
         get_gnmi_del_req(
             get_gnmi_path(
                 f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]"
                 if if_mode == IFMode.TRUNK
                 else f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/openconfig-vlan:switched-vlan/config/access-vlan"
+            ) if "ethernet" in if_name.lower() else ## Its a port channel
+            get_gnmi_path(
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={vlan_id}]"
+                if if_mode == IFMode.TRUNK
+                else f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/access-vlan"
             )
         ),
         device_ip,

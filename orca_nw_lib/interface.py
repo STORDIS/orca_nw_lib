@@ -16,7 +16,7 @@ from .interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
     del_all_subinterfaces_of_interface_from_device,
     get_interface_from_device,
-    set_vlan_if_mode_on_device,
+    set_if_vlan_on_device,
     set_interface_config_on_device,
     remove_vlan_from_if_from_device,
 )
@@ -350,7 +350,7 @@ def set_if_mode(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
     """
     _logger.info(f"Setting interface mode {if_mode} on interface {if_name}.")
     try:
-        set_vlan_if_mode_on_device(device_ip, if_name, if_mode, vlan_id)
+        set_if_vlan_on_device(device_ip, if_name, if_mode, vlan_id)
     except Exception as e:
         _logger.error(
             f"Setting interface mode {if_mode} on interface {if_name} on device {device_ip} failed, Reason: {e}"
