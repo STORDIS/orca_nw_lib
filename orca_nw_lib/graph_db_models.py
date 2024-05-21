@@ -283,6 +283,7 @@ class Vlan(StructuredNode):
     description = StringProperty()
 
     memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
+    memberPortChannel = RelationshipTo("PortChannel", "MEMBER_PORT_CHANNEL", model=VlanMemRel)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

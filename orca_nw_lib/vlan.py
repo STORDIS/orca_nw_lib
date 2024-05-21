@@ -5,6 +5,7 @@ from .common import IFMode, VlanAutoState
 
 from .device_db import get_device_db_obj
 from .vlan_db import (
+    get_vlan_member_port_channels_from_db,
     get_vlan_obj_from_db,
     get_vlan_mem_ifcs_from_db,
     insert_vlan_in_db,
@@ -76,10 +77,10 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
         for v in vlans:
             if v.name == vlan.get("name"):
                 v.mtu = vlan.get("mtu")
-                v.enabled = True if vlan.get("admin_status")== "up" else False
+                v.enabled = True if vlan.get("admin_status") == "up" else False
                 v.oper_status = vlan.get("oper_status")
                 v.autostate = vlan.get("autostate")
-                v.description=vlan.get("description")
+                v.description = vlan.get("description")
 
     vlans_obj_vs_mem = {}
     for v in vlans:
@@ -255,13 +256,26 @@ def get_vlan_members(device_ip, vlan_name: str):
     Returns:
         dict: A dictionary mapping member interface names to their corresponding tagging mode.
     """
-    members = get_vlan_mem_ifcs_from_db(device_ip, vlan_name)
     mem_intf_vs_tagging_mode = {}
-    for mem in members or []:
+
+    member_ethernet = get_vlan_mem_ifcs_from_db(device_ip, vlan_name)
+    for mem in member_ethernet or []:
         mem_rel = get_vlan_obj_from_db(
             device_ip, vlan_name
         ).memberInterfaces.relationship(mem)
-        mem_intf_vs_tagging_mode[mem.name] = mem_rel.tagging_mode
+        mem_intf_vs_tagging_mode[mem.name] = (
+            IFMode.TRUNK if mem_rel.tagging_mode == "tagged" else IFMode.ACCESS
+        )
+
+    member_port_channel = get_vlan_member_port_channels_from_db(device_ip, vlan_name)
+    for mem in member_port_channel or []:
+        mem_rel = get_vlan_obj_from_db(
+            device_ip, vlan_name
+        ).memberPortChannel.relationship(mem)
+        mem_intf_vs_tagging_mode[mem.lag_name] = (
+            IFMode.TRUNK if mem_rel.tagging_mode == "tagged" else IFMode.ACCESS
+        )
+
     return mem_intf_vs_tagging_mode
 
 
@@ -278,8 +292,8 @@ def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
     Returns:
         None
     """
-    
-    try: 
+
+    try:
         del_vlan_mem_interface_on_device(device_ip, vlan_id, if_name, if_mode)
     except Exception as e:
         _logger.error(f"VLAN member deletion failed on device {device_ip}, Reason: {e}")
