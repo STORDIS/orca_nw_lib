@@ -175,6 +175,9 @@ def discover_device(ip_or_nw: str):
         "Network Discovery Started using network provided {0}".format(ip_or_nw)
     )
     report = []
+    if not ip_or_nw:
+        _logger.error("Invalid network address- {ip_or_nw}, can not discover devices !!")
+        return report
     for device_ip in ipaddress.ip_network(ip_or_nw):
         device_ip = str(device_ip)
         if not ping_ok(device_ip):
