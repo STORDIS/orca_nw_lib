@@ -169,7 +169,9 @@ class Interface(StructuredNode):
     mac_addr = StringProperty()
     subInterfaces = RelationshipTo("SubInterface", "HAS")
     lldp_neighbour = RelationshipTo("Interface", "LLDP_NBR")
-
+    alias = StringProperty()
+    lanes =StringProperty()
+    valid_speeds= StringProperty()
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name

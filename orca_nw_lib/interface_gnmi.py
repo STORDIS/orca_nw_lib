@@ -1,7 +1,7 @@
-from orca_nw_lib.common import IFMode, PortFec, Speed
-from orca_nw_lib.gnmi_pb2 import Path, PathElem
-from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db
-from orca_nw_lib.gnmi_util import (
+from .common import IFMode, PortFec, Speed
+from .gnmi_pb2 import Path, PathElem
+from .interface_db import get_all_interfaces_name_of_device_from_db
+from .gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
     get_gnmi_del_req,
@@ -389,7 +389,18 @@ def get_interface_from_device(device_ip: str, intfc_name: str = None):
         The result of the GNMI get operation for the specified device and interface.
     """
 
-    return send_gnmi_get(device_ip=device_ip, path=[get_interface_path(intfc_name)])
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[
+            get_interface_path(intfc_name),
+            ## Additional path for getting lane details
+            get_gnmi_path(
+                f"sonic-port:sonic-port/PORT/PORT_LIST[ifname={intfc_name}]"
+                if intfc_name
+                else "sonic-port:sonic-port/PORT/PORT_LIST"
+            ),
+        ],
+    )
 
 
 def get_interface_config_from_device(device_ip: str, intfc_name: str):

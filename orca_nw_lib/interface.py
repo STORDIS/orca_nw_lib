@@ -44,6 +44,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     """
     interfaces_json = get_interface_from_device(device_ip, intfc_name)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
+    if_lane_details=interfaces_json.get("sonic-port:PORT_LIST")
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
         if_type = intfc.get("config").get("type")
@@ -95,6 +96,16 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     if addr.get("ip"):
                         sub_intf_obj.ip_address = addr.get("ip")
                     sub_intf_obj_list.append(sub_intf_obj)
+            
+            ## Now iterate lane details
+            for indx,value in enumerate(if_lane_details or []):
+                if interface.name == value.get("ifname"):
+                    interface.alias=value.get("alias")
+                    interface.lanes=value.get("lanes")
+                    interface.valid_speeds=value.get("valid_speeds")
+                    ## To minimize iteration for element in outer loop
+                    if_lane_details.pop(indx)
+                    break
 
             intfc_graph_obj_list[interface] = sub_intf_obj_list
         elif "lag" in if_type.lower():
@@ -102,6 +113,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
             pass
         else:
             _logger.error(f"Unknown Interface type {if_type}")
+        
 
     return intfc_graph_obj_list
 
