@@ -2,7 +2,7 @@
 version = "1.3.9"
 name = "orca_nw_lib"
 description = "APIs to interact with SONiC NW"
-readme = "readme.md"
+readme = "README.md"
 authors = ["Kamal Krishna Bhatt <kamal.bhatt@stordis.com>"]
 include = ["orca_nw_lib/github/**/*", "orca_nw_lib/github.com/**/*"]
 
