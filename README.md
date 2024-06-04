@@ -1,3 +1,19 @@
+
+<p align="center">
+<a href="https://pypi.org/project/orca_nw_lib/">
+      <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/orca-nw-lib">
+    </a>
+<a href="https://github.com/stordis/orca_nw_lib/issues">
+      <img alt="Issues" src="https://img.shields.io/github/issues/stordis/orca_nw_lib?color=0088ff" />
+</a>
+<a href="https://github.com/stordis/orca_nw_lib/graphs/contributors">
+      <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/stordis/orca_nw_lib" />
+</a>
+<a href="https://github.com/stordis/orca_nw_lib/pulls?q=">
+      <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/stordis/orca_nw_lib?color=0088ff" />
+</a>
+</p>
+
 # ORCA Network Library
 ORCA Network Library is an open source python package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
 ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
