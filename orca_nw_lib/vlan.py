@@ -56,7 +56,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
         )
 
         ipv4_addr = None
-        for ipv4 in ipv4_addresses:
+        for ipv4 in ipv4_addresses or []:
             if (ip := ipv4.get("config", {}).get("ip", "")) and (
                 pfx := ipv4.get("config", {}).get("prefix-length", "")
             ):
@@ -74,7 +74,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
         )
 
     for vlan in vlan_details.get("sonic-vlan:VLAN_TABLE_LIST") or []:
-        for v in vlans:
+        for v in vlans or []:
             if v.name == vlan.get("name"):
                 v.mtu = vlan.get("mtu")
                 v.enabled = True if vlan.get("admin_status") == "up" else False
@@ -83,7 +83,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
                 v.description = vlan.get("description")
 
     vlans_obj_vs_mem = {}
-    for v in vlans:
+    for v in vlans or []:
         members = []
         for item in vlan_details.get("sonic-vlan:VLAN_MEMBER_LIST") or []:
             if v.name == item.get("name"):
@@ -316,7 +316,7 @@ def discover_vlan(device_ip: str = None):
 
     _logger.info("Discovering VLAN.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
-    for device in devices:
+    for device in devices or []:
         try:
             _logger.info(f"Discovering VLAN on device {device}.")
             insert_vlan_in_db(device, _create_vlan_db_obj(device.mgt_ip))
