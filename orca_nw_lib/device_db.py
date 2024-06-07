@@ -1,4 +1,6 @@
 from orca_nw_lib.graph_db_models import Device
+from orca_nw_lib.utils import clean_db, get_logging
+_logger = get_logging().getLogger(__name__)
 
 def get_all_devices_ip_from_db():
     """
@@ -29,37 +31,42 @@ def get_device_db_obj(mgt_ip: str = None):
 
 def delete_device(mgt_ip: str = None):
     """
-    Delete all the has relationship of given device
-    Delete the given devices from the database.
+    Deletes the device from the database.
+
+    Parameters:
+        mgt_ip (str): The management IP of the device. Defaults to None.
+
     """
-    if mgt_ip:
+    try:
+        if mgt_ip:
+            ## Delete Specific Device and its components, when mgt_ip is provided.
+            devices = get_device_db_obj(mgt_ip)
 
-        devices = get_device_db_obj(mgt_ip)
+            for chnl in devices.port_chnl.all() or []:
+                chnl.delete()
 
-        for chnl in devices.port_chnl.all() or []:
-            chnl.delete()
+            for mclag in devices.mclags.all() or []:
+                mclag.delete()
 
-        for mclag in devices.mclags.all() or []:
-            mclag.delete()
+            for port_group in devices.port_groups.all() or []:
+                port_group.delete()
 
-        for port_group in devices.port_groups.all() or []:
-            port_group.delete()
+            for vlan in devices.vlans.all() or []:
+                vlan.delete()
 
-        for vlan in devices.vlans.all() or []:
-            vlan.delete()
+            for mclag_gw_mac in devices.mclag_gw_macs.all() or []:
+                mclag_gw_mac.delete()
 
-        for mclag_gw_mac in devices.mclag_gw_macs.all() or []:
-            mclag_gw_mac.delete()
+            for interface in devices.interfaces.all() or []:
+                for sub in interface.subInterfaces.all() or []:
+                    sub.delete()
+                interface.delete()
 
-        for interface in devices.interfaces.all() or []:
-            for sub in interface.subInterfaces.all() or []:
-                sub.delete()
-            interface.delete()
-
-        devices.delete()
-
+            devices.delete()
+        else:
+            ## Delete all devices and their components. When mgt_ip is not provided.
+            clean_db()
         return True
-
-    else:
+    except Exception as e:
+        _logger.error(f"Error: {e}")
         return False
-
