@@ -40,29 +40,29 @@ def delete_device(mgt_ip: str = None):
     try:
         if mgt_ip:
             ## Delete Specific Device and its components, when mgt_ip is provided.
-            devices = get_device_db_obj(mgt_ip)
+            device = get_device_db_obj(mgt_ip)
 
-            for chnl in devices.port_chnl.all() or []:
+            for chnl in device.port_chnl.all() or []:
                 chnl.delete()
 
-            for mclag in devices.mclags.all() or []:
+            for mclag in device.mclags.all() or []:
                 mclag.delete()
 
-            for port_group in devices.port_groups.all() or []:
+            for port_group in device.port_groups.all() or []:
                 port_group.delete()
 
-            for vlan in devices.vlans.all() or []:
+            for vlan in device.vlans.all() or []:
                 vlan.delete()
 
-            for mclag_gw_mac in devices.mclag_gw_macs.all() or []:
+            for mclag_gw_mac in device.mclag_gw_macs.all() or []:
                 mclag_gw_mac.delete()
 
-            for interface in devices.interfaces.all() or []:
+            for interface in device.interfaces.all() or []:
                 for sub in interface.subInterfaces.all() or []:
                     sub.delete()
                 interface.delete()
-
-            devices.delete()
+                            
+            device.delete()
         else:
             ## Delete all devices and their components. When mgt_ip is not provided.
             clean_db()
