@@ -62,7 +62,7 @@ class PortChannel(StructuredNode):
     oper_sts = StringProperty()
     speed = StringProperty()
     oper_sts_reason = StringProperty()
-
+    
     members = RelationshipTo("Interface", "HAS_MEMBER")
     peer_link = RelationshipTo("PortChannel", "peer_link")
 
@@ -172,6 +172,10 @@ class Interface(StructuredNode):
     alias = StringProperty()
     lanes =StringProperty()
     valid_speeds= StringProperty()
+    adv_speeds = StringProperty()
+    link_training = StringProperty()
+    autoneg = StringProperty()
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name

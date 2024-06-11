@@ -121,7 +121,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
 
     """
     _logger.debug(f"Inserting port channels in the DB for device {device.mgt_ip} {portchnl_to_mem_list}")
-    for chnl, mem_list in portchnl_to_mem_list.items():
+    for chnl, mem_list in portchnl_to_mem_list.items() or []:
         if p_chnl := get_port_chnl_of_device_from_db(device.mgt_ip, chnl.lag_name):
             copy_port_chnl_prop(p_chnl, chnl)
             p_chnl.save()
@@ -134,7 +134,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
         ## It will cater case when vlan has members are in db but not on device.
         ## Also the case when members has been changed/updated.
         saved_p_chnl.members.disconnect_all()
-        for intf_name in mem_list:
+        for intf_name in mem_list or []:
             _logger.debug(f"retrieving intf from DB {intf_name}")
             intf_obj = get_interface_of_device_from_db(device.mgt_ip, intf_name)
             if saved_p_chnl and intf_obj:
@@ -143,7 +143,7 @@ def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
 
     ## Handle the case when some or all port_chnl has been deleted from device but remained in DB
     ## Remove all port_chnl which are in DB but not on device
-    for chnl_in_db in get_all_port_chnl_of_device_from_db(device.mgt_ip):
+    for chnl_in_db in get_all_port_chnl_of_device_from_db(device.mgt_ip) or []:
         if chnl_in_db not in portchnl_to_mem_list:
             del_port_chnl_of_device_from_db(device.mgt_ip, chnl_in_db.lag_name)
             

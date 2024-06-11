@@ -118,6 +118,12 @@ def copy_intfc_object_props(target_intfc: Interface, source_intfc: Interface):
     target_intfc.description = source_intfc.description
     target_intfc.last_chng = source_intfc.last_chng
     target_intfc.mac_addr = source_intfc.mac_addr
+    target_intfc.alias = source_intfc.alias
+    target_intfc.lanes = source_intfc.lanes
+    target_intfc.valid_speeds = source_intfc.valid_speeds
+    target_intfc.adv_speeds = source_intfc.adv_speeds
+    target_intfc.link_training = source_intfc.link_training
+    target_intfc.autoneg = source_intfc.autoneg
 
 
 def set_interface_config_in_db(
