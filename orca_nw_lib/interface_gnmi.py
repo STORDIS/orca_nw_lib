@@ -245,6 +245,8 @@ def set_interface_config_on_device(
     fec: PortFec = None,
     if_mode: IFMode = None,
     vlan_id: int = None,
+    autoneg: bool = None,
+    adv_speed: str = None,
 ):
     """
     Set the interface configuration on a device.
@@ -368,11 +370,33 @@ def set_interface_config_on_device(
         )
     if if_mode and vlan_id:
         updates.append(get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
+    if autoneg is not None:
+        autoneg_payload = {
+            "openconfig-interfaces:interfaces": {
+                "interface": [
+                    {
+                        "name": if_name,
+                        "openconfig-if-ethernet:ethernet": {
+                            "config": {
+                                "auto-negotiate": autoneg,
+                                "openconfig-if-ethernet-ext2:advertised-speed": adv_speed,
+                            }
+                        },
+                    }
+                ]
+            }
+        }
+        updates.append(
+            create_gnmi_update(
+                get_gnmi_path(f"openconfig-interfaces:interfaces"), autoneg_payload
+            )
+        )
     if updates:
         return send_gnmi_set(
             create_req_for_update(updates),
             device_ip,
         )
+
     else:
         return None
 
