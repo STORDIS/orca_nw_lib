@@ -104,8 +104,8 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     interface.lanes=value.get("lanes")
                     interface.valid_speeds=value.get("valid_speeds")
                     interface.adv_speeds=value.get("adv_speeds")
-                    interface.link_training=value.get("adv_speeds")
-                    interface.autoneg=value.get("adv_speeds")
+                    interface.link_training=value.get("link_training")
+                    interface.autoneg=value.get("autoneg")
                     ## To minimize iteration for element in outer loop
                     if_lane_details.pop(indx)
                     break
