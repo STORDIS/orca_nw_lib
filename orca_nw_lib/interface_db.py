@@ -134,6 +134,8 @@ def set_interface_config_in_db(
     speed: Speed = None,
     description: str = None,
     fec: PortFec = None,
+    autoneg:bool = None,
+    adv_speeds:str = None
 ):
     """
     Sets the configuration of an interface in the database.
@@ -183,6 +185,16 @@ def set_interface_config_in_db(
                 "Updating interface %s FEC in DB object to %s", interface, fec
             )
             interface.fec = str(fec)
+        if autoneg is not None:
+            _logger.debug(
+                "Updating interface %s auto-negotiate in DB object to %s", interface, autoneg
+            )
+            interface.autoneg = 'on' if autoneg else 'off'
+        if adv_speeds is not None:
+            _logger.debug(
+                "Updating interface %s advertised-speed in DB object to %s",interface, adv_speeds
+            )
+            interface.adv_speeds = str(adv_speeds)
         interface.save()
         _logger.debug("Saved interface config in DB %s", interface)
 
