@@ -246,7 +246,7 @@ def set_interface_config_on_device(
     if_mode: IFMode = None,
     vlan_id: int = None,
     autoneg: bool = None,
-    adv_speed: str = None,
+    adv_speeds: str = 'all',
 ):
     """
     Set the interface configuration on a device.
@@ -379,7 +379,7 @@ def set_interface_config_on_device(
                         "openconfig-if-ethernet:ethernet": {
                             "config": {
                                 "auto-negotiate": autoneg,
-                                "openconfig-if-ethernet-ext2:advertised-speed": adv_speed,
+                                "openconfig-if-ethernet-ext2:advertised-speed": adv_speeds,
                             }
                         },
                     }
