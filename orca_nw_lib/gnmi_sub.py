@@ -57,6 +57,8 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
     speed = None
     description = None
     fec = None
+    autoneg = None
+    adv_speeds = 'all'
     for u in resp.update.update:
         for ele in u.path.elem:
             if ele.name == "enabled":
@@ -69,14 +71,19 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
                 description = u.val.string_val
             if ele.name == "port-fec":
                 fec = PortFec.get_enum_from_str(u.val.string_val)
+            if ele.name == "auto-negotiate":
+                autoneg = u.val.bool_val
+            if ele.name == "advertised-speed":
+                adv_speeds = u.val.string_val
     _logger.debug(
-        "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s .",
+        "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s, autoneg: %s .",
         device_ip,
         ether,
         enable,
         mtu,
         speed,
         description,
+        autoneg
     )
     set_interface_config_in_db(
         device_ip=device_ip,
@@ -86,6 +93,8 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         speed=speed,
         description=description,
         fec=fec,
+        autoneg=autoneg,
+        adv_speeds=adv_speeds
     )
 
 
