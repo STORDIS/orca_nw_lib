@@ -135,7 +135,8 @@ def set_interface_config_in_db(
     description: str = None,
     fec: PortFec = None,
     autoneg:bool = None,
-    adv_speeds:str = None
+    adv_speeds:str = None,
+    link_training:bool = None,
 ):
     """
     Sets the configuration of an interface in the database.
@@ -195,6 +196,11 @@ def set_interface_config_in_db(
                 "Updating interface %s advertised-speed in DB object to %s",interface, adv_speeds
             )
             interface.adv_speeds = str(adv_speeds)
+        if link_training is not None:
+            _logger.debug(
+                "Updating interface %s standalone-link-training in DB object to %s", interface, link_training
+            )
+            interface.link_training = 'on' if link_training else 'off'
         interface.save()
         _logger.debug("Saved interface config in DB %s", interface)
 

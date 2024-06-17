@@ -59,6 +59,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
     fec = None
     autoneg = None
     adv_speeds = 'all'
+    link_training = None
     for u in resp.update.update:
         for ele in u.path.elem:
             if ele.name == "enabled":
@@ -75,15 +76,19 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
                 autoneg = u.val.bool_val
             if ele.name == "advertised-speed":
                 adv_speeds = u.val.string_val
+            if ele.name == "standalone-link-training":
+                link_training = u.val.bool_val
     _logger.debug(
-        "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s, autoneg: %s .",
+        "updating interface config in DB, device_ip: %s, ether: %s, enable: %s, mtu: %s, speed: %s, description: %s, autoneg: %s, adv_speeds : %s, link_training: %s .",
         device_ip,
         ether,
         enable,
         mtu,
         speed,
         description,
-        autoneg
+        autoneg,
+        adv_speeds,
+        link_training
     )
     set_interface_config_in_db(
         device_ip=device_ip,
@@ -94,7 +99,8 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         description=description,
         fec=fec,
         autoneg=autoneg,
-        adv_speeds=adv_speeds
+        adv_speeds=adv_speeds,
+        link_training=link_training
     )
 
 

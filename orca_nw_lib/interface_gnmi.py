@@ -246,7 +246,8 @@ def set_interface_config_on_device(
     if_mode: IFMode = None,
     vlan_id: int = None,
     autoneg: bool = None,
-    adv_speeds: str = 'all',
+    adv_speeds: str = "all",
+    link_training: bool = None,
 ):
     """
     Set the interface configuration on a device.
@@ -264,11 +265,13 @@ def set_interface_config_on_device(
         fec (bool, optional): Whether to enable forward error correction. Defaults to None.
         if_mode (IFMode, optional): The interface mode. Defaults to None.
         vlan_id (int, optional): The VLAN ID of the interface. Defaults to None.
-
+        autoneg (bool, optional): Whether to enable auto-negotiation. Defaults to None.
+        adv_speeds (str, optional): The list of advertised speeds. Defaults to "all".
+        
     Returns:
         None: If no updates were made.
         str: The response from sending the GNMI set request.
-
+port-fec
     """
     updates = []
 
@@ -371,24 +374,39 @@ def set_interface_config_on_device(
     if if_mode and vlan_id:
         updates.append(get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
     if autoneg is not None:
-        autoneg_payload = {
-            "openconfig-interfaces:interfaces": {
-                "interface": [
-                    {
-                        "name": if_name,
-                        "openconfig-if-ethernet:ethernet": {
-                            "config": {
-                                "auto-negotiate": autoneg,
-                                "openconfig-if-ethernet-ext2:advertised-speed": adv_speeds,
-                            }
-                        },
-                    }
-                ]
+        payload = {
+            "openconfig-if-ethernet:config": {
+                "auto-negotiate": autoneg,
             }
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces"), autoneg_payload
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                payload
+            )
+        )
+    if adv_speeds is not None:
+        payload = {
+            "openconfig-if-ethernet:config": {
+                "advertised-speed": adv_speeds,
+            }
+        }
+        updates.append(
+            create_gnmi_update(
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                payload
+            )
+        )
+    if link_training is not None:
+        payload = {
+            "openconfig-if-ethernet:config": {
+                "standalone-link-training": link_training,
+            }
+        }
+        updates.append(
+            create_gnmi_update(
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                payload
             )
         )
     if updates:
