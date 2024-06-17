@@ -376,11 +376,7 @@ port-fec
     if autoneg is not None:
         payload = {
             "openconfig-if-ethernet:config": {
-                "advertised-speed": adv_speeds,
                 "auto-negotiate": autoneg,
-                "port-fec": str(fec),
-                "port-speed": speed.get_oc_val(),
-                "standalone-link-training": link_training,
             }
         }
         updates.append(
@@ -393,10 +389,6 @@ port-fec
         payload = {
             "openconfig-if-ethernet:config": {
                 "advertised-speed": adv_speeds,
-                "auto-negotiate": autoneg,
-                "port-fec": str(fec),
-                "port-speed": speed.get_oc_val(),
-                "standalone-link-training": link_training,
             }
         }
         updates.append(
@@ -408,10 +400,6 @@ port-fec
     if link_training is not None:
         payload = {
             "openconfig-if-ethernet:config": {
-                "advertised-speed": adv_speeds,
-                "auto-negotiate": autoneg,
-                "port-fec": str(fec),
-                "port-speed": speed.get_oc_val(),
                 "standalone-link-training": link_training,
             }
         }
