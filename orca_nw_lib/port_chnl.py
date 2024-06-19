@@ -344,6 +344,16 @@ def remove_port_chnl_ip(device_ip: str, chnl_name: str, ip_address: str = None):
 
 
 def remove_port_channel_vlan_member(device_ip: str, chnl_name: str):
+    """
+    Removes all VLAN members from a port channel on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+
+    Returns:
+        None
+    """
     try:
         delete_port_channel_member_vlan(device_ip, chnl_name)
     except Exception as e:
