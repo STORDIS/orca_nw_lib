@@ -7,7 +7,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
 )
 from orca_nw_lib.portgroup_gnmi import get_port_chnl_mem_base_path
-from orca_nw_lib.utils import get_logging
+from orca_nw_lib.utils import get_logging, validate_and_get_ip_prefix
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_gnmi_update,
@@ -155,7 +155,7 @@ def get_port_chnls_info_from_device(device_ip: str, chnl_name: str = None):
     """
     return send_gnmi_get(
         device_ip,
-        [get_lag_member_table_list_path(), get_lag_table_list_path(chnl_name)],
+        [get_lag_member_table_list_path(), get_lag_table_list_path(chnl_name), get_port_chnl_path(chnl_name)],
     )
 
 
@@ -297,7 +297,10 @@ def add_port_chnl_member_on_device(device_ip: str, chnl_name: str, ifnames: list
 
 
 def add_port_chnl_on_device(
-    device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None
+        device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None,
+        static: bool = None, fallback: bool = None, fast_rate: bool = None,
+        min_links: int = None, description: str = None, graceful_shutdown_mode: str = None,
+        ip_addr_with_prefix: str = None,
 ):
     """
     Adds a port channel to a specific device.
@@ -309,6 +312,13 @@ def add_port_chnl_on_device(
             Valid values are "up" and "down". Defaults to None.
         mtu (int, optional): The Maximum Transmission Unit (MTU) of the port channel.
             Defaults to None.
+        static (bool, optional): Whether the port channel is static or not. Defaults to None.
+        fallback (bool, optional): Whether the port channel is a fallback port channel. Defaults to None.
+        fast_rate (bool, optional): Whether the port channel uses fast rate. Defaults to None.
+        min_links (int, optional): The minimum number of links in the port channel. Defaults to None.
+        description (str, optional): The description of the port channel. Defaults to None.
+        graceful_shutdown_mode (bool, optional): Whether the port channel is in graceful shutdown mode. Defaults to None.
+        ip_addr_with_prefix (str, optional): The IP address and prefix of the port channel. Defaults to None.
 
     Returns:
         str: The result of the GNMI set operation.
@@ -320,12 +330,27 @@ def add_port_chnl_on_device(
         port_chnl_item["admin_status"] = admin_status
     if mtu is not None:
         port_chnl_item["mtu"] = mtu
-
+    if static is not None:
+        port_chnl_item["static"] = static
+    if fallback is not None:
+        port_chnl_item["fallback"] = fallback
+    if fast_rate is not None:
+        port_chnl_item["fast_rate"] = fast_rate
+    if min_links is not None:
+        port_chnl_item["min_links"] = min_links
+    if description is not None:
+        port_chnl_item["description"] = description
+    if graceful_shutdown_mode is not None:
+        port_chnl_item["graceful_shutdown_mode"] = graceful_shutdown_mode.upper()
     port_chnl_add.get("sonic-portchannel:PORTCHANNEL_LIST").append(port_chnl_item)
+    requests = [create_gnmi_update(get_port_chnl_list_path(), port_chnl_add)]
+    if ip_addr_with_prefix is not None:
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_addr_with_prefix)
+        requests.append(
+            get_port_channel_ip_update_req(port_channel_name=chnl_name, ip_address=ip, prefix_length=prefix_len)
+        )
     return send_gnmi_set(
-        create_req_for_update(
-            [create_gnmi_update(get_port_chnl_list_path(), port_chnl_add)]
-        ),
+        create_req_for_update(requests),
         device_ip,
     )
 
@@ -385,4 +410,208 @@ def set_port_channel_vlan_on_device(
             [get_port_channel_vlan_gnmi_update_req(vlan_id, port_channel_name, if_mode)]
         ),
         device_ip,
+    )
+
+
+def add_port_chnl_valn_members_on_device(
+        device_ip: str, chnl_name: str, trunk_vlans: list[int], access_vlan: int
+):
+    """
+    Adds VLAN members to a port channel on a device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+        trunk_vlans (list[int]): The list of VLAN IDs to be added as trunk VLANs.
+        access_vlan (int): The VLAN ID to be added as access VLAN.
+    Returns:
+        The result of sending a GNMI set request for adding VLAN members to the port channel.
+    """
+    return send_gnmi_set(
+        create_req_for_update(
+            [
+                create_port_channel_vlan_gnmi_update_req(
+                    port_channel_name=chnl_name, trunk_vlans=trunk_vlans, access_vlan=access_vlan
+                )
+            ]
+        ),
+        device_ip,
+    )
+
+
+def get_port_channel_vlan_memebers_path(port_channel_name: str):
+    """
+    Returns the path for the VLAN members of a port channel.
+
+    Parameters:
+        port_channel_name (str): The name of the port channel.
+
+    Returns:
+        The path for the VLAN members of the specified port channel.
+
+    """
+    return get_gnmi_path(
+        f"/openconfig-interfaces:interfaces/interface[name={port_channel_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config"
+    )
+
+
+def create_port_channel_vlan_gnmi_update_req(
+        port_channel_name: str, trunk_vlans: list[int] = None, access_vlan: int = None
+):
+    """
+    Creates a GNMI update request for configuring VLAN members on a port channel.
+
+    Parameters:
+        port_channel_name (str): The name of the port channel.
+        trunk_vlans (list[int]): The list of VLAN IDs to be configured as trunk VLANs.
+        access_vlan (int): The VLAN ID to be configured as access VLAN.
+
+    Returns:
+        The GNMI update request for configuring VLAN members on the specified port channel.
+    """
+    vlan_config_members = {}
+    if trunk_vlans is not None:
+        vlan_config_members["trunk-vlans"] = trunk_vlans
+    if access_vlan is not None:
+        vlan_config_members["access-vlan"] = access_vlan
+    return create_gnmi_update(
+        get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name),
+        {
+            "openconfig-vlan:config": vlan_config_members
+        }
+    )
+
+
+def get_port_channel_vlan_members_from_device(device_ip: str, port_channel_name: str):
+    """
+    Retrieves the VLAN members of a port channel from the device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_channel_name (str): The name of the port channel.
+
+    Returns:
+        The VLAN members of the specified port channel as a list of integers.
+    """
+    return send_gnmi_get(device_ip, [get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name)])
+
+
+def delete_port_channel_member_vlan(device_ip: str, port_channel_name: str):
+    """
+    Deletes the VLAN members of a port channel from the device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_channel_name (str): The name of the port channel.
+
+    Returns:
+        The result of sending a GNMI set request for deleting the VLAN members of the port channel.
+    """
+    return send_gnmi_set(
+        req=get_gnmi_del_req(
+            get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name)
+        ),
+        device_ip=device_ip
+    )
+
+
+def get_port_channel_ip_path(port_channel_name: str):
+    """
+    Returns the path for the IP details of a port channel.
+
+    Parameters:
+        port_channel_name (str): The name of the port channel.
+
+    Returns:
+        The path for the IP details of the specified port channel.
+
+    """
+    return get_gnmi_path(
+        f"/openconfig-interfaces:interfaces/interface[name={port_channel_name}]/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/addresses"
+    )
+
+
+def get_port_channel_ip_path_with_ip(port_channel_name: str, ip_address: str):
+    """
+    Returns the path for the IP details of a port channel with an IP address.
+
+    Parameters:
+        port_channel_name (str): The name of the port channel.
+        ip_address (str): The IP address of the port channel.
+
+    Returns:
+        The path for the IP details of the specified port channel with the specified IP address.
+    """
+    return get_gnmi_path(
+        f"/openconfig-interfaces:interfaces/interface[name={port_channel_name}]/subinterfaces/subinterface[index=0]/openconfig-if-ip:ipv4/addresses/address[ip={ip_address}]"
+    )
+
+
+def get_port_channel_ip_update_req(port_channel_name: str, ip_address: str, prefix_length: int):
+    """
+    Returns the update request for the IP details of a port channel.
+
+    Parameters:
+        port_channel_name (str): The name of the port channel.
+        ip_address (str): The IP address of the port channel.
+        prefix_length (int): The prefix length of the IP address.
+
+    Returns:
+        The GNMI update request for the IP details of the specified port channel.
+    """
+    path = get_port_channel_ip_path(port_channel_name=port_channel_name)
+    return create_gnmi_update(
+        path,
+        {
+            "openconfig-if-ip:addresses": {
+                "address": [
+                    {
+                        "ip": ip_address,
+                        "openconfig-if-ip:config": {"ip": ip_address, "prefix-length": prefix_length},
+                    }
+                ]
+            }
+        }
+    )
+
+
+def remove_port_channel_ip_from_device(device_ip: str, port_channel_name: str, ip_address: str = None):
+    """
+    Removes the IP details of a port channel from the device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_channel_name (str): The name of the port channel.
+        ip_address (str, optional): The IP address of the port channel. If not provided, the IP details of the port channel will be removed.
+
+    Returns:
+        The result of sending a GNMI set request for removing the IP details of the port channel.
+    """
+    if ip_address is None:
+        path = get_port_channel_ip_path(port_channel_name=port_channel_name)
+    else:
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_address)
+        path = get_port_channel_ip_path_with_ip(port_channel_name=port_channel_name, ip_address=ip)
+    return send_gnmi_set(
+        get_gnmi_del_req(path),
+        device_ip
+    )
+
+
+def get_port_channel_ip_details_from_device(device_ip: str, port_channel_name: str):
+    """
+    Retrieves the IP details of a port channel from the device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        port_channel_name (str): The name of the port channel.
+
+    Returns:
+        The IP details of the specified port channel as a dictionary.
+    """
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[
+            get_port_channel_ip_path(port_channel_name=port_channel_name)
+        ],
     )

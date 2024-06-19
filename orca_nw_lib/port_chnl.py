@@ -17,7 +17,8 @@ from .port_chnl_gnmi import (
     add_port_chnl_on_device,
     del_port_chnl_from_device,
     get_port_chnls_info_from_device,
-    remove_port_chnl_member,
+    remove_port_chnl_member, delete_port_channel_member_vlan, remove_port_channel_ip_from_device,
+    add_port_chnl_valn_members_on_device, get_port_channel_ip_details_from_device,
 )
 from .utils import get_logging
 
@@ -43,11 +44,32 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
         lag_mem_table_json_list = port_chnl_json.get(
             "sonic-portchannel:LAG_MEMBER_TABLE_LIST", {}
         )
+        port_chnl_json_list = port_chnl_json.get("sonic-portchannel:PORTCHANNEL_LIST", {})
         for lag in lag_table_json_list or []:
             ifname_list = []
             for mem in lag_mem_table_json_list or []:
                 if lag.get("lagname") == mem.get("name"):
                     ifname_list.append(mem.get("ifname"))
+            port_chnl_item = {}
+            port_chnl_vlan_member = {}
+            for port_chnl in port_chnl_json_list:
+                if lag.get("lagname") == port_chnl.get("name"):
+                    port_chnl_item = port_chnl
+                    if tagged_vlans := port_chnl.get("tagged_vlans"):
+                        port_chnl_vlan_member["trunk_vlans"] = [int(i) for i in tagged_vlans]
+                    if access_vlan := port_chnl.get("access_vlan"):
+                        port_chnl_vlan_member["access_vlan"] = int(access_vlan)
+            ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
+                "openconfig-if-ip:addresses", {}
+            )
+            ipv4_addresses = ip_details.get("address", [])
+            ipv4_addr = None
+            for ipv4 in ipv4_addresses or []:
+                if (ip := ipv4.get("config", {}).get("ip", "")) and (
+                        pfx := ipv4.get("config", {}).get("prefix-length", "")
+                ):
+                    ipv4_addr = f"{ip}/{pfx}"
+                    break
             port_chnl_obj_list[
                 PortChannel(
                     active=lag.get("active"),
@@ -59,6 +81,14 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
                     oper_sts=lag.get("oper_status"),
                     speed=lag.get("speed"),
                     oper_sts_reason=lag.get("reason"),
+                    static=port_chnl_item.get("static"),
+                    fallback=port_chnl_item.get("fallback"),
+                    fast_rate=port_chnl_item.get("fast_rate"),
+                    min_links=port_chnl_item.get("min_links"),
+                    description=port_chnl_item.get("description"),
+                    graceful_shutdown_mode=port_chnl_item.get("graceful_shutdown_mode"),
+                    ip_address=ipv4_addr,
+                    vlan_members=port_chnl_vlan_member,
                 )
             ] = ifname_list
     return port_chnl_obj_list
@@ -107,7 +137,10 @@ def get_port_chnl(device_ip: str, port_chnl_name: str = None):
 
 
 def add_port_chnl(
-    device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None
+        device_ip: str, chnl_name: str, admin_status: str = None, mtu: int = None,
+        static: bool = None, fallback: bool = None, fast_rate: bool = None,
+        min_links: int = None, description: str = None, graceful_shutdown_mode: str = None,
+        ip_addr_with_prefix: str = None,
 ):
     """
     Adds a port channel to a device,
@@ -118,13 +151,24 @@ def add_port_chnl(
         chnl_name (str): The name of the port channel.
         admin_status (str, optional): The administrative status of the port channel. Defaults to None.
         mtu (int, optional): The maximum transmission unit (MTU) of the port channel. Defaults to None.
-
+        static (bool, optional): Whether the port channel is static or not. Defaults to None.
+        fallback (bool, optional): Whether the port channel is a fallback port channel. Defaults to None.
+        fast_rate (bool, optional): Whether the port channel uses fast rate. Defaults to None.
+        min_links (int, optional): The minimum number of links in the port channel. Defaults to  None.
+        description (str, optional): The description of the port channel. Defaults to None.
+        graceful_shutdown_mode (bool, optional): Whether the port channel is in graceful shutdown mode.Defaults to None.
+        ip_addr_with_prefix (str, optional): The IP address and prefix of the port channel. Defaults to None.
     Returns:
         None
     """
 
     try:
-        add_port_chnl_on_device(device_ip, chnl_name, admin_status, mtu)
+        add_port_chnl_on_device(
+            device_ip=device_ip, chnl_name=chnl_name, admin_status=admin_status, mtu=mtu,
+            static=static, fallback=fallback, fast_rate=fast_rate, min_links=min_links,
+            description=description, graceful_shutdown_mode=graceful_shutdown_mode,
+            ip_addr_with_prefix=ip_addr_with_prefix,
+        )
     except Exception as e:
         _logger.error(
             f"Port Channel {chnl_name} addition failed on device {device_ip}, Reason: {e}"
@@ -156,6 +200,8 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
                         device_ip, chnl.get("lag_name"), mem_if.get("name")
                     )
             if chnl.get("lag_name"):
+                delete_port_channel_member_vlan(device_ip=device_ip, port_channel_name=chnl.get("lag_name"))
+                remove_port_channel_ip_from_device(device_ip, chnl.get("lag_name"))
                 del_port_chnl_from_device(device_ip, chnl.get("lag_name"))
     except Exception as e:
         _logger.error(
@@ -247,3 +293,61 @@ def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = Non
             mem.__properties__
             for mem in get_port_chnl_members_from_db(device_ip, port_chnl_name) or []
         ]
+
+
+def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, trunk_vlans: list[int] = None, access_vlan: int = None):
+    """
+    Adds VLAN members to a port channel on a device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+        trunk_vlans (list[int], optional): The list of VLAN IDs to be added as trunk VLANs. Defaults to None.
+        access_vlan (int, optional): The VLAN ID to be added as access VLAN. Defaults to None.
+
+    Returns:
+        None
+    """
+    try:
+        add_port_chnl_valn_members_on_device(
+            device_ip=device_ip, chnl_name=chnl_name, trunk_vlans=trunk_vlans, access_vlan=access_vlan
+        )
+    except Exception as e:
+        _logger.error(
+            f"Port Channel {chnl_name}  vlan members {trunk_vlans} and {access_vlan} addition failed on device {device_ip}, Reason: {e}"
+        )
+        raise
+    finally:
+        sleep(1)
+        discover_port_chnl(device_ip)
+
+
+def remove_port_chnl_ip(device_ip: str, chnl_name: str, ip_address: str = None):
+    """
+    Removes an IP address from a port channel on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        chnl_name (str): The name of the port channel.
+        ip_address (str, optional): The IP address to be removed. Defaults to None.
+
+    Returns:
+        None
+    """
+    try:
+        remove_port_channel_ip_from_device(device_ip, chnl_name, ip_address)
+    except Exception as e:
+        _logger.error(f"Port Channel IP removal failed on device {device_ip}, Reason: {e}")
+        raise
+    finally:
+        discover_port_chnl(device_ip)
+
+
+def remove_port_channel_vlan_member(device_ip: str, chnl_name: str):
+    try:
+        delete_port_channel_member_vlan(device_ip, chnl_name)
+    except Exception as e:
+        _logger.error(f"Port Channel Vlan members removal failed on device {device_ip}, Reason: {e}")
+        raise
+    finally:
+        discover_port_chnl(device_ip)
