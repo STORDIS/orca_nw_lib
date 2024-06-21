@@ -17,8 +17,11 @@ from .port_chnl_gnmi import (
     add_port_chnl_on_device,
     del_port_chnl_from_device,
     get_port_chnls_info_from_device,
-    remove_port_chnl_member, delete_port_channel_member_vlan, remove_port_channel_ip_from_device,
-    add_port_chnl_valn_members_on_device, get_port_channel_ip_details_from_device,
+    remove_port_chnl_member,
+    delete_port_channel_member_vlan_from_device,
+    remove_port_channel_ip_from_device,
+    add_port_chnl_valn_members_on_device,
+    get_port_channel_ip_details_from_device,
 )
 from .utils import get_logging
 
@@ -200,7 +203,9 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
                         device_ip, chnl.get("lag_name"), mem_if.get("name")
                     )
             if chnl.get("lag_name"):
-                delete_port_channel_member_vlan(device_ip=device_ip, port_channel_name=chnl.get("lag_name"))
+                # port channel vlan members and  ip address must be removed before deleting port channel.
+                # if not it throws error given instance is in use.
+                delete_port_channel_member_vlan_from_device(device_ip=device_ip, port_channel_name=chnl.get("lag_name"))
                 remove_port_channel_ip_from_device(device_ip, chnl.get("lag_name"))
                 del_port_chnl_from_device(device_ip, chnl.get("lag_name"))
     except Exception as e:
@@ -318,7 +323,6 @@ def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, trunk_vlans: list
         )
         raise
     finally:
-        sleep(1)
         discover_port_chnl(device_ip)
 
 
@@ -355,7 +359,7 @@ def remove_port_channel_vlan_member(device_ip: str, chnl_name: str):
         None
     """
     try:
-        delete_port_channel_member_vlan(device_ip, chnl_name)
+        delete_port_channel_member_vlan_from_device(device_ip, chnl_name)
     except Exception as e:
         _logger.error(f"Port Channel Vlan members removal failed on device {device_ip}, Reason: {e}")
         raise

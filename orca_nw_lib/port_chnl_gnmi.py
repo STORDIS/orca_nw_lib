@@ -496,7 +496,7 @@ def get_port_channel_vlan_members_from_device(device_ip: str, port_channel_name:
     return send_gnmi_get(device_ip, [get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name)])
 
 
-def delete_port_channel_member_vlan(device_ip: str, port_channel_name: str):
+def delete_port_channel_member_vlan_from_device(device_ip: str, port_channel_name: str):
     """
     Deletes the VLAN members of a port channel from the device.
 
