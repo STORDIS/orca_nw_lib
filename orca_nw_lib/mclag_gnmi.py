@@ -4,7 +4,7 @@ from .gnmi_util import (
     create_req_for_update,
     get_gnmi_del_req,
     send_gnmi_get,
-    send_gnmi_set,
+    send_gnmi_set, get_gnmi_path,
 )
 
 
@@ -45,15 +45,17 @@ def get_mclag_domain_path() -> Path:
 
 
 def config_mclag_domain_on_device(
-    device_ip: str,
-    domain_id: int,
-    source_addr: str,
-    peer_addr: str,
-    peer_link: str,
-    mclag_sys_mac: str,
-    keepalive_int: int = None,
-    session_timeout: int = None,
-    delay_restore: int = None,
+        device_ip: str,
+        domain_id: int,
+        source_addr: str,
+        peer_addr: str,
+        peer_link: str,
+        mclag_sys_mac: str,
+        keepalive_int: int = None,
+        session_timeout: int = None,
+        delay_restore: int = None,
+        session_vrf: str = None,
+        fast_convergence: str = None
 ):
     """
     Configure the MCLAG domain on a device.
@@ -68,6 +70,8 @@ def config_mclag_domain_on_device(
         keepalive_int (int, optional): The keepalive interval for the MCLAG domain.Defaults to None.
         session_timeout (int, optional): The session timeout for the MCLAG domain. Defaults to None.
         delay_restore (int, optional): The delay restore for the MCLAG domain. Defaults to None.
+        session_vrf (str, optional): The session VRF for the MCLAG domain. Defaults to None.
+        fast_convergence (str, optional): The fast convergence for the MCLAG domain. Defaults to None.
 
     Returns:
         The result of the GNMI set operation.
@@ -86,7 +90,7 @@ def config_mclag_domain_on_device(
             }
         ]
     }
-
+    updates = []
     for mc_lag in mclag_config_json.get("openconfig-mclag:mclag-domain"):
         mc_lag.update({"domain-id": domain_id})
         mc_lag.get("config").update({"domain-id": domain_id})
@@ -100,17 +104,19 @@ def config_mclag_domain_on_device(
             mc_lag.get("config").update({"session-timeout": session_timeout})
         if delay_restore:
             mc_lag.get("config").update({"delay-restore": delay_restore})
-
+        if session_vrf:
+            mc_lag.get("config").update({"session-vrf": session_vrf})
+    updates.append(create_gnmi_update(get_mclag_domain_path(), mclag_config_json))
+    if fast_convergence is not None:
+        updates.append(config_mclag_domain_fast_convergence_on_device(domain_id, fast_convergence))
     return send_gnmi_set(
-        create_req_for_update(
-            [create_gnmi_update(get_mclag_domain_path(), mclag_config_json)]
-        ),
+        create_req_for_update(updates),
         device_ip,
     )
 
 
 def config_mclag_member_on_device(
-    device_ip: str, mclag_domain_id: int, port_chnl_name: str
+        device_ip: str, mclag_domain_id: int, port_chnl_name: str
 ):
     """
     Configures the MCLAG member port channel on a specific device.
@@ -265,3 +271,77 @@ def del_mclag_from_device(device_ip: str):
         None: This function does not return anything.
     """
     return send_gnmi_set(get_gnmi_del_req(get_mclag_path()), device_ip)
+
+
+def get_sonic_mclag_domain_list_path(domain_id: int):
+    return get_gnmi_path(
+        f"/sonic-mclag:sonic-mclag/MCLAG_DOMAIN/MCLAG_DOMAIN_LIST[domain_id={domain_id}]"
+    )
+
+
+def config_mclag_domain_fast_convergence_on_device(domain_id: int, fast_convergence: str = None):
+    """
+    Configures the MCLAG domain fast convergence.
+
+    Args:
+        domain_id (int): The ID of the MCLAG domain.
+        fast_convergence (bool): True if fast convergence is enabled, False otherwise.
+
+    Returns:
+        The result of the GNMI set operation.
+
+    Raises:
+        None
+    """
+    path = get_sonic_mclag_domain_list_path(domain_id)
+    req_body = {
+        "sonic-mclag:MCLAG_DOMAIN_LIST": [
+            {
+                "domain_id": domain_id,
+                "fast_convergence": "enable" if fast_convergence.lower() == "enable" else None
+            }
+        ]
+    }
+    return create_gnmi_update(path=path, val=req_body)
+
+
+def get_mclag_domain_fast_convergence_from_device(device_ip: str, domain_id: int):
+    """
+    Get the MCLAG domain fast convergence from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        The MCLAG domain fast convergence retrieved from the device.
+    """
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[
+            get_sonic_mclag_domain_list_path(domain_id=domain_id)
+        ]
+    )
+
+
+def remove_mclag_domain_fast_convergence_on_device(device_ip: str, domain_id: int):
+    """
+    Deletes the MCLAG domain fast convergence.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        The result of the GNMI set operation.
+
+    Raises:
+        None
+    """
+    path = get_sonic_mclag_domain_list_path(domain_id)
+    path.elem.append(PathElem(name="fast_convergence"))
+    return send_gnmi_set(
+        req=get_gnmi_del_req(path=path),
+        device_ip=device_ip
+    )
+
