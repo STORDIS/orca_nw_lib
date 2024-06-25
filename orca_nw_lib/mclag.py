@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Union
 
 from orca_nw_lib.utils import get_logging
+from .common import MclagFastConvergence
 
 from .device_db import get_device_db_obj
 from .mclag_db import (
@@ -23,6 +24,7 @@ from .mclag_gnmi import (
     get_mclag_gateway_mac_from_device,
     get_mclag_domain_fast_convergence_from_device,
     remove_mclag_domain_fast_convergence_on_device,
+    add_mclag_domain_fast_convergence_on_device,
 )
 from .graph_db_models import MCLAG_GW_MAC, MCLAG
 
@@ -200,7 +202,7 @@ def config_mclag(
     session_timeout: int = None,
     delay_restore: int = None,
     session_vrf: str = None,
-    fast_convergence: str = None
+    fast_convergence: MclagFastConvergence = None
 ):
     """
     Configures MCLAG on the device.
@@ -452,6 +454,28 @@ def remove_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
     """
     try:
         remove_mclag_domain_fast_convergence_on_device(device_ip, domain_id)
+    except Exception as e:
+        _logger.error(
+            f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
+
+
+def add_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
+    """
+    ADDs an MCLAG domain fast convergence on the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        None
+    """
+    try:
+        add_mclag_domain_fast_convergence_on_device(device_ip, domain_id)
     except Exception as e:
         _logger.error(
             f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
