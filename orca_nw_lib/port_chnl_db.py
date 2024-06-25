@@ -102,6 +102,14 @@ def copy_port_chnl_prop(target_obj: PortChannel, src_obj: PortChannel):
     target_obj.oper_sts = src_obj.oper_sts
     target_obj.speed = src_obj.speed
     target_obj.oper_sts_reason = src_obj.oper_sts_reason
+    target_obj.static = src_obj.static
+    target_obj.min_links = src_obj.min_links
+    target_obj.fallback = src_obj.fallback
+    target_obj.description = src_obj.description
+    target_obj.fast_rate = src_obj.fast_rate
+    target_obj.graceful_shutdown_mode = src_obj.graceful_shutdown_mode
+    target_obj.ip_address = src_obj.ip_address
+    target_obj.vlan_members = src_obj.vlan_members
 
 
 def insert_device_port_chnl_in_db(device: Device, portchnl_to_mem_list):
