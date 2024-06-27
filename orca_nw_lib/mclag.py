@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Union
 
 from orca_nw_lib.utils import get_logging
+from .common import MclagFastConvergence
 
 from .device_db import get_device_db_obj
 from .mclag_db import (
@@ -21,6 +22,9 @@ from .mclag_gnmi import (
     del_mclag_member_on_device,
     get_mclag_config_from_device,
     get_mclag_gateway_mac_from_device,
+    get_mclag_domain_fast_convergence_from_device,
+    remove_mclag_domain_fast_convergence_on_device,
+    add_mclag_domain_fast_convergence_on_device,
 )
 from .graph_db_models import MCLAG_GW_MAC, MCLAG
 
@@ -46,8 +50,16 @@ def _create_mclag_graph_objects(device_ip: str) -> dict:
     mclag_intfc_list = mclag.get("interfaces", {}).get("interface")
 
     for mclag_domain in mclag_domains_dict_list or []:
+        domain_id = mclag_domain.get("config").get("domain-id")
+        mclag_device_details = get_mclag_domain_fast_convergence_from_device(
+            device_ip=device_ip, domain_id=domain_id
+        )
+        fast_convergence = None
+        for mclag_item in mclag_device_details.get("sonic-mclag:MCLAG_DOMAIN_LIST") or []:
+            if mclag_item.get("domain_id") == domain_id:
+                fast_convergence = mclag_item.get("fast_convergence")
         mclag_obj = MCLAG(
-            domain_id=mclag_domain.get("config").get("domain-id"),
+            domain_id=domain_id,
             keepalive_interval=mclag_domain.get("config").get("keepalive-interval"),
             mclag_sys_mac=mclag_domain.get("config").get("mclag-system-mac"),
             peer_addr=mclag_domain.get("config").get("peer-address"),
@@ -58,6 +70,8 @@ def _create_mclag_graph_objects(device_ip: str) -> dict:
             oper_status=mclag_domain.get("state").get("oper-status"),
             role=mclag_domain.get("state").get("role"),
             system_mac=mclag_domain.get("state").get("system-mac"),
+            session_vrf=mclag_domain.get("config").get("session-vrf"),
+            fast_convergence=fast_convergence
         )
         intfc_list = [
             mclag_intfc["name"]
@@ -187,6 +201,8 @@ def config_mclag(
     keepalive_int: int = None,
     session_timeout: int = None,
     delay_restore: int = None,
+    session_vrf: str = None,
+    fast_convergence: MclagFastConvergence = None
 ):
     """
     Configures MCLAG on the device.
@@ -201,6 +217,8 @@ def config_mclag(
         keepalive_int (int, optional): The keepalive interval. Defaults to None.
         session_timeout (int, optional): The session timeout. Defaults to None.
         delay_restore (int, optional): The delay to restore MCLAG. Defaults to None.
+        session_vrf (str, optional): The session VRF. Defaults to None.
+        fast_convergence (str, optional): The fast convergence. Defaults to None.
 
     Returns:
         None
@@ -217,6 +235,8 @@ def config_mclag(
             keepalive_int,
             session_timeout,
             delay_restore,
+            session_vrf,
+            fast_convergence
         )
 
     except Exception as e:
@@ -415,6 +435,50 @@ def del_mclag_member(device_ip: str):
     except Exception as e:
         _logger.error(
             f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {e}"
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
+
+
+def remove_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
+    """
+    Deletes an MCLAG domain fast convergence on the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        None
+    """
+    try:
+        remove_mclag_domain_fast_convergence_on_device(device_ip, domain_id)
+    except Exception as e:
+        _logger.error(
+            f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
+        )
+        raise
+    finally:
+        discover_mclag(device_ip)
+
+
+def add_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
+    """
+    ADDs an MCLAG domain fast convergence on the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        domain_id (int): The ID of the MCLAG domain.
+
+    Returns:
+        None
+    """
+    try:
+        add_mclag_domain_fast_convergence_on_device(device_ip, domain_id)
+    except Exception as e:
+        _logger.error(
+            f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
         )
         raise
     finally:

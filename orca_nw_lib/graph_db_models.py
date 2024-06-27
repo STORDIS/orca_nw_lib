@@ -124,6 +124,8 @@ class MCLAG(StructuredNode):
     role = StringProperty()
     system_mac = StringProperty()
     delay_restore = IntegerProperty()
+    session_vrf = StringProperty()
+    fast_convergence = StringProperty()
 
     intfc_members = RelationshipTo("Interface", "MEM_IF")
     portChnl_member = RelationshipTo("PortChannel", "MEM_CHNL")
