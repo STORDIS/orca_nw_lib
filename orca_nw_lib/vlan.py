@@ -192,14 +192,13 @@ def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str 
         discover_vlan(device_ip)
 
 
-def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
+def config_vlan(device_ip: str, vlan_name: str, **kwargs):
     """
     Configures a VLAN on a device.
 
     Args:
         device_ip (str): The IP address of the device.
         vlan_name (str): The name of the VLAN.
-        vlan_id (int): The ID of the VLAN.
         **kwargs: Additional keyword arguments to be passed to the `config_vlan_on_device` function.
 
     Raises:
@@ -209,7 +208,7 @@ def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
         None
     """
     try:
-        config_vlan_on_device(device_ip, vlan_name, vlan_id, **kwargs)
+        config_vlan_on_device(device_ip=device_ip, vlan_name=vlan_name, **kwargs)
     except Exception as e:
         _logger.error(f"VLAN configuration failed on device {device_ip}, Reason: {e}")
         raise
