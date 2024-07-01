@@ -15,7 +15,7 @@
 </p>
 
 # ORCA Network Library
-**Note:** If your intension is just start using ORCA, you need not to get into ORCA Network Library details, instead consider installing [ORCA Backend](https://github.com/STORDIS/orca_backend) and [ORCA UI](https://github.com/STORDIS/orca_ui) directly.
+>_**Note:** If your intension is to just start using ORCA, you need not to get into ORCA Network Library details, instead consider installing [ORCA Backend](https://github.com/STORDIS/orca_backend) and [ORCA UI](https://github.com/STORDIS/orca_ui) directly._
 
 ORCA Network Library is an open source python package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
 ORCA Network Library can be used to develop the orchestration solutions, NMS applications, network data analytics. [ORCA Backend](https://github.com/STORDIS/orca_backend) and [ORCA UI](https://github.com/STORDIS/orca_ui) are the application developed using APIs and Neo4j DB of ORCA Network Library.
@@ -25,7 +25,7 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Install orca\_nw\_lib using pip](#install-orca_nw_lib-using-pip)
   - [Prerequisite](#prerequisite)
     - [Install Neo4j](#install-neo4j)
-    - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
+    - [Configuration](#configuration)
       - [orca\_nw\_lib.yml](#orca_nw_libyml)
       - [orca\_nw\_lib\_logging.yml](#orca_nw_lib_loggingyml)
   - [Build and Install orca\_nw\_lib from source](#build-and-install-orca_nw_lib-from-source)
@@ -59,8 +59,8 @@ orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest i
         neo4j:latest
 Then open https://localhost:7474 with credentials neo4j/password to browse the database.
 
-### orca_nw_lib configuration
-There are Following 2 configuration files -
+### Configuration
+There are Following 2 configuration files for orca_nw_lib-
 #### [orca_nw_lib.yml](orca_nw_lib/orca_nw_lib.yml) 
 File contains all required parameters required to perform device and Neo4j DB operations. Also all the config properties defined in the file can be overridden by setting the environment variables with same name. 
 

@@ -5,8 +5,8 @@
 # discover_networks property will always be read from environment and not from this file but rest of the properties will be read from this file.
 
 # device_ip(s) to start discovery with or subnet(s) separated by comma.
-# After discovering the current device next  LLDP neighbor is discovered if any.
-# Then move forward to next device in the network provided.
+# After discovering the current device next LLDP neighbor is discovered if any.
+# Then move forward to next device in the network.
 discover_networks:
   #- "10.10.229.50,10.10.10.1/24"
 device_username: admin # username to make gNMI connection with device defined in network above
