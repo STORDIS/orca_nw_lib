@@ -15,13 +15,19 @@
 </p>
 
 # ORCA Network Library
+**Note:** If your intension is just start using ORCA, you need not to get into ORCA Network Library details, instead consider installing [ORCA Backend](https://github.com/STORDIS/orca_backend) and [ORCA UI](https://github.com/STORDIS/orca_ui) directly.
+
 ORCA Network Library is an open source python package to facilitate CRUD operations on SONiC devices using gNMI interface. orca_nw_lib maintains a graph database with the realtime device configurations and network topology.
-ORCA Network Library can be used to develop the orchestration solutions, NMS applications,  newtwork data analytics.  
+ORCA Network Library can be used to develop the orchestration solutions, NMS applications, network data analytics. [ORCA Backend](https://github.com/STORDIS/orca_backend) and [ORCA UI](https://github.com/STORDIS/orca_ui) are the application developed using APIs and Neo4j DB of ORCA Network Library.
+
+
 - [ORCA Network Library](#orca-network-library)
   - [Install orca\_nw\_lib using pip](#install-orca_nw_lib-using-pip)
   - [Prerequisite](#prerequisite)
     - [Install Neo4j](#install-neo4j)
     - [orca\_nw\_lib configuration](#orca_nw_lib-configuration)
+      - [orca\_nw\_lib.yml](#orca_nw_libyml)
+      - [orca\_nw\_lib\_logging.yml](#orca_nw_lib_loggingyml)
   - [Build and Install orca\_nw\_lib from source](#build-and-install-orca_nw_lib-from-source)
   - [Using the ORCA Network APIs](#using-the-orca-network-apis)
   - [Knowing API call status](#knowing-api-call-status)
@@ -53,19 +59,24 @@ orca_nw_lib uses neo4j to store the network topology. To install neo4j easiest i
         neo4j:latest
 Then open https://localhost:7474 with credentials neo4j/password to browse the database.
 
-
 ### orca_nw_lib configuration
-In the application where orca_nw_lib is used, `load_orca_config` function in [utils.py](orca_nw_lib/utils.py) must be called before using any APIs of orca_nw_lib. This function loads device and neo4j access information also the logging configuration by default from 
-[orca_nw_lib.yml](orca_nw_lib/orca_nw_lib.yml) and [orca_nw_lib_logging.yml](orca_nw_lib/orca_nw_lib_logging.yml) files.
-Although user can call load_orca_config with custom config files.
-The parameter information is documented in orca.yml file and logging.yml is standard python logging configuration file.
+There are Following 2 configuration files -
+#### [orca_nw_lib.yml](orca_nw_lib/orca_nw_lib.yml) 
+File contains all required parameters required to perform device and Neo4j DB operations. Also all the config properties defined in the file can be overridden by setting the environment variables with same name. 
+
+In majority of the cases only setting "discover_networks" property is enough i.e.`export discover_networks="10.10.229.50"`
+
+#### [orca_nw_lib_logging.yml](orca_nw_lib/orca_nw_lib_logging.yml)
+File contains the standard logging configuration for ORCA Network Library.
+
+By default above config files from the codebase are used, which is eniugh for most cases. Optionally user can use custom config files by setting the config files path in in environment variables `ORCA_NW_LIB_CONFIG_FILE` and `ORCA_NW_LIB_LOGGING_CONFIG_FILE`.
 
 ## Build and Install orca_nw_lib from source
 Optionally if user want to build and install orca_nw_lib from source, ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed in this case. Poetry can be easily installed using the following command :
         
     pip install poetry
 
-To build orca_nw_lib use the following commands :
+To build and install orca_nw_lib use the following commands :
 
     git clone https://github.com/STORDIS/orca_nw_lib.git
     cd orca_nw_lib
@@ -73,8 +84,6 @@ To build orca_nw_lib use the following commands :
     pip install dist/orca_nw_lib-****.whl
 
 Once installed the orca_nw_lib package, orca_nw_lib can be used like any other python package in your application.
-
-
 
 ## Using the ORCA Network APIs
 For normal usage following APIs in python modules in the package [orca_nw_lib](orca_nw_lib) are useful -\
