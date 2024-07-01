@@ -1,4 +1,3 @@
-from orca_nw_lib.graph_db_models import Vlan
 from orca_nw_lib.vlan_gnmi import get_vlan_details_from_device
 
 from .common import IFMode, VlanAutoState
@@ -11,13 +10,12 @@ from .vlan_db import (
     insert_vlan_in_db,
 )
 from .vlan_gnmi import (
-    add_vlan_mem_interface_on_device,
     config_vlan_on_device,
     del_vlan_from_device,
-    del_vlan_mem_interface_on_device,
     get_vlan_ip_details_from_device,
     remove_anycast_addr_from_vlan_on_device,
     remove_ip_from_vlan_on_device,
+    add_vlan_members_on_device, delete_vlan_members_on_device,
 )
 from .utils import get_logging
 from .graph_db_models import Vlan
@@ -89,7 +87,6 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
             if v.name == item.get("name"):
                 members.append(item)
         vlans_obj_vs_mem[v] = members
-
     return vlans_obj_vs_mem
 
 
@@ -195,14 +192,13 @@ def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str 
         discover_vlan(device_ip)
 
 
-def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
+def config_vlan(device_ip: str, vlan_name: str, **kwargs):
     """
     Configures a VLAN on a device.
 
     Args:
         device_ip (str): The IP address of the device.
         vlan_name (str): The name of the VLAN.
-        vlan_id (int): The ID of the VLAN.
         **kwargs: Additional keyword arguments to be passed to the `config_vlan_on_device` function.
 
     Raises:
@@ -212,7 +208,7 @@ def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
         None
     """
     try:
-        config_vlan_on_device(device_ip, vlan_name, vlan_id, **kwargs)
+        config_vlan_on_device(device_ip=device_ip, vlan_name=vlan_name, **kwargs)
     except Exception as e:
         _logger.error(f"VLAN configuration failed on device {device_ip}, Reason: {e}")
         raise
@@ -220,13 +216,13 @@ def config_vlan(device_ip: str, vlan_name: str, vlan_id: int, **kwargs):
         discover_vlan(device_ip)
 
 
-def add_vlan_mem(device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]):
+def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:IFMode]):
     """
     Adds VLAN members to a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        vlan_id (int): The ID of the VLAN.
+        vlan_name (str): The name of the VLAN.
         mem_ifs (dict[str:IFMode]): A dictionary mapping interface names to their IFMode.
 
     Raises:
@@ -237,7 +233,7 @@ def add_vlan_mem(device_ip: str, vlan_id: int, mem_ifs: dict[str:IFMode]):
     """
 
     try:
-        add_vlan_mem_interface_on_device(device_ip, vlan_id, mem_ifs)
+        add_vlan_members_on_device(device_ip, vlan_name, mem_ifs)
     except Exception as e:
         _logger.error(f"VLAN member addition failed on device {device_ip}, Reason: {e}")
         raise
@@ -279,13 +275,13 @@ def get_vlan_members(device_ip, vlan_name: str):
     return mem_intf_vs_tagging_mode
 
 
-def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
+def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str):
     """
     Deletes a VLAN member from a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        vlan_id (int): The ID of the VLAN.
+        vlan_name (int): The ID of the VLAN.
         if_name (str): The name of the interface to be removed from the VLAN.
         if_mode (IFMode): The mode of the interface to be removed from the VLAN.
 
@@ -294,7 +290,7 @@ def del_vlan_mem(device_ip: str, vlan_id: int, if_name: str, if_mode: IFMode):
     """
 
     try:
-        del_vlan_mem_interface_on_device(device_ip, vlan_id, if_name, if_mode)
+        delete_vlan_members_on_device(device_ip, vlan_name, if_name)
     except Exception as e:
         _logger.error(f"VLAN member deletion failed on device {device_ip}, Reason: {e}")
         raise
