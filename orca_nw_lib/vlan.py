@@ -87,8 +87,6 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
             if v.name == item.get("name"):
                 members.append(item)
         vlans_obj_vs_mem[v] = members
-        print(members)
-
     return vlans_obj_vs_mem
 
 

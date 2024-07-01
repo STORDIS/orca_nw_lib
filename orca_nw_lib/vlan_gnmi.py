@@ -164,7 +164,6 @@ def del_vlan_from_device(device_ip: str, vlan_name: str):
 def config_vlan_on_device(
         device_ip: str,
         vlan_name: str,
-        vlan_id: int,
         autostate: VlanAutoState = None,
         ip_addr_with_prefix: str = None,
         anycast_addr: str = None,
@@ -494,9 +493,7 @@ def get_add_vlan_member_request(vlan_name: str, mem_ifs: dict):
                 "tagging_mode": "tagged" if if_mode == IFMode.TRUNK else "untagged",
             }
         )
-    path = get_sonic_vlan_base_path()
-    path.elem.append(PathElem(name="VLAN_MEMBER"))
-    path.elem.append(PathElem(name="VLAN_MEMBER_LIST"))
+    path = get_gnmi_path("sonic-vlan:sonic-vlan/VLAN_MEMBER/VLAN_MEMBER_LIST")
     return create_gnmi_update(path, {"sonic-vlan:VLAN_MEMBER_LIST": req})
 
 
