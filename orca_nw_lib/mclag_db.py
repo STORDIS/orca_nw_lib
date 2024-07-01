@@ -153,6 +153,8 @@ def copy_mclag_obj_props(target_obj: MCLAG, src_obj: MCLAG):
     target_obj.role = src_obj.role
     target_obj.system_mac = src_obj.system_mac
     target_obj.delay_restore = src_obj.delay_restore
+    target_obj.session_vrf = src_obj.session_vrf
+    target_obj.fast_convergence = src_obj.fast_convergence
 
 
 def insert_device_mclag_in_db(device: Device, mclag_to_intfc_list):

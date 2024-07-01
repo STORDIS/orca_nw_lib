@@ -50,11 +50,10 @@ class VlanTagMode(str, Enum):
     tagged = auto()
     untagged = auto()
 
-
     @staticmethod
     def get_enum_from_str(name: str):
         return VlanTagMode[name] if name in VlanTagMode.__members__ else None
-    
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name
@@ -71,11 +70,10 @@ class IFMode(str, Enum):
     TRUNK = auto()
     ACCESS = auto()
 
-
     @staticmethod
     def get_enum_from_str(name: str):
         return IFMode[name] if name in IFMode.__members__ else None
-    
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name
@@ -87,15 +85,35 @@ class IFMode(str, Enum):
     def __str__(self) -> str:
         return self.name
 
+
 class VlanAutoState(str, Enum):
     enable = auto()
     disable = auto()
 
-
     @staticmethod
     def get_enum_from_str(name: str):
         return VlanAutoState[name] if name in VlanAutoState.__members__ else None
-    
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class MclagFastConvergence(str, Enum):
+    enable = auto()
+    disable = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return MclagFastConvergence[name] if name in MclagFastConvergence.__members__ else None
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.name == other.name
