@@ -51,7 +51,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
 
         if (
             "ether" or "loopback" in if_type.lower()
-        ) and "PortChannel" not in intfc_state.get("name"):
+        ) and "PortChannel" not in intfc_state.get("name") and "Vlan" not in intfc_state.get("name"):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
                 name=intfc_state.get("name"),
