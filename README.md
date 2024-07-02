@@ -69,7 +69,7 @@ In majority of the cases only setting "discover_networks" property is enough i.e
 #### [orca_nw_lib_logging.yml](orca_nw_lib/orca_nw_lib_logging.yml)
 File contains the standard logging configuration for ORCA Network Library.
 
-By default above config files from the codebase are used, which is eniugh for most cases. Optionally user can use custom config files by setting the config files path in in environment variables `ORCA_NW_LIB_CONFIG_FILE` and `ORCA_NW_LIB_LOGGING_CONFIG_FILE`.
+By default above config files from the codebase are used, which is enough for most of the cases. Optionally user can use custom config files by setting the config files path in the environment variables `ORCA_NW_LIB_CONFIG_FILE` and `ORCA_NW_LIB_LOGGING_CONFIG_FILE`.
 
 ## Build and Install orca_nw_lib from source
 Optionally if user want to build and install orca_nw_lib from source, ORCA Network Library uses poetry to build the orca_nw_lib package. As a pre-requisite poetry must be installed in this case. Poetry can be easily installed using the following command :
@@ -92,7 +92,7 @@ For normal usage following APIs in python modules in the package [orca_nw_lib](o
 [bgp.py](orca_nw_lib/bgp.py) - BGP CRUD operations\
 [device.py](orca_nw_lib/device.py) - Get device system info.\
 [interface.py](orca_nw_lib/interface.py) - Interfaces CRUD operations.\
-[lldp.py](orca_nw_lib/lldp.py) - Read LLDP relation, usefull while doing discovery.\
+[lldp.py](orca_nw_lib/lldp.py) - Read LLDP relation, useful while doing discovery.\
 [mclag.py](orca_nw_lib/mclag.py) - MCLAG CRUD operations.\
 [port_chnl.py](orca_nw_lib/port_chnl.py) - Port Channel CRUD operations.\
 [portgroup.py](orca_nw_lib/portgroup.py) - Read port group information.\

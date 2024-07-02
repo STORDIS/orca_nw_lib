@@ -6,7 +6,7 @@ device_password='device_password'
 device_conn_timeout='device_conn_timeout'
 
 #neo4j
-neo4j_protocol='protocol'
+neo4j_protocol='neo4j_protocol'
 neo4j_url='neo4j_url'
 neo4j_user='neo4j_user'
 neo4j_password='neo4j_password'
