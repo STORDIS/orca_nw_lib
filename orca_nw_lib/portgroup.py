@@ -81,7 +81,7 @@ def get_port_group_members(device_ip: str, group_id):
             op_dict.append(mem_if.__properties__)
     return op_dict
 
-def get_port_group_of_interface(device_ip: str, if_name:str):
+def get_port_group_of_interface(device_ip: str, group_id:str):
     """
     Retrieves the members of a port group based on the device IP and group ID.
 
@@ -151,3 +151,7 @@ def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
             f"Port Group {port_group_id} speed change failed on device {device_ip}, Reason: {e}"
         )
         raise
+    finally:
+        from orca_nw_lib.interface import discover_interfaces
+        for mem_if in get_port_group_members(device_ip, port_group_id):
+            discover_interfaces(device_ip, mem_if.get("name"))
