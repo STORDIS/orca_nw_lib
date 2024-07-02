@@ -31,7 +31,11 @@ def clean_db():
 
 
 def get_networks():
-    return os.environ.get(const.discover_network, _settings.get(const.networks))
+    return (
+        networks.split(",")
+        if (networks := os.environ.get(const.discover_networks))
+        else _settings.get(const.discover_networks)
+    )
 
 
 def get_conn_timeout():
