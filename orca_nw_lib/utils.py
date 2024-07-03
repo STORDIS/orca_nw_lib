@@ -179,7 +179,7 @@ def format_and_get_trunk_vlans(trunk_vlans: list):
     result = []
     for i in trunk_vlans:
         if isinstance(i, int):
-            result.append(int(i))
+            result.append(i)
         elif "-" in i:
             result.extend(
                 range(int(i.split("-")[0]), int(i.split("-")[1]) + 1)
