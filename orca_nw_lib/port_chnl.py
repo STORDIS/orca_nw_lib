@@ -23,7 +23,7 @@ from .port_chnl_gnmi import (
     add_port_chnl_valn_members_on_device,
     get_port_channel_ip_details_from_device,
 )
-from .utils import get_logging
+from .utils import get_logging, format_and_get_trunk_vlans
 
 _logger = get_logging().getLogger(__name__)
 
@@ -59,7 +59,7 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
                 if lag.get("lagname") == port_chnl.get("name"):
                     port_chnl_item = port_chnl
                     if tagged_vlans := port_chnl.get("tagged_vlans"):
-                        port_chnl_vlan_member["trunk_vlans"] = [int(i) for i in tagged_vlans]
+                        port_chnl_vlan_member["trunk_vlans"] = format_and_get_trunk_vlans(tagged_vlans)
                     if access_vlan := port_chnl.get("access_vlan"):
                         port_chnl_vlan_member["access_vlan"] = int(access_vlan)
             ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
