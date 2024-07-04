@@ -10,7 +10,7 @@ from orca_nw_lib.portgroup_db import (
     get_port_group_member_from_db,
     get_port_group_member_names_from_db,
     insert_device_port_groups_in_db,
-    get_port_group_from_db,
+    get_port_group_from_db, get_port_group_of_if_from_db,
 )
 from orca_nw_lib.utils import get_logging
 
@@ -81,23 +81,20 @@ def get_port_group_members(device_ip: str, group_id):
             op_dict.append(mem_if.__properties__)
     return op_dict
 
-def get_port_group_of_interface(device_ip: str, group_id:str):
+def get_port_group_of_interface(device_ip: str, if_name:str):
     """
-    Retrieves the members of a port group based on the device IP and group ID.
+    Retrieves the port group of an interface based on the device IP and interface name.
 
     Args:
         device_ip (str): The IP address of the device.
-        group_id: The ID of the port group.
+        if_name: The name of the interface.
 
     Returns:
-        list: A list of dictionaries representing the properties of each member interface.
+        dict: A dictionary representing the properties of the port group of the interface.
     """
-    op_dict = []
-    mem_intfcs = get_port_group_member_from_db(device_ip, group_id)
-    if mem_intfcs:
-        for mem_if in mem_intfcs or []:
-            op_dict.append(mem_if.__properties__)
-    return op_dict
+    port_group = get_port_group_of_if_from_db(device_ip, if_name)
+    return port_group.__properties__
+
 
 def get_port_groups(device_ip: str, port_group_id=None):
     if port_group_id:
