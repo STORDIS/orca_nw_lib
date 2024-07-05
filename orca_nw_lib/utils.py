@@ -15,15 +15,15 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 # read env var or set default
 default_orca_nw_lib_config = os.environ.get(
-    "ORCA_NW_LIB_CONFIG_FILE", f"{dname}/orca_nw_lib.yml"
+    const.env_default_orca_nw_lib_config_file, f"{dname}/orca_nw_lib.yml"
 )
 default_logging_config = os.environ.get(
-    "ORCA_NW_LIB_LOGGING_CONFIG_FILE", f"{dname}/orca_nw_lib_logging.yml"
+    const.env_default_logging_config_file, f"{dname}/orca_nw_lib_logging.yml"
 )
 
 
 def init_db_connection():
-    config.DATABASE_URL = f"{_settings.get(const.protocol)}://{_settings.get(const.neo4j_user)}:{_settings.get(const.neo4j_password)}@{_settings.get(const.neo4j_url)}"
+    config.DATABASE_URL = f"{os.environ.get(const.neo4j_protocol, _settings.get(const.neo4j_protocol))}://{os.environ.get(const.neo4j_user, _settings.get(const.neo4j_user))}:{os.environ.get(const.neo4j_password, _settings.get(const.neo4j_password))}@{os.environ.get(const.neo4j_url, _settings.get(const.neo4j_url))}"
 
 
 def clean_db():
@@ -31,30 +31,33 @@ def clean_db():
 
 
 def get_networks():
-    global _settings
-    return _settings.get(const.networks)
-
-
-def get_device_cred(device_ip):
-    for addr, cred in get_networks().items():
-        if device_ip in [str(ip) for ip in ipaddress.ip_network(addr)]:
-            return cred
+    return (
+        networks.split(",")
+        if (networks := os.environ.get(const.discover_networks))
+        else _settings.get(const.discover_networks)
+    )
 
 
 def get_conn_timeout():
-    return _settings.get(const.conn_timeout)
+    return int(
+        os.environ.get(
+            const.device_conn_timeout, _settings.get(const.device_conn_timeout)
+        )
+    )
 
 
 def get_device_password():
-    return _settings.get(const.password)
+    return os.environ.get(const.device_password, _settings.get(const.device_password))
 
 
 def get_device_username():
-    return _settings.get(const.username)
+    return os.environ.get(const.device_username, _settings.get(const.device_username))
 
 
 def get_device_grpc_port():
-    return _settings.get(const.grpc_port)
+    return int(
+        os.environ.get(const.device_gnmi_port, _settings.get(const.device_gnmi_port))
+    )
 
 
 def load_orca_config(orca_config_file: str = default_orca_nw_lib_config):
@@ -135,8 +138,7 @@ def ping_ok(host, max_retries=1):
             return status
 
 
-
-def validate_and_get_ip_prefix(network_address:str):
+def validate_and_get_ip_prefix(network_address: str):
     """
     Validates and extracts the IP prefix from a given network address.
 
@@ -156,7 +158,7 @@ def validate_and_get_ip_prefix(network_address:str):
                 else network_address
             ),
             str(ip_network.network_address),
-            ip_network.prefixlen
+            ip_network.prefixlen,
         )
     except ValueError:
         _logger.error(f"Invalid network address: {network_address}")

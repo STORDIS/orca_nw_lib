@@ -122,13 +122,23 @@ def get_port_group_member_names_from_db(device_ip: str, group_id) -> List[str]:
     return [intf.name for intf in intfcs or []]
 
 
-def get_port_group_of_if_from_db(device_ip: str, inertface_name: str) -> PortGroup:
+def get_port_group_of_if_from_db(device_ip: str, interface_name: str) -> PortGroup:
+    """
+    Retrieve the port group object of an interface from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        interface_name: The name of the interface.
+
+    Returns:
+        PortGroup: The port group object of the interface.
+    """
 
     ## TODO: Following query certainly has scope of performance enhancement.
     ## retrieve the port group object via relation.
     for pg in get_port_group_from_db(device_ip) or []:
         for intf in pg.memberInterfaces.all():
-            if intf.name == inertface_name:
+            if intf.name == interface_name:
                 return pg
     return None
 
