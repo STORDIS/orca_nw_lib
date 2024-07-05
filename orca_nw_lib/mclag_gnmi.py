@@ -211,8 +211,6 @@ def config_mclag_domain_on_device(
                 }
             updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
 
-    print('===', updates)
-
     # fast convergence can only be enabled if its disable it needs to be deleted
     if fast_convergence == MclagFastConvergence.enable:
         updates.append(config_mclag_domain_fast_convergence_on_device(domain_id))
