@@ -192,15 +192,15 @@ def get_mclags(
 
 
 def config_mclag(
-    device_ip: str,
-    domain_id: int,
-    source_addr: str,
-    peer_addr: str,
-    peer_link: str,
-    mclag_sys_mac: str,
-    keepalive_int: int = None,
-    session_timeout: int = None,
-    delay_restore: int = None,
+    device_ip: int = None,
+    domain_id: int = None,
+    source_addr: str = None,
+    peer_addr: str = None,
+    peer_link: str = None,
+    mclag_sys_mac: str = None,
+    keepalive_int: int = 1,
+    session_timeout: int = 30,
+    delay_restore: int = 300,
     session_vrf: str = None,
     fast_convergence: MclagFastConvergence = None
 ):
@@ -244,8 +244,8 @@ def config_mclag(
             f" MCLAG configuration failed on device_ip : {device_ip}, Reason: {e}"
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
 
 
 def del_mclag(device_ip: str):
@@ -265,8 +265,8 @@ def del_mclag(device_ip: str):
             f" MCLAG deletion failed on device_ip : {device_ip}, Reason: {e}"
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
 
 
 def get_mclag_gw_mac(
@@ -416,8 +416,8 @@ def config_mclag_mem_portchnl(
             f"MCLAG member {port_chnl_name} configuration failed on mclag_domain_id : {mclag_domain_id} and device_ip : {device_ip}, Reason: {e} "
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
 
 
 def del_mclag_member(device_ip: str):
@@ -437,8 +437,8 @@ def del_mclag_member(device_ip: str):
             f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {e}"
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
 
 
 def remove_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
@@ -459,8 +459,8 @@ def remove_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
             f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
 
 
 def add_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
@@ -481,5 +481,5 @@ def add_mclag_domain_fast_convergence(device_ip: str, domain_id: int):
             f"MCLAG domain fast convergence deletion failed on domain_id : {domain_id} and device_ip : {device_ip}, Reason: {e} "
         )
         raise
-    finally:
-        discover_mclag(device_ip)
+    finally: 
+            discover_mclag(device_ip)
