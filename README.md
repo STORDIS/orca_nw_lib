@@ -5,13 +5,12 @@
       ">
     </a>
 <a href="https://github.com/stordis/orca_nw_lib/issues">
-      <img alt="Issues" src="https://img.shields.io/github/issues/stordis/orca_nw_lib?style=for-the-badge&cacheSeconds=https%3A%2F%2Fgithub.com%2FSTORDIS%2Forca_nw_lib%2Fissues
+      <img alt="Issues" src="https://img.shields.io/github/issues/stordis/orca_nw_lib?style=for-the-badge&link=https%3A%2F%2Fgithub.com%2FSTORDIS%2Forca_nw_lib%2Fissues
       " />
 </a>
 <a href="https://github.com/stordis/orca_nw_lib/graphs/contributors">
       <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/stordis/orca_nw_lib?style=for-the-badge&logo=github&link=https%3A%2F%2Fgithub.com%2FSTORDIS%2Forca_nw_lib%2Fgraphs%2Fcontributors" />
 </a>
-
 <a href="https://github.com/stordis/orca_nw_lib/pulls?q=">
       <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/stordis/orca_nw_lib?color=0088ff&style=for-the-badge&logo=github&link=https%3A%2F%2Fgithub.com%2FSTORDIS%2Forca_nw_lib%2Fpulls" />
 </a>
