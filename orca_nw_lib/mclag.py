@@ -420,7 +420,7 @@ def config_mclag_mem_portchnl(
         discover_mclag(device_ip)
 
 
-def del_mclag_member(device_ip: str):
+def del_mclag_member(device_ip: str, mclag_member: str):
     """
     Deletes an MCLAG member on the specified device.
 
@@ -431,7 +431,7 @@ def del_mclag_member(device_ip: str):
         None
     """
     try:
-        del_mclag_member_on_device(device_ip)
+        del_mclag_member_on_device(device_ip, mclag_member)
     except Exception as e:
         _logger.error(
             f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {e}"
