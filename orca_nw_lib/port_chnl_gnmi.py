@@ -470,10 +470,10 @@ def create_port_channel_vlan_gnmi_update_req(
         The GNMI update request for configuring VLAN members on the specified port channel.
     """
     vlan_config_members = {}
-    if trunk_vlans is not None:
+    if trunk_vlans:
         # checking input format change into list of ids
         vlan_config_members["trunk-vlans"] = format_and_get_trunk_vlans(trunk_vlans)
-    if access_vlan is not None:
+    if access_vlan:  # checking if access vlan is empty
         vlan_config_members["access-vlan"] = access_vlan
     return create_gnmi_update(
         get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name),
