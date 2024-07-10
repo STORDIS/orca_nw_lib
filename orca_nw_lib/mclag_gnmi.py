@@ -55,15 +55,15 @@ def get_mclag_domain_path() -> Path:
 
 
 def config_mclag_domain_on_device(
-        device_ip: str,
-        domain_id: int,
-        source_addr: str,
-        peer_addr: str,
-        peer_link: str,
-        mclag_sys_mac: str,
-        keepalive_int: int = None,
-        session_timeout: int = None,
-        delay_restore: int = None,
+        device_ip: int = None,
+        domain_id: int= None,
+        source_addr: str= None,
+        peer_addr: str= None,
+        peer_link: str= None,
+        mclag_sys_mac: str= None,
+        keepalive_int: int = 1,
+        session_timeout: int = 30,
+        delay_restore: int = 300,
         session_vrf: str = None,
         fast_convergence: MclagFastConvergence = None
 ):
@@ -89,13 +89,9 @@ def config_mclag_domain_on_device(
     mclag_config_json = {
         "openconfig-mclag:mclag-domain": [
             {
-                "domain-id": 0,
+                "domain-id": domain_id,
                 "config": {
-                    "domain-id": 0,
-                    "source-address": "string",
-                    "peer-address": "string",
-                    "peer-link": "string",
-                    "mclag-system-mac": "string",
+                    "domain-id": domain_id,
                 },
             }
         ]
@@ -104,19 +100,124 @@ def config_mclag_domain_on_device(
     for mc_lag in mclag_config_json.get("openconfig-mclag:mclag-domain"):
         mc_lag.update({"domain-id": domain_id})
         mc_lag.get("config").update({"domain-id": domain_id})
-        mc_lag.get("config").update({"source-address": source_addr})
-        mc_lag.get("config").update({"peer-address": peer_addr})
-        mc_lag.get("config").update({"peer-link": peer_link})
-        mc_lag.get("config").update({"mclag-system-mac": mclag_sys_mac})
+        if source_addr:
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "source-address": source_addr,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+
+        if peer_addr:
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "peer-address": peer_addr,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+        
+        if peer_link:
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "peer-link": peer_link,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+        
+        if mclag_sys_mac:
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "mclag-system-mac": mclag_sys_mac,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+        
         if keepalive_int:
-            mc_lag.get("config").update({"keepalive-interval": keepalive_int})
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "keepalive-interval": keepalive_int,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+
         if session_timeout:
-            mc_lag.get("config").update({"session-timeout": session_timeout})
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "session-timeout": session_timeout,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
+
         if delay_restore:
-            mc_lag.get("config").update({"delay-restore": delay_restore})
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "delay-restore": delay_restore,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
         if session_vrf:
-            mc_lag.get("config").update({"session-vrf": session_vrf})
-    updates.append(create_gnmi_update(get_mclag_domain_path(), mclag_config_json))
+            payload = {
+                "openconfig-mclag:mclag-domain": 
+                    [
+                    {
+                        "domain-id": domain_id,
+                        "config": {
+                            "domain-id": domain_id,
+                            "session-vrf": session_vrf,
+                        }
+                    }
+                    ]
+                }
+            updates.append(create_gnmi_update(get_mclag_domain_path(), payload))
 
     # fast convergence can only be enabled if its disable it needs to be deleted
     if fast_convergence == MclagFastConvergence.enable:

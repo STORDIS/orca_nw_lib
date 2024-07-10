@@ -117,18 +117,19 @@ def create_mclag_peerlink_relations_in_db():
 
             peer_addr = mclag_local.peer_addr
             mclag_remote = (
-                mcl_r[0] if (mcl_r := get_mclag_of_device_from_db(peer_addr)) else None
+                mcl_r[0] if peer_addr and (mcl_r := get_mclag_of_device_from_db(peer_addr)) else None
             )
             peer_link_remote = mclag_remote.peer_link if mclag_remote else None
-            port_chnl_remote = get_port_chnl_of_device_from_db(
-                peer_addr, peer_link_remote
-            )
-            if port_chnl_remote:
-                mclag_remote.peer_link_node.connect(port_chnl_remote)
+            if peer_addr and peer_link_remote:
+                port_chnl_remote = get_port_chnl_of_device_from_db(
+                    peer_addr, peer_link_remote
+                )
+                if port_chnl_remote:
+                    mclag_remote.peer_link_node.connect(port_chnl_remote)
 
-            port_chnl_local.peer_link.connect(
-                port_chnl_remote
-            ) if port_chnl_local and port_chnl_remote else None
+                port_chnl_local.peer_link.connect(
+                    port_chnl_remote
+                ) if port_chnl_local and port_chnl_remote else None
 
 
 def copy_mclag_obj_props(target_obj: MCLAG, src_obj: MCLAG):
