@@ -163,3 +163,29 @@ def validate_and_get_ip_prefix(network_address: str):
     except ValueError:
         _logger.error(f"Invalid network address: {network_address}")
         return None, None, None
+
+
+def format_and_get_trunk_vlans(trunk_vlans: list):
+    """
+    Formats and returns the list of trunk VLANs.
+
+    Args:
+        trunk_vlans (list): The list of trunk VLANs to format.
+
+    Returns:
+        list: The formatted list of trunk VLANs.
+    """
+
+    result = []
+    for i in trunk_vlans:
+        if isinstance(i, int):
+            result.append(i)
+        elif "-" in i:
+            result.extend(
+                range(int(i.split("-")[0]), int(i.split("-")[1]) + 1)
+            )
+        elif ".." in i:
+            result.extend(range(int(i.split("..")[0]), int(i.split("..")[1]) + 1))
+        else:
+            result.append(int(i))
+    return result

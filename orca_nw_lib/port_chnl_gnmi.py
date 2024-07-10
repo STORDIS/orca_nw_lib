@@ -7,7 +7,7 @@ from orca_nw_lib.gnmi_util import (
     send_gnmi_set,
 )
 from orca_nw_lib.portgroup_gnmi import get_port_chnl_mem_base_path
-from orca_nw_lib.utils import get_logging, validate_and_get_ip_prefix
+from orca_nw_lib.utils import get_logging, validate_and_get_ip_prefix, format_and_get_trunk_vlans
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_gnmi_update,
@@ -456,23 +456,24 @@ def get_port_channel_vlan_memebers_path(port_channel_name: str):
 
 
 def create_port_channel_vlan_gnmi_update_req(
-        port_channel_name: str, trunk_vlans: list[int] = None, access_vlan: int = None
+        port_channel_name: str, trunk_vlans: list = None, access_vlan: int = None
 ):
     """
     Creates a GNMI update request for configuring VLAN members on a port channel.
 
     Parameters:
         port_channel_name (str): The name of the port channel.
-        trunk_vlans (list[int]): The list of VLAN IDs to be configured as trunk VLANs.
+        trunk_vlans (list): The list of VLAN IDs to be configured as trunk VLANs.
         access_vlan (int): The VLAN ID to be configured as access VLAN.
 
     Returns:
         The GNMI update request for configuring VLAN members on the specified port channel.
     """
     vlan_config_members = {}
-    if trunk_vlans is not None:
-        vlan_config_members["trunk-vlans"] = trunk_vlans
-    if access_vlan is not None:
+    if trunk_vlans:
+        # checking input format change into list of ids
+        vlan_config_members["trunk-vlans"] = format_and_get_trunk_vlans(trunk_vlans)
+    if access_vlan:  # checking if access vlan is empty
         vlan_config_members["access-vlan"] = access_vlan
     return create_gnmi_update(
         get_port_channel_vlan_memebers_path(port_channel_name=port_channel_name),
