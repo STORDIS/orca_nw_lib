@@ -420,7 +420,7 @@ def config_mclag_mem_portchnl(
             discover_mclag(device_ip)
 
 
-def del_mclag_member(device_ip: str, mclag_member: str):
+def del_mclag_member(device_ip: str, mclag_member: str = None):
     """
     Deletes an MCLAG member on the specified device.
 

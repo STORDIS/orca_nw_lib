@@ -273,7 +273,7 @@ def get_mclag_mem_portchnl_on_device(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_mclag_if_path()])
 
 
-def del_mclag_member_on_device(device_ip: str, mclag_member: str):
+def del_mclag_member_on_device(device_ip: str, mclag_member: str = None):
     """
     Deletes the MCLAG member port channel on the specified device.
 
