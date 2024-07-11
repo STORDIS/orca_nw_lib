@@ -193,7 +193,7 @@ def get_mclags(
 
 def config_mclag(
     device_ip: int,
-    domain_id: int = None,
+    domain_id: int,
     source_addr: str = None,
     peer_addr: str = None,
     peer_link: str = None,
