@@ -347,19 +347,21 @@ def remove_port_chnl_ip(device_ip: str, chnl_name: str, ip_address: str = None):
         discover_port_chnl(device_ip)
 
 
-def remove_port_channel_vlan_member(device_ip: str, chnl_name: str):
+def remove_port_channel_vlan_member(device_ip: str, chnl_name: str, access_vlan: int = None, trunk_vlans: list[int] = None):
     """
     Removes all VLAN members from a port channel on a device.
 
     Args:
         device_ip (str): The IP address of the device.
         chnl_name (str): The name of the port channel.
+        access_vlan (int): The VLAN ID to be removed as access VLAN.
+        trunk_vlans (list[int], optional): The list of VLAN IDs to be removed as trunk VLANs. Defaults to None.
 
     Returns:
         None
     """
     try:
-        delete_port_channel_member_vlan_from_device(device_ip, chnl_name)
+        delete_port_channel_member_vlan_from_device(device_ip, chnl_name, access_vlan, trunk_vlans)
     except Exception as e:
         _logger.error(f"Port Channel Vlan members removal failed on device {device_ip}, Reason: {e}")
         raise
