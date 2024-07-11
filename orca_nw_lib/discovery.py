@@ -16,7 +16,7 @@ from .mclag import discover_mclag, discover_mclag_gw_macs
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
 from .graph_db_models import Device
-from .lldp import create_lldp_relations_in_db
+from .lldp_db import create_lldp_relations_in_db
 from .utils import get_logging, get_networks, ping_ok
 
 

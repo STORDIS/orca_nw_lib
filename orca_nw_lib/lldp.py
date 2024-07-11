@@ -1,7 +1,6 @@
+from orca_nw_lib.lldp_gnmi import get_lldp_interfaces_from_device
 from .device import create_device_graph_object
-from .interface_db import get_interface_of_device_from_db
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_get
 from .utils import get_logging
 
 
@@ -66,95 +65,6 @@ def get_lldp_base_path() -> Path:
         ],
     )
 
-
-def get_lldp_interfaces_path() -> Path:
-    """
-    Generate the path for accessing the interfaces in the LLDP section of the OpenConfig model.
-
-    Returns:
-        Path: The path object representing the LLDP interfaces path in the OpenConfig model.
-    """
-    path = get_lldp_base_path()
-    path.elem.append(PathElem(name="interfaces"))
-    path.elem.append(PathElem(name="interface"))
-    return path
-
-
-def get_lldp_enable_path() -> Path:
-    """
-    Generate the path for accessing the LLDP enable in the OpenConfig model.
-
-    Returns:
-        Path: The path object representing the LLDP enable path in the OpenConfig model.
-    """
-    path = get_lldp_base_path()
-    path.elem.append(PathElem(name="state"))
-    path.elem.append(PathElem(name="enabled"))
-    return path
-
-
-def get_lldp_interfaces_from_device(device_ip: str):
-    """
-    Retrieves the LLDP interfaces from the specified device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-
-    Returns:
-        The result of the GNMI get request for the LLDP interfaces.
-    """
-    return send_gnmi_get(device_ip=device_ip, path=[get_lldp_interfaces_path()])
-
-
-def create_lldp_relations_in_db(topology):
-    """
-    Creates LLDP relations in the database based on the given topology.
-
-    Args:
-        topology (dict): A dictionary representing the topology of devices and their neighbors.
-
-    Returns:
-        None
-    """
-    for device, neighbors in topology.items():
-        for nbr in neighbors:
-            nbr_device = nbr.get("nbr_device")
-
-            local_intfc = get_interface_of_device_from_db(
-                device.mgt_ip, nbr.get("local_port")
-            )
-
-            nbr_intfc = get_interface_of_device_from_db(
-                nbr_device.mgt_ip, nbr.get("nbr_port")
-            )
-            if local_intfc and nbr_intfc:
-                local_intfc.lldp_neighbour.connect(nbr_intfc)
-
-
-def is_lldp_enabled(device_ip):
-    """
-    This function checks if LLDP (Link Layer Discovery Protocol) is enabled on a device.
-
-    Args:
-        device_ip (str): The IP address of the device to check.
-
-    Returns:
-        bool: True if LLDP is enabled on the device, False otherwise.
-    """
-    path_lldp_state = get_lldp_enable_path()
-    try:
-        response = send_gnmi_get(device_ip, path_lldp_state)
-        if response is not None:
-            if response.get("openconfig-lldp:enabled"):
-                return True
-            else:
-                _logger.info(f"LLDP is disabled on {device_ip}")
-                return False
-        else:
-            _logger.info(f"Error occurred while making request on {device_ip}.")
-            return False
-    except TimeoutError as e:
-        raise e
 
 
 def read_lldp_topo(ip: str, topology, lldp_report: list):
