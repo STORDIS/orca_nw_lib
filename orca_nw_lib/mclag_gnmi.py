@@ -92,29 +92,45 @@ def config_mclag_domain_on_device(
     for mc_lag in mclag_config_json.get("openconfig-mclag:mclag-domain"):
         mc_lag.update({"domain-id": domain_id})
         mc_lag.get("config").update({"domain-id": domain_id})
-        
+
         if source_addr:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["source-address"] = source_addr
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "source-address"
+            ] = source_addr
         if peer_addr:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["peer-address"] = peer_addr
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "peer-address"
+            ] = peer_addr
 
         if peer_link:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["peer-link"] = peer_link
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "peer-link"
+            ] = peer_link
 
         if mclag_sys_mac:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["mclag-system-mac"] = mclag_sys_mac
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "mclag-system-mac"
+            ] = mclag_sys_mac
 
         if keepalive_int:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["keepalive-interval"] = keepalive_int
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "keepalive-interval"
+            ] = keepalive_int
 
         if session_timeout:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["session-timeout"] = session_timeout
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "session-timeout"
+            ] = session_timeout
 
         if delay_restore:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["delay-restore"] = delay_restore
-            
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "delay-restore"
+            ] = delay_restore
+
         if session_vrf:
-            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]["session-vrf"] = session_vrf
+            mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"][
+                "session-vrf"
+            ] = session_vrf
 
         updates.append(create_gnmi_update(get_mclag_domain_path(), mclag_config_json))
 
