@@ -4,7 +4,8 @@ from orca_nw_lib.gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
     send_gnmi_get,
-    send_gnmi_set, get_gnmi_del_reqs,
+    send_gnmi_set,
+    get_gnmi_del_reqs,
 )
 from orca_nw_lib.portgroup_gnmi import get_port_chnl_mem_base_path
 from orca_nw_lib.utils import get_logging, validate_and_get_ip_prefix, format_and_get_trunk_vlans
