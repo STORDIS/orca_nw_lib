@@ -1,9 +1,11 @@
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import send_gnmi_get
-from orca_nw_lib.lldp import _logger, get_lldp_base_path
-from .gnmi_util import (
-    send_gnmi_get, get_gnmi_path
-)
+from orca_nw_lib.utils import get_logging
+from .gnmi_util import send_gnmi_get, get_gnmi_path
+
+_logger = get_logging().getLogger(__name__)
+
+
 def get_lldp_nbr_from_device(device_ip: str, intfc_name: str = None):
     """
     Get LLDP neighbor information from a device.
@@ -23,6 +25,25 @@ def get_lldp_nbr_from_device(device_ip: str, intfc_name: str = None):
                 if intfc_name
                 else "openconfig-lldp:lldp/interfaces/interface"
             ),
+        ],
+    )
+
+
+def get_lldp_base_path() -> Path:
+    """
+    Generate the path for accessing the LLDP base in the OpenConfig model.
+
+    Returns:
+        Path: The path object representing the LLDP base path in the OpenConfig model.
+    """
+
+    return Path(
+        target="openconfig",
+        origin="openconfig-lldp",
+        elem=[
+            PathElem(
+                name="lldp",
+            )
         ],
     )
 

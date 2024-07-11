@@ -137,6 +137,7 @@ def set_interface_config_in_db(
     autoneg:bool = None,
     adv_speeds:str = None,
     link_training:bool = None,
+    lldp_nbrs:list = None,
 ):
     """
     Sets the configuration of an interface in the database.
@@ -201,6 +202,11 @@ def set_interface_config_in_db(
                 "Updating interface %s standalone-link-training in DB object to %s", interface, link_training
             )
             interface.link_training = 'on' if link_training else 'off'
+        if lldp_nbrs:
+            _logger.debug(
+                "Updating interface %s LLDP neighbors in DB object to %s", interface, lldp_nbrs
+            )
+            interface.lldp_nbrs = lldp_nbrs
         interface.save()
         _logger.debug("Saved interface config in DB %s", interface)
 

@@ -70,3 +70,7 @@ def delete_device(mgt_ip: str = None):
     except Exception as e:
         _logger.error(f"Error: {e}")
         return False
+
+
+def insert_devices_in_db(device:Device):
+    device.save()

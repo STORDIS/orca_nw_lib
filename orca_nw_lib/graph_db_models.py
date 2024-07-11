@@ -185,7 +185,7 @@ class Interface(StructuredNode):
     adv_speeds = StringProperty()
     link_training = StringProperty()
     autoneg = StringProperty()
-    lldp_nbr=JSONProperty() ## LLDP remote device in the format  - {remote_device_ip:[Ethernet0,Ethernet1],.....}
+    lldp_nbrs=JSONProperty() ## LLDP remote device in the format  - {nbr_ip:[Eth0,Eth1].........}
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
