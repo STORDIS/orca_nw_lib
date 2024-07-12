@@ -47,17 +47,17 @@ def get_mclag_domain_path() -> Path:
 
 
 def config_mclag_domain_on_device(
-        device_ip: str,
-        domain_id: int,
-        source_addr: str,
-        peer_addr: str,
-        peer_link: str,
-        mclag_sys_mac: str,
-        keepalive_int: int = None,
-        session_timeout: int = None,
-        delay_restore: int = None,
-        session_vrf: str = None,
-        fast_convergence: MclagFastConvergence = None
+    device_ip: int,
+    domain_id: int,
+    source_addr: str = None,
+    peer_addr: str = None,
+    peer_link: str = None,
+    mclag_sys_mac: str = None,
+    keepalive_int: int = 1,
+    session_timeout: int = 30,
+    delay_restore: int = 300,
+    session_vrf: str = None,
+    fast_convergence: MclagFastConvergence = None,
 ):
     """
     Configure the MCLAG domain on a device.
@@ -81,40 +81,47 @@ def config_mclag_domain_on_device(
     mclag_config_json = {
         "openconfig-mclag:mclag-domain": [
             {
-                "domain-id": 0,
+                "domain-id": domain_id,
                 "config": {
-                    "domain-id": 0,
-                    "source-address": "string",
-                    "peer-address": "string",
-                    "peer-link": "string",
-                    "mclag-system-mac": "string",
+                    "domain-id": domain_id,
                 },
             }
         ]
     }
+    config_node = mclag_config_json["openconfig-mclag:mclag-domain"][0]["config"]
     updates = []
-    for mc_lag in mclag_config_json.get("openconfig-mclag:mclag-domain"):
-        mc_lag.update({"domain-id": domain_id})
-        mc_lag.get("config").update({"domain-id": domain_id})
-        mc_lag.get("config").update({"source-address": source_addr})
-        mc_lag.get("config").update({"peer-address": peer_addr})
-        mc_lag.get("config").update({"peer-link": peer_link})
-        mc_lag.get("config").update({"mclag-system-mac": mclag_sys_mac})
-        if keepalive_int:
-            mc_lag.get("config").update({"keepalive-interval": keepalive_int})
-        if session_timeout:
-            mc_lag.get("config").update({"session-timeout": session_timeout})
-        if delay_restore:
-            mc_lag.get("config").update({"delay-restore": delay_restore})
-        if session_vrf:
-            mc_lag.get("config").update({"session-vrf": session_vrf})
+    if source_addr:
+        config_node["source-address"] = source_addr
+    if peer_addr:
+        config_node["peer-address"] = peer_addr
+
+    if peer_link:
+        config_node["peer-link"] = peer_link
+
+    if mclag_sys_mac:
+        config_node["mclag-system-mac"] = mclag_sys_mac
+
+    if keepalive_int:
+        config_node["keepalive-interval"] = keepalive_int
+
+    if session_timeout:
+        config_node["session-timeout"] = session_timeout
+
+    if delay_restore:
+        config_node["delay-restore"] = delay_restore
+
+    if session_vrf:
+        config_node["session-vrf"] = session_vrf
+
     updates.append(create_gnmi_update(get_mclag_domain_path(), mclag_config_json))
 
     # fast convergence can only be enabled if its disable it needs to be deleted
     if fast_convergence == MclagFastConvergence.enable:
         updates.append(config_mclag_domain_fast_convergence_on_device(domain_id))
     if fast_convergence == MclagFastConvergence.disable:
-        remove_mclag_domain_fast_convergence_on_device(device_ip=device_ip, domain_id=domain_id)
+        remove_mclag_domain_fast_convergence_on_device(
+            device_ip=device_ip, domain_id=domain_id
+        )
     return send_gnmi_set(
         create_req_for_update(updates),
         device_ip,
@@ -122,7 +129,7 @@ def config_mclag_domain_on_device(
 
 
 def config_mclag_member_on_device(
-        device_ip: str, mclag_domain_id: int, port_chnl_name: str
+    device_ip: str, mclag_domain_id: int, port_chnl_name: str
 ):
     """
     Configures the MCLAG member port channel on a specific device.
@@ -257,7 +264,7 @@ def get_mclag_config_from_device(device_ip: str):
         device_ip (str): The IP address of the device to retrieve the configuration from.
 
     Returns:
-        The MCLAG configuration as returned by the `send_gnmi_get` function with the 
+        The MCLAG configuration as returned by the `send_gnmi_get` function with the
         specified device IP and MCLAG path.
 
     Raises:
@@ -301,10 +308,7 @@ def config_mclag_domain_fast_convergence_on_device(domain_id: int):
     path = get_sonic_mclag_domain_list_path(domain_id)
     req_body = {
         "sonic-mclag:MCLAG_DOMAIN_LIST": [
-            {
-                "domain_id": domain_id,
-                "fast_convergence": "enable"
-            }
+            {"domain_id": domain_id, "fast_convergence": "enable"}
         ]
     }
     return create_gnmi_update(path=path, val=req_body)
@@ -323,9 +327,7 @@ def get_mclag_domain_fast_convergence_from_device(device_ip: str, domain_id: int
     """
     return send_gnmi_get(
         device_ip=device_ip,
-        path=[
-            get_sonic_mclag_domain_list_path(domain_id=domain_id)
-        ]
+        path=[get_sonic_mclag_domain_list_path(domain_id=domain_id)],
     )
 
 
@@ -345,10 +347,7 @@ def remove_mclag_domain_fast_convergence_on_device(device_ip: str, domain_id: in
     """
     path = get_sonic_mclag_domain_list_path(domain_id)
     path.elem.append(PathElem(name="fast_convergence"))
-    return send_gnmi_set(
-        req=get_gnmi_del_req(path=path),
-        device_ip=device_ip
-    )
+    return send_gnmi_set(req=get_gnmi_del_req(path=path), device_ip=device_ip)
 
 
 def add_mclag_domain_fast_convergence_on_device(device_ip: str, domain_id: int):
@@ -371,5 +370,5 @@ def add_mclag_domain_fast_convergence_on_device(device_ip: str, domain_id: int):
         req=create_req_for_update(
             [config_mclag_domain_fast_convergence_on_device(domain_id)]
         ),
-        device_ip=device_ip
+        device_ip=device_ip,
     )
