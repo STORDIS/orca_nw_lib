@@ -31,15 +31,16 @@ def get_mclag_if_path(mclag_member=None) -> Path:
             Path: The MCLAG interface path.
     """
     path: Path = get_mclag_path()
-    
-    if mclag_member:
-        path.elem.append(PathElem(name="interfaces"))
-        path.elem.append(PathElem(name="interface", key={"name": mclag_member}))
+    path.elem.append(PathElem(name="interfaces"))
 
-    else:
-        path.elem.append(PathElem(name="interfaces"))
-        path.elem.append(PathElem(name="interface"))
+    path.elem.append(
+        PathElem(name="interface", key={"name": mclag_member})
+        if mclag_member
+        else PathElem(name="interface")
+    )
+
     return path
+
 
 def get_mclag_gateway_mac_path() -> Path:
     path: Path = get_mclag_path()
