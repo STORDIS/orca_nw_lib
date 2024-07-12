@@ -122,12 +122,10 @@ def discover_device_and_lldp_info(device_ip):
 def trigger_discovery(device_ip):
     discover_device_and_lldp_info(device_ip)
     #some links can only be created after all teh topology devices are discovered
-    discover_nw_features(device_ip)
     for ip in get_all_devices_ip_from_db() or []:
         discover_nw_features(ip)
 
     
-
 def discover_device_from_config() -> []:
     """
     Discover devices from the configuration file.
@@ -152,5 +150,5 @@ def discover_device_from_config() -> []:
             return report
         for device_ip in ipaddress.ip_network(ip_or_nw):
             device_ip = str(device_ip)
-            discover_device_and_lldp_info(device_ip)
+            trigger_discovery(device_ip)
     return report

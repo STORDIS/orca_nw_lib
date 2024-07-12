@@ -73,4 +73,9 @@ def delete_device(mgt_ip: str = None):
 
 
 def insert_devices_in_db(device:Device):
-    device.save()
+    if dev:=get_device_db_obj(device.mgt_ip):
+        _logger.debug(f"Device with IP {device.mgt_ip} already exists in the database.")
+        dev.copy_properties(device)
+        dev.save()
+    else:
+        device.save()
