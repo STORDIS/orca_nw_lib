@@ -20,16 +20,25 @@ def get_mclag_path() -> Path:
     return Path(target="openconfig", elem=[PathElem(name="openconfig-mclag:mclag")])
 
 
-def get_mclag_if_path() -> Path:
+def get_mclag_if_path(mclag_member=None) -> Path:
     """
     Retrieves the MCLAG interface path.
 
     Returns:
-        Path: The MCLAG interface path.
+        if member
+            Path: The MCLAG interface path for particular Member (PortChannel)
+        Else
+            Path: The MCLAG interface path.
     """
     path: Path = get_mclag_path()
     path.elem.append(PathElem(name="interfaces"))
-    path.elem.append(PathElem(name="interface"))
+
+    path.elem.append(
+        PathElem(name="interface", key={"name": mclag_member})
+        if mclag_member
+        else PathElem(name="interface")
+    )
+
     return path
 
 
@@ -171,7 +180,7 @@ def get_mclag_mem_portchnl_on_device(device_ip: str):
     return send_gnmi_get(device_ip=device_ip, path=[get_mclag_if_path()])
 
 
-def del_mclag_member_on_device(device_ip: str):
+def del_mclag_member_on_device(device_ip: str, mclag_member: str = None):
     """
     Deletes the MCLAG member port channel on the specified device.
 
@@ -181,7 +190,7 @@ def del_mclag_member_on_device(device_ip: str):
     Returns:
         The response from sending the GNMI delete request.
     """
-    return send_gnmi_set(get_gnmi_del_req(get_mclag_if_path()), device_ip)
+    return send_gnmi_set(get_gnmi_del_req(get_mclag_if_path(mclag_member)), device_ip)
 
 
 def config_mclag_gateway_mac_on_device(device_ip: str, mclag_gateway_mac: str):
