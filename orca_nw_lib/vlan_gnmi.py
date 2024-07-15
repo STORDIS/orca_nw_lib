@@ -211,7 +211,7 @@ def config_vlan_on_device(
                 {"openconfig-interfaces:enabled": enabled},
             )
         )
-    if descr:
+    if descr is not None:
         update_req.append(
             create_gnmi_update(
                 get_gnmi_path(
