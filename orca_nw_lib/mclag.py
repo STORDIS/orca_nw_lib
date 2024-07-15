@@ -55,7 +55,9 @@ def _create_mclag_graph_objects(device_ip: str) -> dict:
             device_ip=device_ip, domain_id=domain_id
         )
         fast_convergence = None
-        for mclag_item in mclag_device_details.get("sonic-mclag:MCLAG_DOMAIN_LIST") or []:
+        for mclag_item in (
+            mclag_device_details.get("sonic-mclag:MCLAG_DOMAIN_LIST") or []
+        ):
             if mclag_item.get("domain_id") == domain_id:
                 fast_convergence = mclag_item.get("fast_convergence")
         mclag_obj = MCLAG(
@@ -71,7 +73,7 @@ def _create_mclag_graph_objects(device_ip: str) -> dict:
             role=mclag_domain.get("state").get("role"),
             system_mac=mclag_domain.get("state").get("system-mac"),
             session_vrf=mclag_domain.get("config").get("session-vrf"),
-            fast_convergence=fast_convergence
+            fast_convergence=fast_convergence,
         )
         intfc_list = [
             mclag_intfc["name"]
@@ -133,9 +135,7 @@ def discover_mclag(device_ip: str = None):
                 device, _create_mclag_graph_objects(device.mgt_ip)
             )
         except Exception as e:
-            _logger.error(
-                f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}"
-            )
+            _logger.error(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
             raise
     create_mclag_peer_link_rel_in_db()
 
@@ -192,17 +192,17 @@ def get_mclags(
 
 
 def config_mclag(
-    device_ip: str,
+    device_ip: int,
     domain_id: int,
-    source_addr: str,
-    peer_addr: str,
-    peer_link: str,
-    mclag_sys_mac: str,
-    keepalive_int: int = None,
-    session_timeout: int = None,
-    delay_restore: int = None,
+    source_addr: str = None,
+    peer_addr: str = None,
+    peer_link: str = None,
+    mclag_sys_mac: str = None,
+    keepalive_int: int = 1,
+    session_timeout: int = 30,
+    delay_restore: int = 300,
     session_vrf: str = None,
-    fast_convergence: MclagFastConvergence = None
+    fast_convergence: MclagFastConvergence = None,
 ):
     """
     Configures MCLAG on the device.
@@ -236,7 +236,7 @@ def config_mclag(
             session_timeout,
             delay_restore,
             session_vrf,
-            fast_convergence
+            fast_convergence,
         )
 
     except Exception as e:
@@ -261,9 +261,7 @@ def del_mclag(device_ip: str):
     try:
         del_mclag_from_device(device_ip)
     except Exception as e:
-        _logger.error(
-            f" MCLAG deletion failed on device_ip : {device_ip}, Reason: {e}"
-        )
+        _logger.error(f" MCLAG deletion failed on device_ip : {device_ip}, Reason: {e}")
         raise
     finally:
         discover_mclag(device_ip)
@@ -420,7 +418,7 @@ def config_mclag_mem_portchnl(
         discover_mclag(device_ip)
 
 
-def del_mclag_member(device_ip: str):
+def del_mclag_member(device_ip: str, mclag_member: str = None):
     """
     Deletes an MCLAG member on the specified device.
 
@@ -431,7 +429,7 @@ def del_mclag_member(device_ip: str):
         None
     """
     try:
-        del_mclag_member_on_device(device_ip)
+        del_mclag_member_on_device(device_ip, mclag_member)
     except Exception as e:
         _logger.error(
             f"MCLAG member deletion failed on device_ip : {device_ip}, Reason: {e}"
