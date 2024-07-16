@@ -119,6 +119,10 @@ def get_gnmi_del_req(path: Path):
     return SetRequest(delete=[path])
 
 
+def get_gnmi_del_reqs(paths: list[Path]):
+    return SetRequest(delete=paths)
+
+
 def send_gnmi_set(req: SetRequest, device_ip: str):
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
