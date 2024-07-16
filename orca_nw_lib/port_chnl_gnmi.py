@@ -517,7 +517,7 @@ def delete_port_channel_member_vlan_from_device(device_ip: str, port_channel_nam
     if trunk_vlans:
         for i in format_and_get_trunk_vlans(trunk_vlans):
             paths.append(get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={port_channel_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={i}]"))
-    return send_gnmi_set(req=get_gnmi_del_reqs(paths), device_ip=device_ip)
+    return send_gnmi_set(req=get_gnmi_del_reqs(paths), device_ip=device_ip) if paths else None
 
 
 def delete_all_port_channel_member_vlan_from_device(device_ip: str, port_channel_name: str):
