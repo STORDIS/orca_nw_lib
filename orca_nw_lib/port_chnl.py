@@ -198,16 +198,7 @@ def del_port_chnl(device_ip: str, chnl_name: str = None):
     port_chnl_list = port_chnl if isinstance(port_chnl, list) else [port_chnl]
     try:
         for chnl in [item for item in port_chnl_list if item is not None] or []:
-            for mem_if in get_port_chnl_members(device_ip, chnl.get("lag_name")) or []:
-                if mem_if.get("name"):
-                    del_port_chnl_mem(
-                        device_ip, chnl.get("lag_name"), mem_if.get("name")
-                    )
             if chnl.get("lag_name"):
-                # port channel vlan members and  ip address must be removed before deleting port channel.
-                # if not it throws error given instance is in use.
-                delete_port_channel_member_vlan_from_device(device_ip=device_ip, port_channel_name=chnl.get("lag_name"))
-                remove_all_port_channel_vlan_member(device_ip, chnl.get("lag_name"))
                 del_port_chnl_from_device(device_ip, chnl.get("lag_name"))
     except Exception as e:
         _logger.error(
