@@ -13,7 +13,7 @@
       <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/stordis/orca_nw_lib?color=0088ff&style=for-the-badge&logo=github&link=https%3A%2F%2Fgithub.com%2FSTORDIS%2Forca_nw_lib%2Fpulls" />
 </a>
 <a href="https://github.com/STORDIS/orca_nw_lib?tab=Apache-2.0-1-ov-file#readme">
-      <img alt="GitHub License" src="https://img.shields.io/github/license/stordis/orca_nw_lib?style=for-the-badge">
+      <img alt="GitHub License" src="https://img.shields.io/github/license/stordis/orca_nw_lib?style=for-the-badge"/>
 </a>
 </p>
 
