@@ -15,7 +15,8 @@ from .vlan_gnmi import (
     get_vlan_ip_details_from_device,
     remove_anycast_addr_from_vlan_on_device,
     remove_ip_from_vlan_on_device,
-    add_vlan_members_on_device, delete_vlan_members_on_device,
+    add_vlan_members_on_device,
+    delete_vlan_members_on_device,
 )
 from .utils import get_logging
 from .graph_db_models import Vlan
@@ -66,7 +67,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
                 vlanid=vlan.get("vlanid"),
                 name=v_name,
                 ip_address=ipv4_addr,
-                sag_ip_address=sag_ipv4_addresses[0] if sag_ipv4_addresses else None,
+                sag_ip_address=sag_ipv4_addresses if sag_ipv4_addresses else None,
                 autostate=vlan.get("autostate", str(VlanAutoState.disable)),
             )
         )
