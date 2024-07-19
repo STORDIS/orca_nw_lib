@@ -14,8 +14,8 @@ def _create_lldp_info(device_ip, if_name: str = None):
     lldp_response = get_lldp_nbr_from_device(device_ip, if_name).get(
         "openconfig-lldp:interface"
     )
-    nbr_dict = {} ## {nbr_ip:[Eth0,Eth1].........}
     for lldp in lldp_response or []:
+        nbr_dict = {} ## Per local ethernet - in the format {nbr_ip:[Eth0,Eth1].........}
         local_if = lldp.get("name")
         # Check if neighbors node exists
         if lldp.get("neighbors") and (nbrs := lldp.get("neighbors").get("neighbor")):
@@ -50,62 +50,3 @@ def get_all_lldp_neighbor_device_ips(device_ip: str) -> Set[str]:
         nbr_device_ips.update(nbr_info.keys()) if (nbr_info:=get_lldp_neighbors(device_ip, if_name)) else None
             
     return nbr_device_ips
-            
-
-def read_lldp_topo(ip: str, topology, lldp_report: list):
-    """
-    Generate the function comment for the given function body in a markdown code block with the correct language syntax.
-
-    Parameters:
-        ip (str): The IP address of the device.
-        topology: The current topology dictionary.
-        lldp_report (list): The list to store the LLDP report.
-
-    Returns:
-        None
-    """
-
-    try:
-        device = create_device_graph_object(ip)
-        if device not in topology:
-            nbrs = []
-            try:
-                nbrs = get_lldp_neighbors(ip)
-            except Exception as e:
-                log_str = (
-                    f"Neighbors of Device {ip} couldn't be discovered reason : {e}."
-                )
-                _logger.info(log_str)
-                lldp_report.append(log_str)
-
-            temp_arr = []
-            for nbr in nbrs:
-                try:
-                    nbr_device = create_device_graph_object(nbr.get("nbr_ip"))
-
-                    # Following check prevents adding an empty device object in topology.
-                    # with no mgt_ip any no other properties as well.
-                    # This may happen if device is pingable but gnmi connection can not be established.
-                    if nbr_device.mgt_intf:
-                        temp_arr.append(
-                            {
-                                "nbr_device": create_device_graph_object(
-                                    nbr.get("nbr_ip")
-                                ),
-                                "nbr_port": nbr.get("nbr_port"),
-                                "local_port": nbr.get("local_port"),
-                            }
-                        )
-                except Exception as e:
-                    log_str = f"Device {nbr.get('nbr_ip')} couldn't be discovered reason : {e}."
-                    _logger.info(log_str)
-                    lldp_report.append(log_str)
-
-            topology[device] = temp_arr
-
-            for nbr in nbrs or []:
-                read_lldp_topo(nbr.get("nbr_ip"), topology, lldp_report)
-    except Exception as e:
-        log_str = f"Device {ip} couldn't be discovered reason : {e}."
-        _logger.info(log_str)
-        lldp_report.append(log_str)

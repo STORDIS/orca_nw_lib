@@ -6,7 +6,7 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def get_all_interfaces_of_device_from_db(device_ip: str):
+def get_all_interfaces_of_device_from_db(device_ip: str)-> list[Interface]:
     """
     Get all interfaces of a device from the database.
 

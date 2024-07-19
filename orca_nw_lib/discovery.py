@@ -1,8 +1,11 @@
 import ipaddress
+import time
+
+from orca_nw_lib.lldp_db import create_lldp_relations_in_db
 
 from .device import discover_device, get_device_details
 from .device_db import get_all_devices_ip_from_db
-from .gnmi_sub import gnmi_subscribe
+from .gnmi_sub import gnmi_subscribe, sync_response_received
 
 from .interface import discover_interfaces, enable_all_ifs
 from .lldp import discover_lldp_info, get_all_lldp_neighbor_device_ips
@@ -16,7 +19,6 @@ from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
 from .vlan import discover_vlan
-from .lldp_db import create_lldp_relations_in_db
 from .utils import get_logging, get_networks, ping_ok
 
 
@@ -39,12 +41,7 @@ def discover_nw_features(device_ip: str):
 
     report = []
 
-    #create_lldp_relations_in_db(topology)
-
-    try:
-        discover_port_groups(device_ip)
-    except Exception as e:
-        report.append(f"Port Group Discovery Failed on device {device_ip}, Reason: {e}")
+    create_lldp_relations_in_db(device_ip)
 
     try:
         discover_vlan(device_ip)
@@ -76,9 +73,8 @@ def discover_nw_features(device_ip: str):
         discover_bgp_af_global(device_ip)
     except Exception as e:
         report.append(f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}")
-    ## Once Discovered the device, Subscribe for notfications
-    gnmi_subscribe(device_ip)
     return report
+
 
 def discover_device_and_enable_ifs(device_ip: str):
     report = []
@@ -99,12 +95,39 @@ def discover_device_and_enable_ifs(device_ip: str):
         discover_interfaces(device_ip)
     except Exception as e:
         _logger.info(f"Interface Discovery Failed on device {device_ip}, Reason: {e}")
-    
-    ## Enabling all IFs so that LLDP tables are populated.
-    # try:
-    #     enable_all_ifs(device_ip)
-    # except Exception as e:
-    #     _logger.info(f"Interface Enable Failed on device {device_ip}, Reason: {e}")
+
+    try:
+        discover_port_groups(device_ip)
+    except Exception as e:
+        report.append(f"Port Group Discovery Failed on device {device_ip}, Reason: {e}")
+
+    ## Once Discovered the device's interfaces and port groups, Subscribe for notifications
+    gnmi_subscribe(device_ip, force_resubscribe=True)
+    # Retry mechanism with sleep time for sync_response_received
+    max_retries = 5  # Set maximum number of retries
+    retry_delay = 2  # Set delay between retries in seconds
+    for _ in range(max_retries):
+        sync_received = sync_response_received(device_ip)
+        if sync_received:
+            _logger.info(f"Sync response received for device {device_ip}.")
+            break
+        else:
+            _logger.warning(
+                f"Sync response not received for device {device_ip}, retrying in {retry_delay} seconds..."
+            )
+            time.sleep(retry_delay)
+    else:
+        _logger.error(f"Timeout waiting for sync response from device {device_ip}")
+        report.append(f"Timeout waiting for sync response from device {device_ip}")
+
+    # Enabling all IFs so that LLDP tables are populated.
+    try:
+        _logger.info(
+            f"Enabling all interfaces on device {device_ip}, So that LLDP tables are populated."
+        )
+        enable_all_ifs(device_ip)
+    except Exception as e:
+        _logger.info(f"Interface Enable Failed on device {device_ip}, Reason: {e}")
 
     try:
         discover_lldp_info(device_ip)
@@ -115,17 +138,19 @@ def discover_device_and_enable_ifs(device_ip: str):
 def discover_device_and_lldp_info(device_ip):
     discover_device_and_enable_ifs(device_ip)
     for nbr_ip in get_all_lldp_neighbor_device_ips(device_ip):
-        if not get_device_details(nbr_ip):  # Discover only if not already discoverred in order to prevent loop
+        if not get_device_details(
+            nbr_ip
+        ):  # Discover only if not already discoverred in order to prevent loop
             discover_device_and_lldp_info(nbr_ip)
 
 
 def trigger_discovery(device_ip):
     discover_device_and_lldp_info(device_ip)
-    #some links can only be created after all teh topology devices are discovered
+    # some links can only be created after all teh topology devices are discovered
     for ip in get_all_devices_ip_from_db() or []:
         discover_nw_features(ip)
 
-    
+
 def discover_device_from_config() -> []:
     """
     Discover devices from the configuration file.

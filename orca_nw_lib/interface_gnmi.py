@@ -246,7 +246,7 @@ def set_interface_config_on_device(
     if_mode: IFMode = None,
     vlan_id: int = None,
     autoneg: bool = None,
-    adv_speeds: str = "all",
+    adv_speeds: str = None,
     link_training: bool = None,
 ):
     """

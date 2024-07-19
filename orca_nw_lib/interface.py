@@ -4,7 +4,7 @@ import pytz
 
 from .common import IFMode, Speed, PortFec
 from .device_db import get_device_db_obj
-from .gnmi_sub import ready_to_receive_subscription_response
+from .gnmi_sub import check_gnmi_subscription_and_apply_config
 from .graph_db_models import Interface, SubInterface
 from .interface_db import (
     get_all_interfaces_name_of_device_from_db,
@@ -54,6 +54,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
             ("ether" or "loopback" in if_type.lower())
             and "PortChannel" not in intfc_state.get("name")
             and "Vlan" not in intfc_state.get("name")
+            and "Management" not in intfc_state.get("name")
         ):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
@@ -115,10 +116,14 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
 
             intfc_graph_obj_list[interface] = sub_intf_obj_list
         elif "lag" in if_type.lower():
-            # its a port channel
-            pass
+            _logger.debug(
+                f"Interface will not be discovered in Ethernet discovery instead under Port Channel discovery. Interface type: {if_type}."
+            )
+
         else:
-            _logger.error(f"Unknown Interface type {if_type}")
+            _logger.debug(
+                f"Interface will not be discovered in Ethernet discovery. Interface type: {if_type}."
+            )
 
     return intfc_graph_obj_list
 
@@ -183,7 +188,7 @@ def enable_all_ifs(device_ip: str):
         config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
 
 
-@ready_to_receive_subscription_response
+@check_gnmi_subscription_and_apply_config
 def config_interface(device_ip: str, if_name: str, **kwargs):
     """
     Configure the interface of a device.

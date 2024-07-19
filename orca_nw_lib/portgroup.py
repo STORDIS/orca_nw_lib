@@ -1,6 +1,6 @@
 from orca_nw_lib.common import Speed
 from orca_nw_lib.device_db import get_device_db_obj
-from orca_nw_lib.gnmi_sub import ready_to_receive_subscription_response
+from orca_nw_lib.gnmi_sub import check_gnmi_subscription_and_apply_config
 from orca_nw_lib.graph_db_models import PortGroup
 from orca_nw_lib.portgroup_gnmi import (
     get_port_group_from_device,
@@ -139,7 +139,7 @@ def discover_port_groups(
             for mem_if in get_port_group_members(device_ip, port_group_id):
                 discover_interfaces(device_ip, mem_if.get("name"))
 
-@ready_to_receive_subscription_response
+@check_gnmi_subscription_and_apply_config
 def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
     try:
         set_port_group_speed_on_device(device_ip, port_group_id, speed)
