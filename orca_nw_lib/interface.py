@@ -4,9 +4,10 @@ import pytz
 
 from .common import IFMode, Speed, PortFec
 from .device_db import get_device_db_obj
-from .gnmi_sub import ready_to_receive_subscription_response
+from .gnmi_sub import check_gnmi_subscription_and_apply_config
 from .graph_db_models import Interface, SubInterface
 from .interface_db import (
+    get_all_interfaces_name_of_device_from_db,
     get_all_interfaces_of_device_from_db,
     get_interface_of_device_from_db,
     get_sub_interface_of_intfc_from_db,
@@ -44,14 +45,17 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     """
     interfaces_json = get_interface_from_device(device_ip, intfc_name)
     intfc_graph_obj_list: Dict[Interface, List[SubInterface]] = {}
-    if_lane_details=interfaces_json.get("sonic-port:PORT_LIST")
+    if_lane_details = interfaces_json.get("sonic-port:PORT_LIST")
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
         if_type = intfc.get("config").get("type")
 
         if (
-            "ether" or "loopback" in if_type.lower()
-        ) and "PortChannel" not in intfc_state.get("name") and "Vlan" not in intfc_state.get("name"):
+            ("ether" or "loopback" in if_type.lower())
+            and "PortChannel" not in intfc_state.get("name")
+            and "Vlan" not in intfc_state.get("name")
+            and "Management" not in intfc_state.get("name")
+        ):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
                 name=intfc_state.get("name"),
@@ -96,27 +100,30 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     if addr.get("ip"):
                         sub_intf_obj.ip_address = addr.get("ip")
                     sub_intf_obj_list.append(sub_intf_obj)
-            
+
             ## Now iterate lane details
-            for indx,value in enumerate(if_lane_details or []):
+            for indx, value in enumerate(if_lane_details or []):
                 if interface.name == value.get("ifname"):
-                    interface.alias=value.get("alias")
-                    interface.lanes=value.get("lanes")
-                    interface.valid_speeds=value.get("valid_speeds")
-                    interface.adv_speeds=value.get("adv_speeds")
-                    interface.link_training=value.get("link_training")
-                    interface.autoneg=value.get("autoneg")
+                    interface.alias = value.get("alias")
+                    interface.lanes = value.get("lanes")
+                    interface.valid_speeds = value.get("valid_speeds")
+                    interface.adv_speeds = value.get("adv_speeds")
+                    interface.link_training = value.get("link_training")
+                    interface.autoneg = value.get("autoneg")
                     ## To minimize iteration for element in outer loop
                     if_lane_details.pop(indx)
                     break
 
             intfc_graph_obj_list[interface] = sub_intf_obj_list
         elif "lag" in if_type.lower():
-            # its a port channel
-            pass
+            _logger.debug(
+                f"Interface will not be discovered in Ethernet discovery instead under Port Channel discovery. Interface type: {if_type}."
+            )
+
         else:
-            _logger.error(f"Unknown Interface type {if_type}")
-        
+            _logger.debug(
+                f"Interface will not be discovered in Ethernet discovery. Interface type: {if_type}."
+            )
 
     return intfc_graph_obj_list
 
@@ -169,7 +176,19 @@ def get_pg_of_if(device_ip: str, intfc_name: str):
     )
 
 
-@ready_to_receive_subscription_response
+def enable_all_ifs(device_ip: str):
+    """
+    Enable all interfaces on a device.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+    """
+    if_name_list = get_all_interfaces_name_of_device_from_db(device_ip)
+    for intf_name in if_name_list or []:
+        config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
+
+
+@check_gnmi_subscription_and_apply_config
 def config_interface(device_ip: str, if_name: str, **kwargs):
     """
     Configure the interface of a device.
