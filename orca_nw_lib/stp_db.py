@@ -83,3 +83,54 @@ def delete_stp_global_from_db(device_ip: str):
     stp_obj = get_stp_global_from_db(device_ip)
     if stp_obj:
         stp_obj.delete()
+
+
+def set_stp_config_in_db(
+        device_ip: str, enabled_protocol: list | None, bpdu_filter: bool, bridge_priority: int,
+        max_age: int, hello_time: int, forwarding_delay: int, disabled_vlans: list[int] = None,
+        rootguard_timeout: int = None, loop_guard: bool = None, portfast: bool = None,
+):
+    """
+    Sets the STP configuration for the specified device in the database.
+
+    Args:
+        device_ip (str): The IP address of the device for which to set the STP configuration.
+        enabled_protocol (str): The list of enabled STP protocols.
+        bpdu_filter (bool): Whether to enable or disable the BPDU filter.
+        loop_guard (bool): Whether to enable or disable the loop guard.
+        disabled_vlans (list): The list of disabled VLANs.
+        rootguard_timeout (int): The root guard timeout value.
+        portfast (bool): Whether to enable or disable portfast.
+        hello_time (int): The hello time value.
+        max_age (int): The maximum age value.
+        forwarding_delay (int): The forwarding delay value.
+        bridge_priority (int): The bridge priority value.
+
+    Returns:
+        None
+    """
+    stp_obj = get_stp_global_from_db(device_ip)
+    if stp_obj:
+        if enabled_protocol is not None:
+            stp_obj.enabled_protocol = enabled_protocol
+        if bpdu_filter is not None:
+            stp_obj.bpdu_filter = bpdu_filter
+        if loop_guard is not None:
+            stp_obj.loop_guard = loop_guard
+        if disabled_vlans is not None:
+            stp_obj.disabled_vlans = disabled_vlans
+        if rootguard_timeout is not None:
+            stp_obj.rootguard_timeout = rootguard_timeout
+        if portfast is not None:
+            stp_obj.portfast = portfast
+        if hello_time is not None:
+            stp_obj.hello_time = hello_time
+        if max_age is not None:
+            stp_obj.max_age = max_age
+        if forwarding_delay is not None:
+            stp_obj.forwarding_delay = forwarding_delay
+        if bridge_priority is not None:
+            stp_obj.bridge_priority = bridge_priority
+        if enabled_protocol is not None:
+            stp_obj.save()
+            _logger.info(f"Updated STP config on DB for {device_ip}.")

@@ -32,6 +32,8 @@ from orca_nw_lib.portgroup_gnmi import (
     get_port_group_speed_path,
     _get_port_groups_base_path,
 )
+from .stp_db import set_stp_config_in_db
+from .stp_gnmi import get_stp_global_config_path
 
 _logger = get_logging().getLogger(__name__)
 
@@ -132,6 +134,68 @@ def handle_port_group_config_update(device_ip: str, resp: SubscribeResponse):
                     )
 
 
+def handle_stp_config(device_ip: str, resp: SubscribeResponse):
+    enabled_protocol = None
+    bpdu_filter = None
+    loop_guard = None
+    disabled_vlans = None
+    rootguard_timeout = None,
+    portfast = None,
+    hello_time = None,
+    max_age = None,
+    forwarding_delay = None,
+    bridge_priority = None
+    for u in resp.update.update:
+        for ele in u.path.elem:
+            if ele.name == "enabled-protocol":
+                enabled_protocol = u.val.string_val
+            if ele.name == "bpdu-filter":
+                bpdu_filter = u.val.bool_val
+            if ele.name == "loop-guard":
+                loop_guard = u.val.bool_val
+            if ele.name == "disabled-vlans":
+                disabled_vlans = u.val.string_val
+            if ele.name == "rootguard-timeout":
+                rootguard_timeout = u.val.uint_val
+            if ele.name == "portfast":
+                portfast = u.val.bool_val
+            if ele.name == "hello-time":
+                hello_time = u.val.uint_val
+            if ele.name == "max-age":
+                max_age = u.val.uint_val
+            if ele.name == "forwarding-delay":
+                forwarding_delay = u.val.uint_val
+            if ele.name == "bridge-priority":
+                bridge_priority = u.val.uint_val
+    _logger.debug(
+        "Updating STP config on DB for device: %s, enabled_protocol: %s, bpdu_filter: %s, loop_guard: %s, disabled_vlans: %s, rootguard_timeout: %s, portfast: %s, hello_time: %s, max_age: %s, forwarding_delay: %s, bridge_priority: %s",
+        device_ip,
+        enabled_protocol,
+        bpdu_filter,
+        loop_guard,
+        disabled_vlans,
+        rootguard_timeout,
+        portfast,
+        hello_time,
+        max_age,
+        forwarding_delay,
+        bridge_priority
+    )
+    set_stp_config_in_db(
+        device_ip=device_ip,
+        enabled_protocol=enabled_protocol,
+        bpdu_filter=bpdu_filter,
+        loop_guard=loop_guard,
+        disabled_vlans=disabled_vlans,
+        rootguard_timeout=rootguard_timeout,
+        portfast=portfast,
+        hello_time=hello_time,
+        max_age=max_age,
+        forwarding_delay=forwarding_delay,
+        bridge_priority=bridge_priority
+    )
+
+
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
     device_gnmi_stub = getGrpcStubs(device_ip)
     subscriptionlist = SubscriptionList(
@@ -167,6 +231,13 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_port_group_config_update(device_ip, resp)
+                    if ele.name == get_stp_global_config_path().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription stp config update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        handle_stp_config(device_ip, resp)
             elif resp.sync_response:
                 global device_sync_responses
                 _logger.info(
@@ -315,6 +386,16 @@ def get_subscription_path_for_config_change(device_ip: str):
                 mode=SubscriptionMode.TARGET_DEFINED,
             )
         )
+
+    # ON_CHANGE subscription mode is not supported only SAMPLE subscription mode is supported.
+    # re discovery of the device is the best choice for stp.
+
+    # subscriptions.append(
+    #     Subscription(
+    #         path=get_stp_global_config_path(),
+    #         mode=SubscriptionMode.ON_CHANGE,
+    #     )
+    # )
 
     return subscriptions
 
