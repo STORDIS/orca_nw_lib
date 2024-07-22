@@ -1,8 +1,6 @@
-from typing import List, Set
+from typing import Set
 from orca_nw_lib.interface import get_interface
 from orca_nw_lib.interface_db import get_all_interfaces_name_of_device_from_db, set_interface_config_in_db
-from orca_nw_lib.lldp_gnmi import get_lldp_interfaces_from_device
-from .device import create_device_graph_object
 from .utils import get_logging
 from .lldp_gnmi import get_lldp_nbr_from_device
 
