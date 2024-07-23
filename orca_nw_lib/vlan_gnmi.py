@@ -1,3 +1,4 @@
+from typing import List
 from orca_nw_lib.common import IFMode, VlanAutoState
 from orca_nw_lib.gnmi_pb2 import Path, PathElem
 from orca_nw_lib.gnmi_util import (
@@ -11,6 +12,7 @@ from orca_nw_lib.gnmi_util import (
 from orca_nw_lib.interface_gnmi import get_if_vlan_gnmi_update_req
 from orca_nw_lib.port_chnl_gnmi import get_port_channel_vlan_gnmi_update_req
 from .utils import validate_and_get_ip_prefix
+
 
 def get_sonic_vlan_base_path() -> Path:
     """
@@ -165,7 +167,7 @@ def config_vlan_on_device(
     vlan_name: str,
     autostate: VlanAutoState = None,
     ip_addr_with_prefix: str = None,
-    anycast_addr: dict[str] = None,
+    anycast_addr: List[str] = None,
     enabled: bool = None,
     descr: str = None,
     mem_ifs: dict[str:IFMode] = None,
@@ -180,7 +182,7 @@ def config_vlan_on_device(
         vlan_id (int): The ID of the VLAN.
         autostate (VlanAutoState, optional): The autostate of the VLAN. Defaults to None.
         ip_addr_with_prefix (str, optional): The IP address with prefix of the VLAN. Defaults to None.
-        anycast_addr (dict[str], optional): The anycast address of the VLAN. Defaults to None.
+        anycast_addr (List[str], optional): The anycast address of the VLAN. Defaults to None.
         enabled (bool, optional): Whether the VLAN is enabled. Defaults to None.
         descr (str, optional): The description of the VLAN. Defaults to None.
         mem_ifs (dict[str:IFMode], optional): A dictionary mapping interface names to VLAN tag modes. Defaults to None.
@@ -271,14 +273,17 @@ def config_vlan_on_device(
         for addr in anycast_addr:
             ip, nw_addr, prefix_len = validate_and_get_ip_prefix(addr)
             sag_gateway_array.append(f"{ip}/{prefix_len}")
-        update_req.append(
-            create_gnmi_update(
-                get_gnmi_path(
-                    f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
-                ),
-                {"openconfig-interfaces-ext:static-anycast-gateway": sag_gateway_array},
+        if sag_gateway_array:
+            update_req.append(
+                create_gnmi_update(
+                    get_gnmi_path(
+                        f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config/static-anycast-gateway"
+                    ),
+                    {
+                        "openconfig-interfaces-ext:static-anycast-gateway": sag_gateway_array
+                    },
+                )
             )
-        )
 
     return send_gnmi_set(
         create_req_for_update(update_req),
@@ -399,9 +404,7 @@ def vlan_ip_addr_oc_path(vlan_name, ip_addr=None):
     )
 
 
-def remove_ip_from_vlan_on_device(
-    device_ip: str, vlan_name: str, ip_addr_with_prefix: str = None
-):
+def remove_ip_from_vlan_on_device(device_ip: str, vlan_name: str):
     """
     Removes an IP address with prefix from a VLAN on a specific device.
 
@@ -414,9 +417,7 @@ def remove_ip_from_vlan_on_device(
         Result of sending a GNMI set request to remove the IP address from the VLAN on the device.
     """
     return send_gnmi_set(
-        get_gnmi_del_req(
-            get_gnmi_path(vlan_ip_addr_oc_path(vlan_name))
-        ),
+        get_gnmi_del_req(get_gnmi_path(vlan_ip_addr_oc_path(vlan_name))),
         device_ip,
     )
 
@@ -435,11 +436,14 @@ def remove_anycast_addr_from_vlan_on_device(
     Returns:
         The result of sending a GNMI set request to remove the anycast IP address from the VLAN on the device.
     """
-    path = get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config")
-    if anycast_ip:
-        path.elem.append(PathElem(name="static-anycast-gateway", key={"static-anycast-gateway": anycast_ip}))
-    else :
-        path.elem.append(PathElem(name="static-anycast-gateway"))
+    path = get_gnmi_path(
+        f"openconfig-interfaces:interfaces/interface[name={vlan_name}]/openconfig-vlan:routed-vlan/openconfig-if-ip:ipv4/openconfig-interfaces-ext:sag-ipv4/config"
+    )
+    path.elem.append(
+        PathElem(
+            name="static-anycast-gateway", key={"static-anycast-gateway": anycast_ip}
+        )
+    )
     return send_gnmi_set(
         get_gnmi_del_req(path),
         device_ip,

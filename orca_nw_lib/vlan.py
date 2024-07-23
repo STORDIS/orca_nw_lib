@@ -141,14 +141,13 @@ def del_vlan(device_ip, vlan_name: str):
         discover_vlan(device_ip)
 
 
-def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
+def remove_ip_from_vlan(device_ip: str, vlan_name: str):
     """
     Removes an IP address from a VLAN on a specific device.
 
     Args:
         device_ip (str): The IP address of the device.
         vlan_name (str): The name of the VLAN.
-        ip_address (str, optional): The IP address to be removed from the VLAN. Defaults to None.
 
     Raises:
         Exception: If there is an error while removing the IP address from the VLAN on the device.
@@ -158,7 +157,7 @@ def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
     """
 
     try:
-        remove_ip_from_vlan_on_device(device_ip, vlan_name, ip_address)
+        remove_ip_from_vlan_on_device(device_ip, vlan_name)
     except Exception as e:
         _logger.error(f"VLAN IP removal failed on device {device_ip}, Reason: {e}")
         raise
@@ -166,7 +165,7 @@ def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
         discover_vlan(device_ip)
 
 
-def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str = None):
+def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str):
     """
     Removes an anycast IP address from a VLAN on a specific device.
 
