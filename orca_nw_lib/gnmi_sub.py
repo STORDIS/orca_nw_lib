@@ -58,7 +58,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
     description = None
     fec = None
     autoneg = None
-    adv_speeds = 'all'
+    adv_speeds = None
     link_training = None
     for u in resp.update.update:
         for ele in u.path.elem:
@@ -88,7 +88,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         description,
         autoneg,
         adv_speeds,
-        link_training
+        link_training,
     )
     set_interface_config_in_db(
         device_ip=device_ip,
@@ -100,7 +100,7 @@ def handle_interface_config_update(device_ip: str, resp: SubscribeResponse):
         fec=fec,
         autoneg=autoneg,
         adv_speeds=adv_speeds,
-        link_training=link_training
+        link_training=link_training,
     )
 
 
@@ -191,12 +191,11 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
             raise
 
 
-def ready_to_receive_subs_resp(device_ip: str):
-    ## Although sync response will only be received if the device is fully subscribed to gNMI updates,
-    ## Still cheking with gnmi_subscribe function will subscribe if not already due to any reason.
-    return sync_response_received(device_ip) and gnmi_subscribe(device_ip)
-
-
+"""
+dictionary to store the sync response received from the device.
+    Key: device_ip
+    Value: sync_response received status (True/False)
+"""
 device_sync_responses = {}
 
 
@@ -229,20 +228,24 @@ def get_running_thread_names():
     return thread_names
 
 
-def gnmi_subscribe(device_ip: str):
+def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
     """
-    Subscribe to GNMI notifications for the given device.
+    Subscribe to GNMI for the given device IP.
 
     Args:
-        device_ip (str): The IP address of the device to subscribe to.
+        device_ip (str): The IP address of the device.
+        force_resubscribe (bool, optional): Whether to force resubscription even if already subscribed. Defaults to False.
 
     Returns:
-        bool: True if the subscription was successful or already exists, False otherwise.
+        bool: True if subscription is successful, False otherwise.
     """
 
     thread_name = get_subscription_thread_name(device_ip)
+    if force_resubscribe:
+        _logger.info("The force subscription is true, first removing the existing subscription if any.")
+        gnmi_unsubscribe(device_ip)
 
-    if thread_name in get_running_thread_names():
+    if thread_name in get_running_thread_names() and not force_resubscribe:
         _logger.debug("Already subscribed for %s", device_ip)
         _logger.debug("Currently running threads %s", get_running_thread_names())
         return True
@@ -359,6 +362,12 @@ def gnmi_unsubscribe(device_ip: str):
     Returns:
         None
     """
+    sync_response = device_sync_responses.pop(device_ip, None)
+    if sync_response is not None:
+        _logger.debug(f"Removed device {device_ip} with sync_response {sync_response} from device_sync_responses dictionary.")
+    else:
+        _logger.debug(f"Device {device_ip} not found in device_sync_responses dictionary.")
+
     thread_name = get_subscription_thread_name(device_ip)
     for thread in threading.enumerate():
         if thread.name == thread_name:
@@ -395,10 +404,18 @@ def terminate_thread(thread):
         raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
-def ready_to_receive_subscription_response(config_func):
+def check_gnmi_subscription_and_apply_config(config_func):
     """
-    A decorator function that checks if a device is ready to receive subscriptions responses before allowing configuration.
-    Takes a configuration function as input and returns a wrapper function that performs the subscription check before executing the configuration function.
+    Decorator to check if the device is fully subscribed to GNMI updates before executing the decorated function.
+
+    Args:
+        config_func: The function to be decorated.
+
+    Returns:
+        The decorated function.
+
+    Raises:
+        Exception: If the device is not fully subscribed to GNMI updates.
     """
 
     def wrapper(*args, **kwargs):
@@ -407,7 +424,10 @@ def ready_to_receive_subscription_response(config_func):
                 "Before config checking if device %s is fully subscribed to GNMI update notifications.",
                 kwargs.get("device_ip"),
             )
-            if ready_to_receive_subs_resp(ip):
+            if sync_response_received(ip) and gnmi_subscribe(
+                ip
+            ):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
+                # gNMI subscription will occur in case not already Subscribed.
                 result = config_func(*args, **kwargs)
                 return result
             else:

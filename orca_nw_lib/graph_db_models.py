@@ -33,6 +33,18 @@ class Device(StructuredNode):
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
     bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
 
+    def copy_properties(self, other):
+        """
+        Copy properties from another Device object to this object.
+        """
+        self.img_name = other.img_name
+        self.mgt_intf = other.mgt_intf
+        self.mgt_ip = other.mgt_ip
+        self.hwsku = other.hwsku
+        self.mac = other.mac
+        self.platform = other.platform
+        self.type = other.type
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.mgt_ip == other.mgt_ip and self.mac == other.mac
@@ -185,6 +197,7 @@ class Interface(StructuredNode):
     adv_speeds = StringProperty()
     link_training = StringProperty()
     autoneg = StringProperty()
+    lldp_nbrs=JSONProperty() ## LLDP remote device in the format  - {nbr_ip:[Eth0,Eth1].........}
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

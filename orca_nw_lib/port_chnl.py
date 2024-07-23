@@ -1,5 +1,6 @@
 from time import sleep
 from typing import Dict, List
+from grpc import RpcError
 
 from .port_chnl_db import (
     get_all_port_chnl_of_device_from_db,
@@ -63,17 +64,22 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
                         port_chnl_vlan_member["trunk_vlans"] = format_and_get_trunk_vlans(tagged_vlans)
                     if access_vlan := port_chnl.get("access_vlan"):
                         port_chnl_vlan_member["access_vlan"] = int(access_vlan)
-            ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
-                "openconfig-if-ip:addresses", {}
-            )
-            ipv4_addresses = ip_details.get("address", [])
+            
             ipv4_addr = None
-            for ipv4 in ipv4_addresses or []:
-                if (ip := ipv4.get("config", {}).get("ip", "")) and (
-                        pfx := ipv4.get("config", {}).get("prefix-length", "")
-                ):
-                    ipv4_addr = f"{ip}/{pfx}"
-                    break
+            try:
+                ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
+                    "openconfig-if-ip:addresses", {}
+                )
+                ipv4_addresses = ip_details.get("address", [])
+                for ipv4 in ipv4_addresses or []:
+                    if (ip := ipv4.get("config", {}).get("ip", "")) and (
+                            pfx := ipv4.get("config", {}).get("prefix-length", "")
+                    ):
+                        ipv4_addr = f"{ip}/{pfx}"
+                        break
+            except RpcError as e:
+                _logger.debug(f"No IP information found for port channel {lag.get('lagname')} on device {device_ip}. Error: {e}")
+                
             port_chnl_obj_list[
                 PortChannel(
                     active=lag.get("active"),

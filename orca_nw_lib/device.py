@@ -1,10 +1,13 @@
 from typing import List, Optional, Union
-from orca_nw_lib.device_db import get_device_db_obj
+from orca_nw_lib.device_db import get_device_db_obj, insert_devices_in_db
 from orca_nw_lib.device_gnmi import get_device_details_from_device
 from orca_nw_lib.graph_db_models import Device
+from orca_nw_lib.utils import get_logging
+
+_logger=logger = get_logging().getLogger(__name__)
 
 
-def create_device_graph_object(ip_addr: str) -> Device:
+def create_device_graph_object(ip_addr: str) -> Device | None:
     """
     Create a Device object based on the given IP address.
 
@@ -52,3 +55,12 @@ def get_device_details(mgt_ip: Optional[str] = None) -> Union[dict, List[dict]]:
         for device in device_dict or []:
             op_dict.append(device.__properties__)
         return op_dict
+
+
+def discover_device(device_ip:str):
+    try:
+        _logger.info("Discovering device with IP: %s", device_ip)
+        insert_devices_in_db(create_device_graph_object(device_ip))
+    except Exception as e:
+        _logger.error("Error discovering device with IP %s: %s", device_ip, str(e))
+        raise
