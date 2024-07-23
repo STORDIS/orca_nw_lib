@@ -41,15 +41,19 @@ def config_stp_global_on_device(
         Exception: If there is an error while configuring STP on the device.
 
     """
-    request_data = {
-        "enabled-protocol": [str(i) for i in enabled_protocol],
-        "bpdu-filter": bpdu_filter,
-        "openconfig-spanning-tree-ext:hello-time": hello_time,
-        "openconfig-spanning-tree-ext:max-age": max_age,
-        "openconfig-spanning-tree-ext:forwarding-delay": forwarding_delay,
-        "openconfig-spanning-tree-ext:bridge-priority": bridge_priority,
-    }
-
+    request_data = {}
+    if enabled_protocol is not None:
+        request_data["enabled-protocol"] = [str(i) for i in enabled_protocol]
+    if bpdu_filter is not None:
+        request_data["bpdu-filter"] = bpdu_filter
+    if hello_time:
+        request_data["openconfig-spanning-tree-ext:hello-time"] = hello_time
+    if max_age:
+        request_data["openconfig-spanning-tree-ext:max-age"] = max_age
+    if forwarding_delay:
+        request_data["openconfig-spanning-tree-ext:forwarding-delay"] = forwarding_delay
+    if bridge_priority:
+        request_data["openconfig-spanning-tree-ext:bridge-priority"] = bridge_priority
     if loop_guard is not None:
         request_data["loop-guard"] = loop_guard
     if rootguard_timeout is not None:
