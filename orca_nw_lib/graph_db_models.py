@@ -308,7 +308,7 @@ class Vlan(StructuredNode):
     oper_status = StringProperty()
     autostate = StringProperty()
     ip_address = StringProperty()
-    sag_ip_address = StringProperty()
+    sag_ip_address = ArrayProperty()
     enabled = BooleanProperty()
     description = StringProperty()
 

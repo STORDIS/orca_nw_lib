@@ -15,7 +15,8 @@ from .vlan_gnmi import (
     get_vlan_ip_details_from_device,
     remove_anycast_addr_from_vlan_on_device,
     remove_ip_from_vlan_on_device,
-    add_vlan_members_on_device, delete_vlan_members_on_device,
+    add_vlan_members_on_device,
+    delete_vlan_members_on_device,
 )
 from .utils import get_logging
 from .graph_db_models import Vlan
@@ -66,7 +67,7 @@ def _create_vlan_db_obj(device_ip: str, vlan_name: str = None):
                 vlanid=vlan.get("vlanid"),
                 name=v_name,
                 ip_address=ipv4_addr,
-                sag_ip_address=sag_ipv4_addresses[0] if sag_ipv4_addresses else None,
+                sag_ip_address=sag_ipv4_addresses if sag_ipv4_addresses else None,
                 autostate=vlan.get("autostate", str(VlanAutoState.disable)),
             )
         )
@@ -140,14 +141,13 @@ def del_vlan(device_ip, vlan_name: str):
         discover_vlan(device_ip)
 
 
-def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
+def remove_ip_from_vlan(device_ip: str, vlan_name: str):
     """
     Removes an IP address from a VLAN on a specific device.
 
     Args:
         device_ip (str): The IP address of the device.
         vlan_name (str): The name of the VLAN.
-        ip_address (str, optional): The IP address to be removed from the VLAN. Defaults to None.
 
     Raises:
         Exception: If there is an error while removing the IP address from the VLAN on the device.
@@ -157,7 +157,7 @@ def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
     """
 
     try:
-        remove_ip_from_vlan_on_device(device_ip, vlan_name, ip_address)
+        remove_ip_from_vlan_on_device(device_ip, vlan_name)
     except Exception as e:
         _logger.error(f"VLAN IP removal failed on device {device_ip}, Reason: {e}")
         raise
@@ -165,7 +165,7 @@ def remove_ip_from_vlan(device_ip: str, vlan_name: str, ip_address: str = None):
         discover_vlan(device_ip)
 
 
-def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str = None):
+def remove_anycast_ip_from_vlan(device_ip: str, vlan_name: str, anycast_ip: str):
     """
     Removes an anycast IP address from a VLAN on a specific device.
 
