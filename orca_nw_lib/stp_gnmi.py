@@ -66,7 +66,6 @@ def config_stp_global_on_device(
         path=get_stp_global_config_path(),
         val={"openconfig-spanning-tree:config": request_data}
     )
-    print("----", portfast)
     return send_gnmi_set(create_req_for_update([request]), device_ip)
 
 
