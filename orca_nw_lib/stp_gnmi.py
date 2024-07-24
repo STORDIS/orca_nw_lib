@@ -55,17 +55,18 @@ def config_stp_global_on_device(
     if bridge_priority:
         request_data["openconfig-spanning-tree-ext:bridge-priority"] = bridge_priority
     if loop_guard is not None:
-        request_data["loop-guard"] = loop_guard
+        request_data["openconfig-spanning-tree-ext:loop-guard"] = loop_guard
     if rootguard_timeout is not None:
-        request_data["rootguard-timeout"] = rootguard_timeout
+        request_data["openconfig-spanning-tree-ext:rootguard-timeout"] = rootguard_timeout
     if portfast is not None:
-        request_data["portfast"] = portfast
+        request_data["openconfig-spanning-tree-ext:portfast"] = portfast
     if disabled_vlans is not None:
-        request_data["disabled-vlans"] = disabled_vlans
+        request_data["openconfig-spanning-tree-ext:disabled-vlans"] = disabled_vlans
     request = create_gnmi_update(
         path=get_stp_global_config_path(),
         val={"openconfig-spanning-tree:config": request_data}
     )
+    print("----", portfast)
     return send_gnmi_set(create_req_for_update([request]), device_ip)
 
 
