@@ -179,7 +179,7 @@ def get_gnmi_path(path: str) -> Path:
     return gnmi_path
 
 
-def get_gnmi_path_decoded(path: str) -> Path:
+def get_gnmi_path(path: str) -> Path:
     """
     Generates a function comment for the given function body in a markdown code block with the correct language syntax.
     It decodes the encoded values in the filter key.
