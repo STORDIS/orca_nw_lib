@@ -67,11 +67,6 @@ class TestGetGnmiPathDecoded(unittest.TestCase):
         expected_path = Path(target="openconfig", elem=[])
         self.assertEqual(get_gnmi_path(path), expected_path)
 
-    def test_get_gnmi_path_with_invalid_key(self):
-        path = "openconfig-interfaces:interfaces/interface[name=Vlan1]/openconfig-if-ethernet:ethernet/ipv4/ipv4-address[address=237.84.2.178%2f24,invalid_key=24]"
-        with self.assertRaises(ValueError):
-            get_gnmi_path(path)
-
     def test_get_gnmi_path_with_invalid_path(self):
         path = "openconfig-interfaces:interfaces/interface[name=Vlan1]/openconfig-if-ethernet:ethernet/ipv4/ipv4-address[address=237.84.2.178%2f24,prefix-length=24"
         with self.assertRaises(ValueError):

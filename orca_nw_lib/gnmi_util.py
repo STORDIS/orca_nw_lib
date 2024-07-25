@@ -210,7 +210,7 @@ def get_gnmi_path(path: str) -> Path:
                     gnmi_path.elem.append(
                         PathElem(
                             name=pe_entry[: match.start()],
-                            key={key_val.split("=")[0]: unquote(key_val.split("=")[1])},  # decoding encoded value
+                            key={i.split("=")[0]: unquote(i.split("=")[1]) for i in key_val.split(",")},  # decoding encoded value
                         )
                     )
                 except ValueError as ve:
@@ -218,6 +218,11 @@ def get_gnmi_path(path: str) -> Path:
                         f"Invalid property identifier {pe_entry} : {ve} , filter arg should be a dict-> propertykey:value"
                     )
                     raise
+        elif ("[" in pe_entry and "]" not in pe_entry) or ("[" not in pe_entry and "]" in pe_entry):
+            _logger.error(
+                f"Invalid property identifier {pe_entry} : filter arg should be a start with [ and end with ]"
+            )
+            raise ValueError(f"Invalid property identifier {pe_entry} : filter arg should be a start with [ and end with ]")
         else:
             gnmi_path.elem.append(PathElem(name=pe_entry))
     return gnmi_path
