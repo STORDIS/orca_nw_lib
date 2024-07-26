@@ -140,48 +140,6 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
 def get_gnmi_path(path: str) -> Path:
     """
     Generates a function comment for the given function body in a markdown code block with the correct language syntax.
-
-    Args:
-        path (str): The path to be processed.
-        Example : openconfig-interfaces:interfaces/interface[name=Vlan1]/openconfig-if-ethernet:ethernet/
-
-    Returns:
-        Path: The generated gnmi path.
-
-    """
-    path = path.strip()
-    path_elements = path.split("/")
-    gnmi_path = Path(
-        target="openconfig",
-    )
-    for pe_entry in path_elements:
-        if pe_entry in ["", "restconf", "data"]:
-            continue
-        ## When filter key is given
-        if "[" in pe_entry and "]" in pe_entry and "=" in pe_entry:
-            match = re.search(r"\[(.*?)\]", pe_entry)
-            if match:
-                key_val = match.group(1)
-                try:
-                    gnmi_path.elem.append(
-                        PathElem(
-                            name=pe_entry[: match.start()],
-                            key={key_val.split("=")[0]: key_val.split("=")[1]},
-                        )
-                    )
-                except ValueError as ve:
-                    _logger.error(
-                        f"Invalid property identifier {pe_entry} : {ve} , filter arg should be a dict-> propertykey:value"
-                    )
-                    raise
-        else:
-            gnmi_path.elem.append(PathElem(name=pe_entry))
-    return gnmi_path
-
-
-def get_gnmi_path(path: str) -> Path:
-    """
-    Generates a function comment for the given function body in a markdown code block with the correct language syntax.
     It decodes the encoded values in the filter key.
 
     Args:
