@@ -424,9 +424,7 @@ def check_gnmi_subscription_and_apply_config(config_func):
                 "Before config checking if device %s is fully subscribed to GNMI update notifications.",
                 kwargs.get("device_ip"),
             )
-            if sync_response_received(ip) and gnmi_subscribe(
-                ip
-            ):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
+            if gnmi_subscribe(ip) and sync_response_received(ip) :  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
                 # gNMI subscription will occur in case not already Subscribed.
                 result = config_func(*args, **kwargs)
                 return result
