@@ -18,6 +18,7 @@ from .bgp import discover_bgp, discover_bgp_af_global
 from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
+from .stp import discover_stp
 from .vlan import discover_vlan
 from .utils import get_logging, get_networks, ping_ok
 
@@ -72,7 +73,17 @@ def discover_nw_features(device_ip: str):
     try:
         discover_bgp_af_global(device_ip)
     except Exception as e:
-        report.append(f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}")
+        report.append(
+            f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}"
+        )
+    try:
+        discover_stp(device_ip)
+    except Exception as e:
+        report.append(
+            f"STP Discovery Failed on device {device_ip}, Reason: {e}"
+        )
+    ## Once Discovered the device, Subscribe for notfications
+    gnmi_subscribe(device_ip)
     return report
 
 

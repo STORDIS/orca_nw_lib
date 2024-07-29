@@ -124,3 +124,32 @@ class MclagFastConvergence(str, Enum):
 
     def __str__(self) -> str:
         return self.name
+
+
+class STPEnabledProtocol(str, Enum):
+    MSTP = auto()
+    RAPID_PVST = auto()
+    RSTP = auto()
+    PVST = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return STPEnabledProtocol[name] if name in STPEnabledProtocol.__members__ else None
+
+    def get_oc_val(self):
+        return f"openconfig-spanning-tree-ext:{self.name}"
+
+    @staticmethod
+    def getEnabledProtocolStrFromOCStr(oc_str):
+        return oc_str.split(":")[1] if oc_str else None
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name

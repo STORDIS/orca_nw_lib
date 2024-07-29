@@ -17,7 +17,7 @@ class Device(StructuredNode):
 
     img_name = StringProperty()
     mgt_intf = StringProperty()
-    mgt_ip = StringProperty(required = True)
+    mgt_ip = StringProperty(required=True)
     hwsku = StringProperty()
     mac = StringProperty(unique_index=True)
     platform = StringProperty()
@@ -32,6 +32,7 @@ class Device(StructuredNode):
     vlans = RelationshipTo("Vlan", "HAS")
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
     bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
+    stp_global = RelationshipTo("STP_GLOBAL", "HAS")
 
     def copy_properties(self, other):
         """
@@ -82,7 +83,7 @@ class PortChannel(StructuredNode):
     graceful_shutdown_mode = StringProperty()
     ip_address = StringProperty()
     vlan_members = JSONProperty()
-    
+
     members = RelationshipTo("Interface", "HAS_MEMBER")
     peer_link = RelationshipTo("PortChannel", "peer_link")
 
@@ -192,8 +193,8 @@ class Interface(StructuredNode):
     subInterfaces = RelationshipTo("SubInterface", "HAS")
     lldp_neighbour = RelationshipTo("Interface", "LLDP_NBR")
     alias = StringProperty()
-    lanes =StringProperty()
-    valid_speeds= StringProperty()
+    lanes = StringProperty()
+    valid_speeds = StringProperty()
     adv_speeds = StringProperty()
     link_training = StringProperty()
     autoneg = StringProperty()
@@ -324,3 +325,32 @@ class Vlan(StructuredNode):
 
     def __str__(self):
         return str(self.vlanid)
+
+
+class STP_GLOBAL(StructuredNode):
+    """
+    Represents a STP Global in the database.
+    """
+
+    device_ip = StringProperty()
+    enabled_protocol = ArrayProperty()
+    bpdu_filter = BooleanProperty()
+    loop_guard = BooleanProperty()
+    rootguard_timeout = IntegerProperty()
+    portfast = BooleanProperty()
+    max_age = IntegerProperty()
+    hello_time = IntegerProperty()
+    forwarding_delay = IntegerProperty()
+    bridge_priority = IntegerProperty()
+    disabled_vlans = ArrayProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.device_ip == other.device_ip
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.device_ip)
+
+    def __str__(self):
+        return str(self.device_ip)
