@@ -8,7 +8,6 @@
 # After discovering the current device next LLDP neighbor is discovered if any.
 # Then move forward to next device in the network.
 discover_networks:
-  - "10.10.229.58"
   # - "10.10.229.50"
   #- "10.10.10.1/24"
 device_username: admin # username to make gNMI connection with device defined in network above
