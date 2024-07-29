@@ -237,12 +237,6 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
         )
         raise
     finally:
-        ## Note - Need to keep a delay between creating channel members and discovering them.
-        ## Issue is still valid untill in SONiC_4.2.0
-        ## Affected test case is - test_network.PortChannelTests.test_add_del_port_chnl_members
-        ## Related bug - https://github.com/STORDIS/orca_nw_lib/issues/45
-        ## Might be due to different path used for adding members above and below for discovery.
-        sleep(1)
         discover_port_chnl(device_ip)
 
 
