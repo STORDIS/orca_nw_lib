@@ -80,29 +80,29 @@ def discover_stp_port(device_ip: str = None):
 
 @check_gnmi_subscription_and_apply_config
 def add_stp_port_members(
-        device_ip: str, if_name: str, edge_port: str = None, link_type: str = None, guard: str = None,
-        bpdu_guard: bool = None, bpdu_filter: bool = None, portfast: bool = None, uplink_fast: bool = None,
-        bpdu_guard_port_shutdown: bool = None, cost: int = None, port_priority: int = None,
-        stp_enabled: bool = None
+        device_ip: str, if_name: str, bpdu_guard: bool, uplink_fast: bool, stp_enabled: bool,
+        link_type: str = None, guard: str = None, edge_port: str = None, bpdu_filter: bool = None,
+        portfast: bool = None, bpdu_guard_port_shutdown: bool = None,
+        cost: int = None, port_priority: int = None,
+
 ):
     """
     Adds the STP port channel members on a device.
 
     Parameters:
-        device_ip (str): The IP address of the device.
-        if_name (str, optional): The interface name. Defaults to None.
-        edge_port (str, optional): The edge port. Defaults to None.
-        link_type (str, optional): The link type. Defaults to None.
-        guard (str, optional): The guard. Defaults to None.
-        bpdu_guard (str, optional): The BPDU guard. Defaults to None.
-        bpdu_filter (str, optional): The BPDU filter. Defaults to None.
-        portfast (str, optional): The portfast. Defaults to None.
-        uplink_fast (str, optional): The uplink fast. Defaults to None.
-        bpdu_guard_port_shutdown (str, optional): The BPDU guard port shutdown. Defaults to None.
-        cost (str, optional): The cost. Defaults to None.
-        port_priority (str, optional): The port priority. Defaults to None.
-        stp_enabled (str, optional): The STP enabled. Defaults to None.
-
+        device_ip (str, Required): The IP address of the device.
+        if_name (str, Required): The name of the interface.
+        bpdu_guard (bool, Required): Enable/Disable BPDU guard. Valid Values: True, False.
+        uplink_fast (bool, Required): Enable/Disable uplink fast. Valid Values: True, False.
+        stp_enabled (bool, Required): Enable/Disable STP. Valid Values: True, False.
+        edge_port (str, Optional): The name of the edge port. Valid Values: EDGE_AUTO, EDGE_ENABLE, EDGE_DISABLE.
+        link_type (str, Optional): The type of the link. Valid Values: P2P, SHARED.
+        guard (str, Optional): The guard. Valid Values: NONE, ROOT, LOOP.
+        bpdu_filter (bool, Optional): Enable/Disable BPDU filter. Valid Values: True, False.
+        portfast (bool, Optional): Enable/Disable portfast. Valid Values: True, False.
+        bpdu_guard_port_shutdown (bool, Optional): Enable/Disable BPDU guard port shutdown. Valid Values: True, False.
+        cost (int, Optional): The cost. Valid Range: 1-200000000.
+        port_priority (int, Optional): The port priority. Valid Range: 0-240.
     Raises:
         Exception: If there is an error while adding STP on the device.
     """
