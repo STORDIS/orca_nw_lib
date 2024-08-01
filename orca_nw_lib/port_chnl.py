@@ -1,6 +1,6 @@
-from time import sleep
 from typing import Dict, List
 from grpc import RpcError
+from orca_nw_lib.common import IFMode
 
 from .port_chnl_db import (
     get_all_port_chnl_of_device_from_db,
@@ -24,6 +24,7 @@ from .port_chnl_gnmi import (
     remove_port_channel_ip_from_device,
     add_port_chnl_valn_members_on_device,
     get_port_channel_ip_details_from_device,
+    get_port_channel_vlan_members_from_device,
 )
 from .utils import get_logging, format_and_get_trunk_vlans
 
@@ -60,11 +61,22 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
             for port_chnl in port_chnl_json_list:
                 if lag.get("lagname") == port_chnl.get("name"):
                     port_chnl_item = port_chnl
-                    if tagged_vlans := port_chnl.get("tagged_vlans"):
-                        port_chnl_vlan_member["trunk_vlans"] = format_and_get_trunk_vlans(tagged_vlans)
-                    if access_vlan := port_chnl.get("access_vlan"):
-                        port_chnl_vlan_member["access_vlan"] = int(access_vlan)
-            
+                    port_chnl_vlan_member_from_device = get_port_channel_vlan_members_from_device(
+                        device_ip, port_chnl.get("name")
+                    )
+                    port_chnl_vlan_member_details = port_chnl_vlan_member_from_device.get(
+                        "openconfig-vlan:config", {}
+                    )
+                    if port_chnl_vlan_member_details:
+                        if_mode = port_chnl_vlan_member_details.get("interface-mode")
+                        port_chnl_vlan_member["if_mode"] = if_mode
+                        if if_mode == str(IFMode.TRUNK):
+                            port_chnl_vlan_member["vlan_ids"] = format_and_get_trunk_vlans(
+                                port_chnl_vlan_member_details.get("trunk-vlans", [])
+                            )
+                        if if_mode == str(IFMode.ACCESS):
+                            port_chnl_vlan_member["vlan_ids"] = [port_chnl_vlan_member_details.get("access-vlan")]
+
             ipv4_addr = None
             try:
                 ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
@@ -78,8 +90,9 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
                         ipv4_addr = f"{ip}/{pfx}"
                         break
             except RpcError as e:
-                _logger.debug(f"No IP information found for port channel {lag.get('lagname')} on device {device_ip}. Error: {e}")
-                
+                _logger.debug(
+                    f"No IP information found for port channel {lag.get('lagname')} on device {device_ip}. Error: {e}")
+
             port_chnl_obj_list[
                 PortChannel(
                     active=lag.get("active"),
@@ -292,26 +305,26 @@ def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = Non
         ]
 
 
-def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, trunk_vlans: list[int] = None, access_vlan: int = None):
+def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, if_mode: IFMode, vlan_ids: list[int] = None):
     """
     Adds VLAN members to a port channel on a device.
 
     Parameters:
         device_ip (str): The IP address of the device.
         chnl_name (str): The name of the port channel.
-        trunk_vlans (list[int], optional): The list of VLAN IDs to be added as trunk VLANs. Defaults to None.
-        access_vlan (int, optional): The VLAN ID to be added as access VLAN. Defaults to None.
+        if_mode (IFMode): The interface mode of the port channel.
+        vlan_ids (list[int], optional): A list of VLAN IDs to be added to the port channel. Defaults to None.
 
     Returns:
         None
     """
     try:
         add_port_chnl_valn_members_on_device(
-            device_ip=device_ip, chnl_name=chnl_name, trunk_vlans=trunk_vlans, access_vlan=access_vlan
+            device_ip=device_ip, chnl_name=chnl_name, if_mode=if_mode, vlan_ids=vlan_ids
         )
     except Exception as e:
         _logger.error(
-            f"Port Channel {chnl_name}  vlan members {trunk_vlans} and {access_vlan} addition failed on device {device_ip}, Reason: {e}"
+            f"Port Channel {chnl_name} VLAN members addition failed on device {device_ip}, Reason: {e}"
         )
         raise
     finally:
@@ -339,22 +352,21 @@ def remove_port_chnl_ip(device_ip: str, chnl_name: str, ip_address: str = None):
         discover_port_chnl(device_ip)
 
 
-def remove_port_channel_vlan_member(device_ip: str, chnl_name: str, access_vlan: int = None,
-                                    trunk_vlans: list[int] = None):
+def remove_port_channel_vlan_member(device_ip: str, chnl_name: str, if_mode: IFMode, vlan_ids: list[int]):
     """
     Removes VLAN members from a port channel on a device.
 
     Args:
         device_ip (str): The IP address of the device.
         chnl_name (str): The name of the port channel.
-        access_vlan (int): The VLAN ID to be removed as access VLAN.
-        trunk_vlans (list[int], optional): The list of VLAN IDs to be removed as trunk VLANs. Defaults to None.
+        if_mode (IFMode): The interface mode to set, either ACCESS or TRUNK.
+        vlan_ids (list[int]): The VLAN IDs to be deleted from the port channel.
 
     Returns:
         None
     """
     try:
-        delete_port_channel_member_vlan_from_device(device_ip, chnl_name, access_vlan, trunk_vlans)
+        delete_port_channel_member_vlan_from_device(device_ip, chnl_name, if_mode, vlan_ids)
     except Exception as e:
         _logger.error(f"Port Channel Vlan members removal failed on device {device_ip}, Reason: {e}")
         raise
