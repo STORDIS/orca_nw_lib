@@ -33,6 +33,7 @@ class Device(StructuredNode):
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
     bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
     stp_global = RelationshipTo("STP_GLOBAL", "HAS")
+    stp_vlan = RelationshipTo("STP_VLAN", "HAS")
 
     def copy_properties(self, other):
         """
@@ -315,6 +316,8 @@ class Vlan(StructuredNode):
     memberInterfaces = RelationshipTo("Interface", "MEMBER_IF", model=VlanMemRel)
     memberPortChannel = RelationshipTo("PortChannel", "MEMBER_PORT_CHANNEL", model=VlanMemRel)
 
+    stp_vlan = RelationshipTo("STP_VLAN", "HAS")
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.vlanid == other.vlanid
@@ -354,3 +357,26 @@ class STP_GLOBAL(StructuredNode):
 
     def __str__(self):
         return str(self.device_ip)
+
+
+class STP_VLAN(StructuredNode):
+    """
+    Represents STP VLAN in the database.
+    """
+
+    vlan_id = IntegerProperty()
+    max_age = IntegerProperty()
+    hello_time = IntegerProperty()
+    forwarding_delay = IntegerProperty()
+    bridge_priority = IntegerProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.vlan_id == other.vlan_id
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.vlan_id)
+
+    def __str__(self):
+        return str(self.vlan_id)

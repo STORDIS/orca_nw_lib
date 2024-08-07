@@ -158,3 +158,22 @@ def insert_vlan_in_db(device: Device, vlans_obj_vs_mem):
     for vlan_in_db in get_vlan_obj_from_db(device.mgt_ip) or []:
         if vlan_in_db not in vlans_obj_vs_mem:
             del_vlan_from_db(device.mgt_ip, vlan_in_db.name)
+
+
+def get_vlan_obj_from_db_using_id(device_ip, vlan_id: int = None):
+    """
+    Get the VLAN object from the database.
+
+    Parameters:
+        device_ip (str): The IP address of the device.
+        vlan_id (int, optional): The ID of the VLAN. Defaults to None.
+
+    Returns:
+        The VLAN object from the database if `vlan_name` is None, otherwise the VLAN object with the specified name.
+    """
+    device: Device = get_device_db_obj(device_ip)
+    return (
+        (device.vlans.all()
+        if not vlan_id
+        else device.vlans.get_or_none(vlanid=vlan_id)) if device else None
+    )

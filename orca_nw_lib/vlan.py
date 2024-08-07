@@ -3,6 +3,7 @@ from orca_nw_lib.vlan_gnmi import get_vlan_details_from_device
 from .common import IFMode, VlanAutoState
 
 from .device_db import get_device_db_obj
+from .stp_vlan import discover_stp_vlan
 from .vlan_db import (
     get_vlan_member_port_channels_from_db,
     get_vlan_obj_from_db,
@@ -139,6 +140,7 @@ def del_vlan(device_ip, vlan_name: str):
         raise
     finally:
         discover_vlan(device_ip)
+        discover_stp_vlan(device_ip)
 
 
 def remove_ip_from_vlan(device_ip: str, vlan_name: str):
