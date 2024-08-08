@@ -311,7 +311,7 @@ def get_port_chnl_members(device_ip: str, port_chnl_name: str, ifname: str = Non
         ]
 
 
-def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, if_mode: IFMode, vlan_ids: list[int] = None):
+def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, if_mode: IFMode, vlan_ids: list[int]):
     """
     Adds VLAN members to a port channel on a device.
 
@@ -319,8 +319,7 @@ def add_port_chnl_vlan_members(device_ip: str, chnl_name: str, if_mode: IFMode, 
         device_ip (str): The IP address of the device.
         chnl_name (str): The name of the port channel.
         if_mode (IFMode): The interface mode of the port channel.
-        vlan_ids (list[int], optional): A list of VLAN IDs to be added to the port channel. Defaults to None.
-
+        vlan_ids (list[int]): A list of VLAN IDs to be added to the port channel. Defaults to None.
     Returns:
         None
     """

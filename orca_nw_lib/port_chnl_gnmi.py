@@ -463,19 +463,26 @@ def create_port_channel_vlan_gnmi_update_req(
     Returns:
         The GNMI update request for configuring VLAN members on the specified port channel.
     """
+    if vlan_ids is None or len(vlan_ids) == 0:
+        _logger.error(f"Invalid VLAN IDs: {vlan_ids}")
+        raise ValueError(f"Invalid VLAN IDs: {vlan_ids}")
     if if_mode == IFMode.ACCESS:
         # Remove all existing VLANs before adding new ones.
         # This is necessary because updating an access VLAN requires the existing access VLAN to be deleted first.
         # Additionally, switching from trunk to access mode requires the deletion of trunk VLANs.
 
         delete_all_port_channel_member_vlan_from_device(device_ip, port_channel_name)
+        # The access VLAN is always the first one because it only accepts integers.
         return create_req_to_add_access_vlan(
             port_channel_name=port_channel_name, vlan_id=vlan_ids[0]
         )
-    if if_mode == IFMode.TRUNK:
+    elif if_mode == IFMode.TRUNK:
         return create_req_to_add_trunk_vlan(
             port_channel_name=port_channel_name, vlan_ids=vlan_ids
         )
+    else:
+        _logger.error(f"Invalid interface mode: {if_mode}")
+        raise ValueError(f"Invalid interface mode: {if_mode}")
 
 
 def create_req_to_add_trunk_vlan(port_channel_name: str, vlan_ids: list[int]):
@@ -552,6 +559,9 @@ def delete_port_channel_member_vlan_from_device(
         The result of sending a GNMI set request for deleting the VLAN members of the port channel.
     """
     paths = []
+    if vlan_ids is None or len(vlan_ids) == 0:
+        _logger.error(f"Invalid VLAN IDs: {vlan_ids}")
+        raise ValueError(f"Invalid VLAN IDs: {vlan_ids}")
     if if_mode == IFMode.TRUNK:
         for i in format_and_get_trunk_vlans(vlan_ids):
             paths.append(
@@ -559,12 +569,15 @@ def delete_port_channel_member_vlan_from_device(
                     f"openconfig-interfaces:interfaces/interface[name={port_channel_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/trunk-vlans[trunk-vlans={i}]"
                 )
             )
-    if if_mode == IFMode.ACCESS:
+    elif if_mode == IFMode.ACCESS:
         paths.append(
             get_gnmi_path(
                 f"openconfig-interfaces:interfaces/interface[name={port_channel_name}]/openconfig-if-aggregate:aggregation/openconfig-vlan:switched-vlan/config/access-vlan"
             )
         )
+    else:
+        _logger.error(f"Invalid interface mode: {if_mode}")
+        raise ValueError(f"Invalid interface mode: {if_mode}")
     return send_gnmi_set(req=get_gnmi_del_reqs(paths), device_ip=device_ip) if paths else None
 
 
