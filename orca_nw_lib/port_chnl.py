@@ -237,6 +237,11 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
         )
         raise
     finally:
+        sleep(2) ##While updating port channel members(esp. more than one), 
+        ## it takes time for the port channel members to reflect on the device's mgmt. framework.
+        ## Hence, waiting for 1 second before triggering the discovery.
+        ## Otherwise during discovery not all port channel members are available to read.
+        ## Better would be to implement gNMI subscription for portchannels.
         discover_port_chnl(device_ip)
 
 
