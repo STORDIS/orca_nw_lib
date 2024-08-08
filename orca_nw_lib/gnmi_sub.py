@@ -463,8 +463,8 @@ def get_subscription_path_for_config_change(device_ip: str):
             )
         )
 
-    # ON_CHANGE subscription mode is not supported only SAMPLE subscription mode is supported.
-    # re discovery of the device is the best choice for stp.
+    # ON_CHANGE subscription mode is not supported for stp global config,  only SAMPLE subscription mode is supported.
+    # re discovery of stp global config is being done for every config change on stp global config via ORCA.
 
     # subscriptions.append(
     #     Subscription(
