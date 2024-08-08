@@ -151,7 +151,7 @@ def discover_device_and_lldp_info(device_ip):
     for nbr_ip in get_all_lldp_neighbor_device_ips(device_ip):
         if not get_device_details(
             nbr_ip
-        ):  # Discover only if not already discoverred in order to prevent loop
+        ):  # Discover only if not already discovered in order to prevent loop
             discover_device_and_lldp_info(nbr_ip)
 
 
