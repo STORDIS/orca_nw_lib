@@ -1,5 +1,5 @@
 name: Publish to PyPI
-
+# Publish to PyPI whenever there is a new release in pyproject.toml, otherwise skip publish step.
 on:
   push:
     branches:
