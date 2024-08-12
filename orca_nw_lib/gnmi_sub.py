@@ -33,7 +33,8 @@ from orca_nw_lib.portgroup_gnmi import (
     _get_port_groups_base_path,
 )
 from .stp_db import set_stp_config_in_db
-from .stp_gnmi import get_stp_global_config_path
+from .stp_port_db import set_stp_port_config_in_db, delete_stp_port_member_from_db
+from .stp_port_gnmi import get_stp_port_path
 
 _logger = get_logging().getLogger(__name__)
 
@@ -196,6 +197,71 @@ def handle_stp_config(device_ip: str, resp: SubscribeResponse):
     )
 
 
+def handle_stp_port_config(device_ip: str, resp: SubscribeResponse):
+    bpdu_guard = None
+    bpdu_filter = None
+    bpdu_guard_port_shutdown = None
+    link_type = None
+    guard = None
+    edge_port = None
+    if_name = None
+    portfast = None
+    stp_enabled = None
+    uplink_fast = None
+    cost = None
+    port_priority = None
+    for del_item in resp.update.delete:
+        for ele in del_item.elem:
+            if ele.name == "interface":
+                if_name = ele.key.get("name")
+                return delete_stp_port_member_from_db(device_ip=device_ip, if_name=if_name)
+
+    for u in resp.update.update:
+        for ele in u.path.elem:
+            if ele.name == "bpdu-guard":
+                bpdu_guard = u.val.bool_val
+            if ele.name == "bpdu-filter":
+                bpdu_filter = u.val.bool_val
+            if ele.name == "bpdu-guard-port-shutdown":
+                bpdu_guard_port_shutdown = u.val.bool_val
+            if ele.name == "link-type":
+                link_type = u.val.string_val
+            if ele.name == "guard":
+                guard = u.val.string_val
+            if ele.name == "edge-port":
+                edge_port = u.val.string_val
+            if ele.name == "name":
+                if_name = u.val.string_val
+            if ele.name == "portfast":
+                portfast = u.val.bool_val
+            if ele.name == "spanning-tree-enable":
+                stp_enabled = u.val.bool_val
+            if ele.name == "uplink-fast":
+                uplink_fast = u.val.bool_val
+            if ele.name == "cost":
+                cost = u.val.uint_val
+            if ele.name == "port-priority":
+                port_priority = u.val.uint_val
+    _logger.debug(
+        f"Updating stp port {if_name} on db for {device_ip} with config bpdu_guard: {bpdu_guard}, bpdu_filter: {bpdu_filter}, bpdu_guard_port_shutdown: {bpdu_guard_port_shutdown}, link_type: {link_type}, guard: {guard}, edge_port: {edge_port}, portfast: {portfast}, stp_enabled: {stp_enabled}, uplink_fast: {uplink_fast}, cost: {cost}, port_priority: {bpdu_guard}."
+    )
+    return set_stp_port_config_in_db(
+        device_ip=device_ip,
+        if_name=if_name,
+        bpdu_guard=bpdu_guard,
+        bpdu_filter=bpdu_filter,
+        bpdu_guard_port_shutdown=bpdu_guard_port_shutdown,
+        link_type=link_type,
+        guard=guard,
+        edge_port=edge_port,
+        portfast=portfast,
+        stp_enabled=stp_enabled,
+        uplink_fast=uplink_fast,
+        cost=cost,
+        port_priority=port_priority
+    )
+
+
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
     device_gnmi_stub = getGrpcStubs(device_ip)
     subscriptionlist = SubscriptionList(
@@ -231,13 +297,20 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_port_group_config_update(device_ip, resp)
-                    if ele.name == get_stp_global_config_path().elem[0].name:
+                    # if ele.name == get_stp_global_config_path().elem[0].name:
+                    #     _logger.debug(
+                    #         "gNMI subscription stp config update received from %s -> %s",
+                    #         device_ip,
+                    #         resp,
+                    #     )
+                    #     handle_stp_config(device_ip, resp)
+                    if ele.name == get_stp_port_path().elem[0].name:
                         _logger.debug(
                             "gNMI subscription stp config update received from %s -> %s",
                             device_ip,
                             resp,
                         )
-                        handle_stp_config(device_ip, resp)
+                        handle_stp_port_config(device_ip, resp)
             elif resp.sync_response:
                 global device_sync_responses
                 _logger.info(
@@ -390,8 +463,8 @@ def get_subscription_path_for_config_change(device_ip: str):
             )
         )
 
-    # ON_CHANGE subscription mode is not supported only SAMPLE subscription mode is supported.
-    # re discovery of the device is the best choice for stp.
+    # ON_CHANGE subscription mode is not supported for stp global config,  only SAMPLE subscription mode is supported.
+    # re discovery of stp global config is being done for every config change on stp global config via ORCA.
 
     # subscriptions.append(
     #     Subscription(
@@ -399,6 +472,13 @@ def get_subscription_path_for_config_change(device_ip: str):
     #         mode=SubscriptionMode.ON_CHANGE,
     #     )
     # )
+
+    subscriptions.append(
+        Subscription(
+            path=get_stp_port_path(),
+            mode=SubscriptionMode.ON_CHANGE
+        )
+    )
 
     return subscriptions
 
@@ -445,7 +525,8 @@ def gnmi_unsubscribe(device_ip: str):
     """
     sync_response = device_sync_responses.pop(device_ip, None)
     if sync_response is not None:
-        _logger.debug(f"Removed device {device_ip} with sync_response {sync_response} from device_sync_responses dictionary.")
+        _logger.debug(
+            f"Removed device {device_ip} with sync_response {sync_response} from device_sync_responses dictionary.")
     else:
         _logger.debug(f"Device {device_ip} not found in device_sync_responses dictionary.")
 
@@ -505,7 +586,8 @@ def check_gnmi_subscription_and_apply_config(config_func):
                 "Before config checking if device %s is fully subscribed to GNMI update notifications.",
                 kwargs.get("device_ip"),
             )
-            if gnmi_subscribe(ip) and sync_response_received(ip) :  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
+            if gnmi_subscribe(ip) and sync_response_received(
+                    ip):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
                 # gNMI subscription will occur in case not already Subscribed.
                 result = config_func(*args, **kwargs)
                 return result

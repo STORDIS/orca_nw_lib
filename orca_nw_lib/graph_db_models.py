@@ -33,6 +33,7 @@ class Device(StructuredNode):
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
     bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
     stp_global = RelationshipTo("STP_GLOBAL", "HAS")
+    stp_port = RelationshipTo("STP_PORT", "HAS")
     stp_vlan = RelationshipTo("STP_VLAN", "HAS")
 
     def copy_properties(self, other):
@@ -87,6 +88,8 @@ class PortChannel(StructuredNode):
 
     members = RelationshipTo("Interface", "HAS_MEMBER")
     peer_link = RelationshipTo("PortChannel", "peer_link")
+
+    stp_port = RelationshipTo("STP_PORT", "HAS")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -200,6 +203,8 @@ class Interface(StructuredNode):
     link_training = StringProperty()
     autoneg = StringProperty()
     lldp_nbrs=JSONProperty() ## LLDP remote device in the format  - {nbr_ip:[Eth0,Eth1].........}
+
+    stp_port = RelationshipTo("STP_PORT", "HAS")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -380,3 +385,33 @@ class STP_VLAN(StructuredNode):
 
     def __str__(self):
         return str(self.vlan_id)
+
+
+class STP_PORT(StructuredNode):
+    """
+    Represents a STP Port in the database.
+    """
+
+    if_name = StringProperty()
+    edge_port = StringProperty()
+    link_type = StringProperty()
+    guard = StringProperty()
+    bpdu_guard = BooleanProperty()
+    bpdu_filter = BooleanProperty()
+    portfast = BooleanProperty()
+    uplink_fast = BooleanProperty()
+    bpdu_guard_port_shutdown = BooleanProperty()
+    cost = IntegerProperty()
+    port_priority = IntegerProperty()
+    stp_enabled = BooleanProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.if_name == other.if_name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.if_name)
+
+    def __str__(self):
+        return str(self.if_name)

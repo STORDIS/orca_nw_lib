@@ -153,3 +153,86 @@ class STPEnabledProtocol(str, Enum):
 
     def __str__(self) -> str:
         return self.name
+
+
+class STPPortEdgePort(str, Enum):
+    EDGE_AUTO = auto()
+    EDGE_ENABLE = auto()
+    EDGE_DISABLE = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return STPPortEdgePort[name] if name in STPPortEdgePort.__members__ else None
+
+    def get_oc_val(self):
+        return f"openconfig-spanning-tree-ext:{self.name}"
+
+    @staticmethod
+    def getSTPPortEdgePortStrFromOCStr(oc_str):
+        return oc_str.split(":")[1] if oc_str else None
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class STPPortLinkType(str, Enum):
+    P2P = auto()
+    SHARED = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return STPPortLinkType[name] if name in STPPortLinkType.__members__ else None
+
+    def get_oc_val(self):
+        return f"openconfig-spanning-tree-ext:{self.name}"
+
+    @staticmethod
+    def getLinkTypeStrFromOCStr(oc_str):
+        return oc_str.split(":")[1] if oc_str else None
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class STPPortGuard(str, Enum):
+    ROOT = auto()
+    LOOP = auto()
+    NONE = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return STPPortGuard[name] if name in STPPortGuard.__members__ else None
+
+    def get_oc_val(self):
+        return f"openconfig-spanning-tree-ext:{self.name}"
+
+    @staticmethod
+    def getPortGuardStrFromOCStr(oc_str):
+        return oc_str.split(":")[1] if oc_str else None
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        return self.name
