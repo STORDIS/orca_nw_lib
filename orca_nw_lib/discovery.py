@@ -20,6 +20,7 @@ from .mclag import discover_mclag, discover_mclag_gw_macs
 from .port_chnl import discover_port_chnl
 from .stp import discover_stp
 from .stp_port import discover_stp_port
+from .stp_vlan import discover_stp_vlan
 from .vlan import discover_vlan
 from .utils import get_logging, get_networks, ping_ok
 
@@ -89,6 +90,13 @@ def discover_nw_features(device_ip: str):
     except Exception as e:
         report.append(
             f"STP Port Discovery Failed on device {device_ip}, Reason: {e}"
+        )
+
+    try:
+        discover_stp_vlan(device_ip)
+    except Exception as e:
+        report.append(
+            f"STP Discovery Failed on device {device_ip}, Reason: {e}"
         )
     ## Once Discovered the device, Subscribe for notfications
     gnmi_subscribe(device_ip)
