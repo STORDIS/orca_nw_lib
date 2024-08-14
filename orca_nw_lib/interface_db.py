@@ -6,7 +6,7 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def get_all_interfaces_of_device_from_db(device_ip: str)-> list[Interface]:
+def get_all_interfaces_of_device_from_db(device_ip: str) -> list[Interface]:
     """
     Get all interfaces of a device from the database.
 
@@ -16,6 +16,9 @@ def get_all_interfaces_of_device_from_db(device_ip: str)-> list[Interface]:
     Returns:
         list: A list of all interfaces of the device from the database. Returns None if the device is not found in the database.
     """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
     device = get_device_db_obj(device_ip)
     return device.interfaces.all() if device else None
 
@@ -32,6 +35,12 @@ def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Inte
         Interface: The interface object if it exists in the database for the given device and interface name,
                    otherwise returns None.
     """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
+    if not interface_name:
+        _logger.error("Interface name is required.")
+        return None
     device = get_device_db_obj(device_ip)
     return (
         get_device_db_obj(device_ip).interfaces.get_or_none(name=interface_name)
@@ -51,6 +60,12 @@ def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> SubIn
     Returns:
         SubInterface: The sub-interface object if found, otherwise None.
     """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
+    if not sub_if_ip:
+        _logger.error("Sub-interface IP is required.")
+        return None
     for intf in get_all_interfaces_of_device_from_db(device_ip) or []:
         if si := intf.subInterfaces.get_or_none(ip_address=sub_if_ip):
             return si
@@ -71,10 +86,16 @@ def get_sub_interface_of_intfc_from_db(
         sub_interface or list: The sub-interface if sub_if_ip is provided, otherwise a list of all sub-interfaces.
 
     """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
+    if not if_name:
+        _logger.error("Interface name is required.")
+        return None
     intf = get_interface_of_device_from_db(device_ip, if_name)
     if intf:
         if sub_if_ip:
-            return intf.subInterfaces.get__or_none(ip_address=sub_if_ip)
+            return intf.subInterfaces.get_or_none(ip_address=sub_if_ip)
         else:
             return intf.subInterfaces.all()
     return None
@@ -91,6 +112,9 @@ def get_sub_interface_from_db(sub_if_ip: str) -> SubInterface:
         SubInterface: The SubInterface object representing the retrieved sub-interface.
                      Returns None if the sub-interface is not found in the database.
     """
+    if not sub_if_ip:
+        _logger.error("Sub-interface IP is required.")
+        return None
     devices = get_device_db_obj()
     for device in devices:
         if si := get_sub_interface_of_device_from_db(device.mgt_ip, sub_if_ip):
@@ -108,6 +132,12 @@ def copy_intfc_object_props(target_intfc: Interface, source_intfc: Interface):
     Returns:
         None
     """
+    if not target_intfc:
+        _logger.error("Target interface object is required.")
+        return None
+    if not source_intfc:
+        _logger.error("Source interface object is required.")
+        return None
     target_intfc.name = source_intfc.name
     target_intfc.enabled = source_intfc.enabled
     target_intfc.mtu = source_intfc.mtu
@@ -155,7 +185,12 @@ def set_interface_config_in_db(
         None
 
     """
-
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
+    if not if_name:
+        _logger.error("Interface name is required.")
+        return None
     interface = get_interface_of_device_from_db(device_ip, if_name)
     if interface:
         if enable is not None:
@@ -223,6 +258,12 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
     Returns:
         None
     """
+    if not device:
+        _logger.error("Device object is required.")
+        return None
+    if not interfaces:
+        _logger.error("Interfaces dictionary is required.")
+        return None
     for intfc, sub_intfc in interfaces.items():
         if i := get_interface_of_device_from_db(device.mgt_ip, intfc.name):
             # Update existing node
@@ -260,5 +301,8 @@ def get_all_interfaces_name_of_device_from_db(device_ip: str):
     Returns:
         list: A list of interface names if interfaces exist for the device, else None.
     """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
     intfcs = get_all_interfaces_of_device_from_db(device_ip)
     return [intfc.name for intfc in intfcs] if intfcs else None
