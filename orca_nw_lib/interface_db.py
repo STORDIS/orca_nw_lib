@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from .common import PortFec, Speed
 from .device_db import get_device_db_obj
 from .graph_db_models import Device, Interface, SubInterface
@@ -6,7 +8,7 @@ from .utils import get_logging
 _logger = get_logging().getLogger(__name__)
 
 
-def get_all_interfaces_of_device_from_db(device_ip: str) -> list[Interface]:
+def get_all_interfaces_of_device_from_db(device_ip: str) -> Optional[List[Interface]]:
     """
     Get all interfaces of a device from the database.
 
@@ -23,7 +25,7 @@ def get_all_interfaces_of_device_from_db(device_ip: str) -> list[Interface]:
     return device.interfaces.all() if device else None
 
 
-def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Interface:
+def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Optional[Interface]:
     """
     Retrieves the interface of a device from the database based on the device's IP and the interface name.
 
@@ -49,7 +51,7 @@ def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Inte
     )
 
 
-def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> SubInterface:
+def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> Optional[SubInterface]:
     """
     Retrieves the sub-interface of a device from the database based on the device IP address and sub-interface IP address.
 
@@ -72,8 +74,8 @@ def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> SubIn
 
 
 def get_sub_interface_of_intfc_from_db(
-    device_ip: str, if_name: str, sub_if_ip: str = None
-):
+    device_ip: str, if_name: str, sub_if_ip: Optional[str] = None
+) -> Optional[SubInterface] | List[SubInterface]:
     """
     Retrieves a sub-interface of an interface from the database.
 
@@ -101,7 +103,7 @@ def get_sub_interface_of_intfc_from_db(
     return None
 
 
-def get_sub_interface_from_db(sub_if_ip: str) -> SubInterface:
+def get_sub_interface_from_db(sub_if_ip: str) -> Optional[SubInterface]:
     """
     Retrieve a sub-interface from the database based on its IP address.
 
@@ -159,15 +161,15 @@ def copy_intfc_object_props(target_intfc: Interface, source_intfc: Interface):
 def set_interface_config_in_db(
     device_ip: str,
     if_name: str,
-    enable: bool = None,
-    mtu=None,
-    speed: Speed = None,
-    description: str = None,
-    fec: PortFec = None,
-    autoneg:bool = None,
-    adv_speeds:str = None,
-    link_training:bool = None,
-    lldp_nbrs:list = None,
+    enable: Optional[bool] = None,
+    mtu: Optional[int] = None,
+    speed: Optional[Speed] = None,
+    description: Optional[str] = None,
+    fec: Optional[PortFec] = None,
+    autoneg: Optional[bool] = None,
+    adv_speeds: Optional[str] = None,
+    link_training: Optional[bool] = None,
+    lldp_nbrs: Optional[List[str]] = None,
 ):
     """
     Sets the configuration of an interface in the database.
@@ -291,7 +293,7 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
 
-def get_all_interfaces_name_of_device_from_db(device_ip: str):
+def get_all_interfaces_name_of_device_from_db(device_ip: str) -> Optional[List[str]]:
     """
     Get all the interface names of a device from the database.
 
