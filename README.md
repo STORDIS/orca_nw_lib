@@ -38,6 +38,8 @@ ORCA Network Library can be used to develop the orchestration solutions, NMS app
   - [Using the ORCA Network APIs](#using-the-orca-network-apis)
   - [Knowing API call status](#knowing-api-call-status)
   - [Keeping graph DB in sync with realtime Network state.](#keeping-graph-db-in-sync-with-realtime-network-state)
+  - [Graph DB Representation](#graph-db-representation)
+    - [BGP](#bgp)
   - [Executing Tests](#executing-tests)
   - [Releases of orca\_nw\_lib](#releases-of-orca_nw_lib)
   - [Supported SONiC versions](#supported-sonic-versions)
@@ -114,6 +116,11 @@ Exception objects raised by APIs in the modules above can be caught to know the 
 ## Keeping graph DB in sync with realtime Network state.
 Any configuration done on the device via orca_nw_lib APIs automatically keeps the DB in sync with the realtime network state by triggering the discovery method for the network component although gNMI subscriptions would have been the best way to achieve this, but due lack of support for gNMI subscription for all openconfig models in SONiC currently only pull mechanism can be used to keep graph DB in sync with realtime network state. 
 > NOTE : For changes done on the device out side of orca_nw_lib i.e. changes done directly on the device, Best way to keep graph DB in sync with realtime network state is to trigger full discovery at a pre-defined interval.
+
+## Graph DB Representation
+### BGP
+
+![BGP](bgp.drawio.svg)
 
 ## Executing Tests
 Tests are not only used for regular software testing but are a good example to know the usage of APIs in orca_nw_lib. When starting to use orca_nw_lib referring to tests can be a good starting point. Test cases are located under [test](./orca_nw_lib/test) directory. To execute tests a topology of 3 switches (1-spine, 2-leaves) is required. Prior to execute tests, leaves should be connected to spine and respective interfaces should be enabled, so that by providing one of the switch IP in [orca.yml](./orca_nw_lib/orca.yml) whole topology gets discovered.\
