@@ -189,3 +189,10 @@ def format_and_get_trunk_vlans(trunk_vlans: list):
         else:
             result.append(int(i))
     return result
+
+
+def get_component_name_from_if_alias(if_alias):
+    if "eth" in if_alias.lower():
+        if_alias = if_alias.lower().replace("eth", "")
+    split_list = if_alias.split("/")
+    return f"{split_list[0]}/{split_list[1]}"
