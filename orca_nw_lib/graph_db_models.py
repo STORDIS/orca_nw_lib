@@ -35,7 +35,6 @@ class Device(StructuredNode):
     stp_global = RelationshipTo("STP_GLOBAL", "HAS")
     stp_port = RelationshipTo("STP_PORT", "HAS")
     stp_vlan = RelationshipTo("STP_VLAN", "HAS")
-    breakout = RelationshipTo("Breakout", "HAS")
 
     def copy_properties(self, other):
         """
