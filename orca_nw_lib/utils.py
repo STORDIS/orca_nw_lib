@@ -191,8 +191,13 @@ def format_and_get_trunk_vlans(trunk_vlans: list):
     return result
 
 
-def get_component_name_from_if_alias(if_alias):
+def get_if_alias(if_alias):
     if "eth" in if_alias.lower():
         if_alias = if_alias.lower().replace("eth", "")
-    split_list = if_alias.split("/")
-    return f"{split_list[0]}/{split_list[1]}"
+    if_alias_split = if_alias.split("/")
+    return f"{if_alias_split[0]}/{if_alias_split[1]}"
+
+
+def get_number_of_breakouts_and_speed(breakout_mode: str):
+    breakout_mode_split = breakout_mode.split("x")
+    return int(breakout_mode_split[0]), breakout_mode_split[1]

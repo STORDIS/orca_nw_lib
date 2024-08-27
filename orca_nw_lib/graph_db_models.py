@@ -204,6 +204,10 @@ class Interface(StructuredNode):
     autoneg = StringProperty()
     lldp_nbrs=JSONProperty() ## LLDP remote device in the format  - {nbr_ip:[Eth0,Eth1].........}
 
+    breakout_mode = StringProperty()
+    breakout_status = StringProperty()
+    breakout_supported = BooleanProperty()
+
     stp_port = RelationshipTo("STP_PORT", "HAS")
     breakout = RelationshipTo("Breakout", "BREAKOUT")
 
