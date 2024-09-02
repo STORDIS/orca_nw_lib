@@ -1,3 +1,4 @@
+import threading
 from typing import List, Optional
 
 from .common import PortFec, Speed
@@ -6,6 +7,22 @@ from .graph_db_models import Device, Interface, SubInterface
 from .utils import get_logging
 
 _logger = get_logging().getLogger(__name__)
+interface_lock = threading.Lock()
+
+
+def interface_operation(func):
+    """
+    Decorator to ensure thread safety for interface operations.
+    """
+
+    def wrapper(*args, **kwargs):
+        # Acquire the lock before any interface operation
+        with interface_lock:
+            # Use a transaction to ensure atomicity
+            # with db.transaction:
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 def get_all_interfaces_of_device_from_db(device_ip: str) -> Optional[List[Interface]]:
@@ -22,10 +39,13 @@ def get_all_interfaces_of_device_from_db(device_ip: str) -> Optional[List[Interf
         _logger.error("Device IP is required.")
         return None
     device = get_device_db_obj(device_ip)
-    return device.interfaces.all() if device else None
+    with interface_lock:
+        return device.interfaces.all() if device else None
 
 
-def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Optional[Interface]:
+def get_interface_of_device_from_db(
+    device_ip: str, interface_name: str
+) -> Optional[Interface]:
     """
     Retrieves the interface of a device from the database based on the device's IP and the interface name.
 
@@ -44,14 +64,13 @@ def get_interface_of_device_from_db(device_ip: str, interface_name: str) -> Opti
         _logger.error("Interface name is required.")
         return None
     device = get_device_db_obj(device_ip)
-    return (
-        get_device_db_obj(device_ip).interfaces.get_or_none(name=interface_name)
-        if device
-        else None
-    )
+    with interface_lock:
+        return device.interfaces.get_or_none(name=interface_name) if device else None
 
 
-def get_sub_interface_of_device_from_db(device_ip: str, sub_if_ip: str) -> Optional[SubInterface]:
+def get_sub_interface_of_device_from_db(
+    device_ip: str, sub_if_ip: str
+) -> Optional[SubInterface]:
     """
     Retrieves the sub-interface of a device from the database based on the device IP address and sub-interface IP address.
 
@@ -197,58 +216,67 @@ def set_interface_config_in_db(
         _logger.error("Interface name is required.")
         return None
     interface = get_interface_of_device_from_db(device_ip, if_name)
-    if interface:
-        if enable is not None:
-            _logger.debug(
-                "Updating interface %s enable state in DB object to %s",
-                interface,
-                enable,
-            )
-            interface.enabled = enable
-        if mtu is not None:
-            _logger.debug(
-                "Updating interface %s MTU in DB object to %s", interface, mtu
-            )
-            interface.mtu = mtu
-        if speed is not None:
-            _logger.debug(
-                "Updating interface %s speed in DB object to %s", interface, speed
-            )
-            interface.speed = str(speed)
-        if description is not None:
-            _logger.debug(
-                "Updating interface %s description in DB object to %s",
-                interface,
-                description,
-            )
-            interface.description = description
-        if fec is not None:
-            _logger.debug(
-                "Updating interface %s FEC in DB object to %s", interface, fec
-            )
-            interface.fec = str(fec)
-        if autoneg is not None:
-            _logger.debug(
-                "Updating interface %s auto-negotiate in DB object to %s", interface, autoneg
-            )
-            interface.autoneg = 'on' if autoneg else 'off'
-        if adv_speeds is not None:
-            _logger.debug(
-                "Updating interface %s advertised-speed in DB object to %s",interface, adv_speeds
-            )
-            interface.adv_speeds = str(adv_speeds)
-        if link_training is not None:
-            _logger.debug(
-                "Updating interface %s standalone-link-training in DB object to %s", interface, link_training
-            )
-            interface.link_training = 'on' if link_training else 'off'
-        if lldp_nbrs:
-            _logger.debug(
-                "Updating interface %s LLDP neighbors in DB object to %s", interface, lldp_nbrs
-            )
-            interface.lldp_nbrs = lldp_nbrs
-        interface.save()
-        _logger.debug("Saved interface config in DB %s", interface)
+    with interface_lock:
+        if interface:
+            if enable is not None:
+                _logger.debug(
+                    "Updating interface %s enable state in DB object to %s",
+                    interface,
+                    enable,
+                )
+                interface.enabled = enable
+            if mtu is not None:
+                _logger.debug(
+                    "Updating interface %s MTU in DB object to %s", interface, mtu
+                )
+                interface.mtu = mtu
+            if speed is not None:
+                _logger.debug(
+                    "Updating interface %s speed in DB object to %s", interface, speed
+                )
+                interface.speed = str(speed)
+            if description is not None:
+                _logger.debug(
+                    "Updating interface %s description in DB object to %s",
+                    interface,
+                    description,
+                )
+                interface.description = description
+            if fec is not None:
+                _logger.debug(
+                    "Updating interface %s FEC in DB object to %s", interface, fec
+                )
+                interface.fec = str(fec)
+            if autoneg is not None:
+                _logger.debug(
+                    "Updating interface %s auto-negotiate in DB object to %s",
+                    interface,
+                    autoneg,
+                )
+                interface.autoneg = "on" if autoneg else "off"
+            if adv_speeds is not None:
+                _logger.debug(
+                    "Updating interface %s advertised-speed in DB object to %s",
+                    interface,
+                    adv_speeds,
+                )
+                interface.adv_speeds = str(adv_speeds)
+            if link_training is not None:
+                _logger.debug(
+                    "Updating interface %s standalone-link-training in DB object to %s",
+                    interface,
+                    link_training,
+                )
+                interface.link_training = "on" if link_training else "off"
+            if lldp_nbrs:
+                _logger.debug(
+                    "Updating interface %s LLDP neighbors in DB object to %s",
+                    interface,
+                    lldp_nbrs,
+                )
+                interface.lldp_nbrs = lldp_nbrs
+            interface.save()
+            _logger.debug("Saved interface config in DB %s", interface)
 
 
 def insert_device_interfaces_in_db(device: Device, interfaces: dict):
