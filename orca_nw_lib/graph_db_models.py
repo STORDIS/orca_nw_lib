@@ -209,7 +209,6 @@ class Interface(StructuredNode):
     breakout_supported = BooleanProperty()
 
     stp_port = RelationshipTo("STP_PORT", "HAS")
-    breakout = RelationshipTo("Breakout", "BREAKOUT")
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -409,31 +408,6 @@ class STP_PORT(StructuredNode):
     cost = IntegerProperty()
     port_priority = IntegerProperty()
     stp_enabled = BooleanProperty()
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.if_name == other.if_name
-        return NotImplemented
-
-    def __hash__(self):
-        return hash(self.if_name)
-
-    def __str__(self):
-        return str(self.if_name)
-
-
-class Breakout(StructuredNode):
-    """
-    Represents a STP Port in the database.
-    """
-
-    if_name = StringProperty()
-    port = StringProperty()
-    breakout_mode = StringProperty()
-    lanes = StringProperty()
-    source_lanes = StringProperty()
-    target_lanes = StringProperty()
-    status = StringProperty()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
