@@ -20,7 +20,7 @@ from .interface_gnmi import (
     set_if_vlan_on_device,
     set_interface_config_on_device,
     remove_vlan_from_if_from_device, config_interface_breakout_on_device, get_breakout_from_device,
-    get_breakout_capabilities_from_device, delete_interface_breakout_from_device,
+    delete_interface_breakout_from_device,
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
