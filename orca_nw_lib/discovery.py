@@ -12,7 +12,7 @@ from .lldp import discover_lldp_info, get_all_lldp_neighbor_device_ips
 from .portgroup import discover_port_groups
 
 
-from .bgp import discover_bgp, discover_bgp_af_global
+from .bgp import discover_bgp
 
 
 from .mclag import discover_mclag, discover_mclag_gw_macs
@@ -72,12 +72,6 @@ def discover_nw_features(device_ip: str):
         discover_bgp(device_ip)
     except Exception as e:
         report.append(f"BGP Discovery Failed on device {device_ip}, Reason: {e}")
-    try:
-        discover_bgp_af_global(device_ip)
-    except Exception as e:
-        report.append(
-            f"BGP Global Discovery Failed on device {device_ip}, Reason: {e}"
-        )
     try:
         discover_stp(device_ip)
     except Exception as e:
