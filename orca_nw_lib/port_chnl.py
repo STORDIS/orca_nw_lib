@@ -52,35 +52,36 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
             "sonic-portchannel:LAG_MEMBER_TABLE_LIST", {}
         )
         port_chnl_json_list = port_chnl_json.get("sonic-portchannel:PORTCHANNEL_LIST", {})
-        for lag in lag_table_json_list or []:
+        for port_chnl in port_chnl_json_list:
             ifname_list = []
-            for mem in lag_mem_table_json_list or []:
-                if lag.get("lagname") == mem.get("name"):
-                    ifname_list.append(mem.get("ifname"))
-            port_chnl_item = {}
-            port_chnl_vlan_member = {}
-            for port_chnl in port_chnl_json_list:
-                if lag.get("lagname") == port_chnl.get("name"):
-                    port_chnl_item = port_chnl
-                    port_chnl_vlan_member_from_device = get_port_channel_vlan_members_from_device(
-                        device_ip, port_chnl.get("name")
-                    )
-                    port_chnl_vlan_member_details = port_chnl_vlan_member_from_device.get(
-                        "openconfig-vlan:config", {}
-                    )
-                    if port_chnl_vlan_member_details:
-                        if_mode = port_chnl_vlan_member_details.get("interface-mode")
-                        port_chnl_vlan_member["if_mode"] = if_mode
-                        if if_mode == str(IFMode.TRUNK):
-                            port_chnl_vlan_member["vlan_ids"] = format_and_get_trunk_vlans(
-                                port_chnl_vlan_member_details.get("trunk-vlans", [])
-                            )
-                        if if_mode == str(IFMode.ACCESS):
-                            port_chnl_vlan_member["vlan_ids"] = [port_chnl_vlan_member_details.get("access-vlan")]
 
+            # Getting port channel member details
+            for mem in lag_mem_table_json_list:
+                if port_chnl.get("name") == mem.get("name"):
+                    ifname_list.append(mem.get("ifname"))
+
+            #  Getting port channel vlan member details
+            port_chnl_vlan_member = {}
+            port_chnl_vlan_member_from_device = get_port_channel_vlan_members_from_device(
+                device_ip, port_chnl.get("name")
+            )
+            port_chnl_vlan_member_details = port_chnl_vlan_member_from_device.get(
+                "openconfig-vlan:config", {}
+            )
+            if port_chnl_vlan_member_details:
+                if_mode = port_chnl_vlan_member_details.get("interface-mode")
+                port_chnl_vlan_member["if_mode"] = if_mode
+                if if_mode == str(IFMode.TRUNK):
+                    port_chnl_vlan_member["vlan_ids"] = format_and_get_trunk_vlans(
+                        port_chnl_vlan_member_details.get("trunk-vlans", [])
+                    )
+                if if_mode == str(IFMode.ACCESS):
+                    port_chnl_vlan_member["vlan_ids"] = [port_chnl_vlan_member_details.get("access-vlan")]
+
+            # Getting port channel IP details
             ipv4_addr = None
             try:
-                ip_details = get_port_channel_ip_details_from_device(device_ip, lag.get("lagname")).get(
+                ip_details = get_port_channel_ip_details_from_device(device_ip, port_chnl.get("name")).get(
                     "openconfig-if-ip:addresses", {}
                 )
                 ipv4_addresses = ip_details.get("address", [])
@@ -92,29 +93,34 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
                         break
             except RpcError as e:
                 _logger.debug(
-                    f"No IP information found for port channel {lag.get('lagname')} on device {device_ip}. Error: {e}")
+                    f"No IP information found for port channel {port_chnl.get('name')} on device {device_ip}. Error: {e}")
 
-            port_chnl_obj_list[
-                PortChannel(
-                    active=lag.get("active"),
-                    lag_name=lag.get("lagname"),
-                    admin_sts=lag.get("admin_status"),
-                    mtu=lag.get("mtu"),
-                    name=lag.get("name"),
-                    fallback_operational=lag.get("fallback_operational"),
-                    oper_sts=lag.get("oper_status"),
-                    speed=lag.get("speed"),
-                    oper_sts_reason=lag.get("reason"),
-                    static=port_chnl_item.get("static"),
-                    fallback=port_chnl_item.get("fallback"),
-                    fast_rate=port_chnl_item.get("fast_rate"),
-                    min_links=port_chnl_item.get("min_links"),
-                    description=port_chnl_item.get("description"),
-                    graceful_shutdown_mode=port_chnl_item.get("graceful_shutdown_mode"),
-                    ip_address=ipv4_addr,
-                    vlan_members=port_chnl_vlan_member,
-                )
-            ] = ifname_list
+            port_chnl_obj = PortChannel(
+                lag_name=port_chnl.get("name"),
+                admin_sts=port_chnl.get("admin_status"),
+                mtu=port_chnl.get("mtu"),
+                static=port_chnl.get("static"),
+                fallback=port_chnl.get("fallback"),
+                fast_rate=port_chnl.get("fast_rate"),
+                min_links=port_chnl.get("min_links"),
+                description=port_chnl.get("description"),
+                graceful_shutdown_mode=port_chnl.get("graceful_shutdown_mode"),
+                ip_address=ipv4_addr,
+                vlan_members=port_chnl_vlan_member,
+            )
+
+            # adding lag table details
+            for lag in lag_table_json_list:
+                if port_chnl.get("name") == lag.get("lagname"):
+                    port_chnl_obj.active = lag.get("active")
+                    port_chnl_obj.admin_sts = lag.get("admin_status")
+                    port_chnl_obj.mtu = lag.get("mtu")
+                    port_chnl_obj.name = lag.get("name")
+                    port_chnl_obj.fallback_operational = lag.get("fallback_operational")
+                    port_chnl_obj.oper_sts = lag.get("oper_status")
+                    port_chnl_obj.speed = lag.get("speed")
+                    port_chnl_obj.oper_sts_reason = lag.get("reason")
+            port_chnl_obj_list[port_chnl_obj] = ifname_list
     return port_chnl_obj_list
 
 
@@ -143,9 +149,9 @@ def get_port_chnl(device_ip: str, port_chnl_name: str = None):
         port_chnl_name (str, optional): The name of the port channel. Defaults to None.
 
     Returns:
-        Union[List[Dict[str, Any]], Dict[str, Any], None]: If `port_chnl_name` is provided, 
-        returns the properties of the specified port channel if it exists, otherwise returns None. 
-        If `port_chnl_name` is not provided, returns a list of properties of all port channels associated with the device IP. 
+        Union[List[Dict[str, Any]], Dict[str, Any], None]: If `port_chnl_name` is provided,
+        returns the properties of the specified port channel if it exists, otherwise returns None.
+        If `port_chnl_name` is not provided, returns a list of properties of all port channels associated with the device IP.
         If there are no port channels associated with the device IP, returns an empty list.
     """
     if port_chnl_name:
@@ -251,7 +257,7 @@ def add_port_chnl_mem(device_ip: str, chnl_name: str, ifnames: list[str]):
         )
         raise
     finally:
-        sleep(2) ##While updating port channel members(esp. more than one), 
+        sleep(2)  ##While updating port channel members(esp. more than one),
         ## it takes time for the port channel members to reflect on the device's mgmt. framework.
         ## Hence, waiting for 1 second before triggering the discovery.
         ## Otherwise during discovery not all port channel members are available to read.
