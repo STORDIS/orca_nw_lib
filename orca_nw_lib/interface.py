@@ -203,8 +203,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         mtu (int, optional): The maximum transmission unit of the interface. Defaults to None.
         speed (Speed, optional): The speed of the interface. Defaults to None.
         description (str, optional): The description of the interface. Defaults to None.
-        ip (str, optional): The IP address of the interface. Defaults to None.
-        ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
+        ip_with_prefix (str, optional): The IP address and prefix of the interface. Defaults to None.
         index (int, optional): The index of the sub-interface. Defaults to 0.
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
 
@@ -224,7 +223,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         ## discover the interface esp. the subinterfaces if there is a request to set IP
         # on the interface because currently there are no gNMI subscription available
         # for subinterface updates.
-        if kwargs.get("ip"):
+        if kwargs.get("ip_with_prefix"):
             discover_interfaces(device_ip, if_name)
 
 

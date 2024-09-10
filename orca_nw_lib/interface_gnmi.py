@@ -1,3 +1,5 @@
+from orca_nw_lib.utils import validate_and_get_ip_prefix
+
 from .common import IFMode, PortFec, Speed
 from .gnmi_pb2 import Path, PathElem
 from .interface_db import get_all_interfaces_name_of_device_from_db
@@ -239,8 +241,7 @@ def set_interface_config_on_device(
     mtu: int = None,
     description: str = None,
     speed: Speed = None,
-    ip: str = None,
-    ip_prefix_len: int = 0,
+    ip_with_prefix: str = None,
     index: int = 0,
     fec: PortFec = None,
     if_mode: IFMode = None,
@@ -259,14 +260,14 @@ def set_interface_config_on_device(
         mtu (int, optional): The maximum transmission unit (MTU) size. Defaults to None.
         description (str, optional): The interface description. Defaults to None.
         speed (Speed, optional): The interface speed. Defaults to None.
-        ip (str, optional): The IP address of the subinterface. Defaults to None.
-        ip_prefix_len (int, optional): The prefix length of the IP address. Defaults to 0.
+        ip_with_prefix (str, optional): The IP address with prefix. Defaults to None.
         index (int, optional): The index of the subinterface. Defaults to 0.
         fec (bool, optional): Whether to enable forward error correction. Defaults to None.
         if_mode (IFMode, optional): The interface mode. Defaults to None.
         vlan_id (int, optional): The VLAN ID of the interface. Defaults to None.
         autoneg (bool, optional): Whether to enable auto-negotiation. Defaults to None.
         adv_speeds (str, optional): The list of advertised speeds. Defaults to "all".
+        link_training (bool, optional): Whether to enable link training. Defaults to None.
         
     Returns:
         None: If no updates were made.
@@ -342,7 +343,8 @@ port-fec
                     {"port-speed": speed.get_oc_val()},
                 )
             )
-
+    ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_with_prefix)
+    print(ip, nw_addr, prefix_len)
     if ip is not None:
         ip_payload = {
             "openconfig-interfaces:subinterface": [
@@ -355,7 +357,7 @@ port-fec
                                 {
                                     "ip": ip,
                                     "config": {
-                                        "prefix-length": ip_prefix_len,
+                                        "prefix-length": prefix_len,
                                         "secondary": False,
                                     },
                                 }

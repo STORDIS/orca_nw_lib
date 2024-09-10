@@ -332,8 +332,9 @@ def config_bgp_neighbors_on_device(
         device_ip: str,
         remote_asn: int,
         neighbor_ip: str,
-        remote_vrf: str,
+        vrf_name: str,
         admin_status: bool = True,
+        local_asn: int = None,
 ):
     """
     Configures BGP neighbors on a device.
@@ -342,9 +343,10 @@ def config_bgp_neighbors_on_device(
         device_ip (str): The IP address of the device.
         remote_asn (int): The remote ASN (Autonomous System Number).
         neighbor_ip (str): The IP address of the BGP neighbor.
-        remote_vrf (str): The remote VRF (Virtual Routing and Forwarding) name.
+        vrf_name (str): The name of the VRF (Virtual Routing and Forwarding) instance.
         admin_status (bool, optional): The administrative status of the BGP neighbor.
         Defaults to True.
+        local_asn (int, optional): The local ASN (Autonomous System Number). Defaults to None.
 
     Returns:
         The result of the GNMI set operation.
@@ -352,14 +354,18 @@ def config_bgp_neighbors_on_device(
     Raises:
         None
     """
+    config = {
+        "asn": remote_asn,
+        "neighbor": neighbor_ip,
+        "vrf_name": vrf_name,
+    }
+    if admin_status is not None:
+        config["admin_status"] = admin_status
+    if local_asn:
+        config["local_asn"] = local_asn
     bgp_nbr_payload = {
         "sonic-bgp-neighbor:BGP_NEIGHBOR_LIST": [
-            {
-                "asn": remote_asn,
-                "neighbor": neighbor_ip,
-                "vrf_name": remote_vrf,
-                # "admin_status": admin_status,
-            }
+            config
         ]
     }
 
@@ -391,14 +397,16 @@ def config_bgp_neighbor_af_on_device(
     Returns:
         None
     """
+    config = {
+        "afi_safi": afi_safi,
+        "neighbor": neighbor_ip,
+        "vrf_name": vrf,
+    }
+    if admin_status is not None:
+        config["admin_status"] = admin_status
     bgp_nbr_payload = {
         "sonic-bgp-neighbor:BGP_NEIGHBOR_AF_LIST": [
-            {
-                "admin_status": admin_status,
-                "afi_safi": afi_safi,
-                "neighbor": neighbor_ip,
-                "vrf_name": vrf,
-            }
+            config
         ]
     }
 
@@ -642,6 +650,56 @@ def del_bgp_global_af_aggregate_addr_on_device(
         )
     else:
         path = get_bgp_af_aggregate_addr_path()
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            path
+        ), device_ip
+    )
+
+
+def del_bgp_neighbor_from_device(device_ip: str, neighbor_ip: str, vrf_name: str = None):
+    """
+    Deletes the BGP neighbor from a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+        vrf_name (str, optional): The VRF (Virtual Routing and Forwarding) name. Defaults to "default".
+
+    Returns:
+        None
+    """
+    if vrf_name:
+        path = get_gnmi_path(
+            f"sonic-bgp-neighbor:sonic-bgp-neighbor/BGP_NEIGHBOR/BGP_NEIGHBOR_LIST[vrf_name={vrf_name},neighbor={neighbor_ip}]"
+        )
+    else:
+        path = get_gnmi_path(
+            f"sonic-bgp:sonic-bgp/BGP_NEIGHBOR"
+        )
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            path
+        ), device_ip
+    )
+
+
+def del_bgp_neighbor_af_from_device(device_ip: str, neighbor_ip: str, afi_safi: str, vrf_name: str = "default"):
+    """
+    Deletes the BGP neighbor address family from a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+        afi_safi (str): The address family identifier.
+        vrf_name (str, optional): The VRF (Virtual Routing and Forwarding) name. Defaults to "default".
+
+    Returns:
+        None
+    """
+    path = get_gnmi_path(
+        f"sonic-bgp-neighbor:sonic-bgp-neighbor/BGP_NEIGHBOR_AF/BGP_NEIGHBOR_AF_LIST[vrf_name={vrf_name},afi_safi={afi_safi},neighbor={neighbor_ip}]"
+    )
     return send_gnmi_set(
         get_gnmi_del_req(
             path
