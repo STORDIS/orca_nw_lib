@@ -147,15 +147,33 @@ def get_interface(device_ip: str, intfc_name=None):
     """
     if intfc_name:
         return (
-            intfc.__properties__
+            _merge_interface_and_sub_interface(intfc)
             if (intfc := get_interface_of_device_from_db(device_ip, intfc_name))
             else None
         )
     return [
-        intf.__properties__
+        _merge_interface_and_sub_interface(intf)
         for intf in get_all_interfaces_of_device_from_db(device_ip) or []
         if intf
     ]
+
+
+def _merge_interface_and_sub_interface(intfc: Interface):
+    """
+    Merges the interface and sub-interface properties into a single dictionary.
+
+    Args:
+        intfc (Interface): The interface object.
+
+    Returns:
+        Dict[str, Any]: The merged properties of the interface and sub-interface.
+    """
+    subinterfaces = intfc.subInterfaces.all()
+    # Extract the first subinterface IP address if it exists
+    # Only one ip address is allowed per interface
+    if subinterfaces:
+        return {**intfc.__properties__, "ip_address": subinterfaces[0].__properties__.get("ip_address")}
+    return intfc.__properties__
 
 
 def get_pg_of_if(device_ip: str, intfc_name: str):

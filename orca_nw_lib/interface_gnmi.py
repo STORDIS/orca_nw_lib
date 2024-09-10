@@ -344,7 +344,6 @@ port-fec
                 )
             )
     ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_with_prefix)
-    print(ip, nw_addr, prefix_len)
     if ip is not None:
         ip_payload = {
             "openconfig-interfaces:subinterface": [
