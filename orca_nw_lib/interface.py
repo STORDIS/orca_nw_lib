@@ -88,8 +88,6 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     )
                 ),
                 mac_addr=intfc_state.get("mac-address"),
-                # breakout_mode=breakout.get("brkout_mode"),
-                # status=breakout.get("status")
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
@@ -413,9 +411,20 @@ def set_if_mode(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
         discover_interfaces(device_ip, if_name)
 
 
-def config_interface_breakout(device_ip: str, if_name: str, if_alias: str, breakout_mode: str):
+def config_interface_breakout(device_ip: str, if_alias: str, breakout_mode: str):
+    """
+    Configures the breakout configuration on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): Name of the interface.
+        breakout_mode (str): The breakout mode to configure.
+
+    Returns:
+        None
+    """
     try:
-        config_interface_breakout_on_device(device_ip, if_name, if_alias, breakout_mode)
+        config_interface_breakout_on_device(device_ip, if_alias, breakout_mode)
     except Exception as e:
         _logger.error(f"Configuring interface breakout on interface {if_alias} failed, Reason: {e}")
         raise
@@ -423,22 +432,22 @@ def config_interface_breakout(device_ip: str, if_name: str, if_alias: str, break
         discover_interfaces(device_ip)
 
 
-def delete_interface_breakout(device_ip: str, if_name: str):
+def delete_interface_breakout(device_ip: str, if_alias: str):
     """
     Deletes the breakout configuration from a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        if_name (str): Name of the interface.
+        if_alias (str): Name of the interface.
     Returns:
         None
     """
-    _logger.info(f"Deleting interface breakout on interface {if_name}.")
+    _logger.info(f"Deleting interface breakout on interface Eth{if_alias}.")
     try:
-        delete_interface_breakout_from_device(device_ip, if_name)
+        delete_interface_breakout_from_device(device_ip, if_alias)
     except Exception as e:
         _logger.error(
-            f"Deleting interface breakout on interface {if_name} on device {device_ip} failed, Reason: {e}"
+            f"Deleting interface breakout on interface Eth{if_alias} on device {device_ip} failed, Reason: {e}"
         )
         raise
     finally:

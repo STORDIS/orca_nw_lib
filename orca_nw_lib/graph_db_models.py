@@ -31,7 +31,7 @@ class Device(StructuredNode):
     bgp = RelationshipTo("BGP", "BGP_GLOBAL")
     vlans = RelationshipTo("Vlan", "HAS")
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
-    bgp_global_af = RelationshipTo("BGP_GLOBAL_AF", "BGP_GLOBAL_AF")
+
     stp_global = RelationshipTo("STP_GLOBAL", "HAS")
     stp_port = RelationshipTo("STP_PORT", "HAS")
     stp_vlan = RelationshipTo("STP_VLAN", "HAS")
@@ -267,6 +267,10 @@ class BGP(StructuredNode):
     neighbor = RelationshipTo("SubInterface", "BGP_NEIGHBOR", model=Bgp_Neighbor_Rel)
     remote_asn_node = RelationshipTo("BGP", "REMOTE_ASN")
 
+    af = RelationshipTo("BGP_GLOBAL_AF", "AF")
+    af_network = RelationshipTo("BGP_GLOBAL_AF_NETWORK", "AF_NETWORK")
+    af_aggregate_addr = RelationshipTo("BGP_GLOBAL_AF_AGGREGATE_ADDR", "AF_AGGREGATE_ADDR")
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.local_asn == other.local_asn
@@ -286,6 +290,7 @@ class BGP_GLOBAL_AF(StructuredNode):
 
     afi_safi = StringProperty()
     vrf_name = StringProperty()
+    max_ebgp_paths = IntegerProperty()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -419,3 +424,45 @@ class STP_PORT(StructuredNode):
 
     def __str__(self):
         return str(self.if_name)
+
+
+class BGP_GLOBAL_AF_NETWORK(StructuredNode):
+    """
+    Represents a BGP Global AF in the database.
+    """
+
+    afi_safi = StringProperty()
+    vrf_name = StringProperty()
+    ip_prefix = StringProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.afi_safi == other.afi_safi
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.afi_safi)
+
+    def __str__(self):
+        return str(self.afi_safi)
+
+
+class BGP_GLOBAL_AF_AGGREGATE_ADDR(StructuredNode):
+    """
+    Represents a BGP Global AF in the database.
+    """
+
+    afi_safi = StringProperty()
+    vrf_name = StringProperty()
+    ip_prefix = StringProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.afi_safi == other.afi_safi
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.afi_safi)
+
+    def __str__(self):
+        return str(self.afi_safi)

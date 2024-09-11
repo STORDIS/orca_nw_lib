@@ -735,7 +735,18 @@ def get_breakout_sonic_path(if_name: str):
         return get_gnmi_path("sonic-port-breakout:sonic-port-breakout/BREAKOUT_CFG/BREAKOUT_CFG_LIST")
 
 
-def config_interface_breakout_on_device(device_ip: str, if_name, if_alias: str, breakout_mode: str):
+def config_interface_breakout_on_device(device_ip: str, if_alias: str, breakout_mode: str):
+    """
+    Configures the breakout mode on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): The alias of the interface.
+        breakout_mode (str): The breakout mode.
+
+    Returns:
+        The result of the GNMI set operation.
+    """
     if len(if_alias.split()) > 2:
         raise Exception("Invalid interface for breakout")
     if_alias = get_if_alias(if_alias)
@@ -759,15 +770,6 @@ def config_interface_breakout_on_device(device_ip: str, if_name, if_alias: str, 
             }
         }
     )
-    # updating cannot be done on breakout configuration because its status is always InProgress on the device.
-    # so, delete the breakout if it already exists and recreate it with new config.
-    try:
-        delete_interface_breakout_from_device(device_ip, if_name)
-    except Exception as e:
-        _logger.error(
-            f"Deleting interface breakout on interface {if_name} on device {device_ip} failed, Reason: {e}"
-        )
-        pass
     return send_gnmi_set(
         req=create_req_for_update([request]),
         device_ip=device_ip
@@ -790,59 +792,16 @@ def get_breakout_from_device(device_ip: str, if_alias: str):
     )
 
 
-def delete_interface_breakout_from_device(device_ip: str, if_name: str):
+def delete_interface_breakout_from_device(device_ip: str, if_alias: str):
     """
     Deletes the breakout configuration on a device.
 
     Args:
         device_ip (str): The IP address of the device.
-        if_name (str): The alias of the interface.
+        if_alias (str): The alias of the interface.
     """
-
-    path = get_breakout_sonic_path(if_name=if_name)
+    if_alias = get_if_alias(if_alias)
+    path = get_breakout_path(if_alias=if_alias)
     return send_gnmi_set(
         get_gnmi_del_req(path=path), device_ip=device_ip
     )
-
-
-def get_breakout_capabilities_from_device(device_ip: str, if_name: str):
-    """
-    Retrieves the breakout capabilities from a device.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        if_name (str): The name of the interface.
-
-    Returns:
-        The breakout capabilities as a dictionary.
-    """
-    return send_gnmi_set(
-        device_ip=device_ip,
-        req=create_req_for_update(
-            [create_gnmi_update(
-                path=get_gnmi_path("operations/sonic-port-breakout:breakout_capabilities"),
-                val={
-                    "sonic-port-breakout:breakout_capabilities": {
-                        "ifname": if_name
-                    }
-                }
-            )]
-        )
-    )
-
-
-def get_breakout_port_master(device_ip: str, if_name: str):
-    try:
-        return send_gnmi_get(
-            path=[
-                get_gnmi_path(
-                    f"sonic-port-breakout:sonic-port-breakout/BREAKOUT_PORTS/BREAKOUT_PORTS_LIST={if_name}/master"
-                )
-            ],
-            device_ip=device_ip
-        )
-    except Exception as e:
-        _logger.debug(
-            f"Getting breakout port master on interface {if_name} on device {device_ip} failed, Reason: {e}"
-        )
-        return {}

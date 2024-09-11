@@ -1,10 +1,14 @@
+from urllib.parse import quote_plus
+
+from orca_nw_lib.utils import validate_and_get_ip_prefix
+
 from .gnmi_pb2 import Path, PathElem
 from .gnmi_util import (
     create_gnmi_update,
     create_req_for_update,
     get_gnmi_del_req,
     send_gnmi_get,
-    send_gnmi_set,
+    send_gnmi_set, get_gnmi_path,
 )
 
 
@@ -145,6 +149,19 @@ def get_bgp_global_af_list_path() -> Path:
     return path
 
 
+def get_bgp_details_from_device(device_ip: str):
+    """
+    Get the BGP details from the specified device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        list: The BGP details obtained from the device.
+    """
+    return send_gnmi_get(device_ip, [get_gnmi_path("sonic-bgp-global:sonic-bgp-global")])
+
+
 def get_bgp_global_list_from_device(device_ip: str):
     """
     Get the BGP global list from the specified device.
@@ -174,7 +191,7 @@ def get_bgp_global_of_vrf_from_device(device_ip: str, vrf_name: str):
 
 
 def config_bgp_global_on_device(
-    device_ip: str, local_asn: int, router_id: str, vrf_name: str = "default"
+        device_ip: str, local_asn: int, router_id: str, vrf_name: str = "default"
 ):
     """
     Configure BGP global settings on a device.
@@ -207,7 +224,7 @@ def config_bgp_global_on_device(
 
 
 def config_bgp_global_af_on_device(
-    device_ip: str, afi_safi: str, vrf_name: str = "default"
+        device_ip: str, afi_safi: str, vrf_name: str = "default", max_ebgp_paths: int = None
 ):
     """
     Configures the Border Gateway Protocol (BGP) Global Address Family (AF) on a specific device.
@@ -218,6 +235,7 @@ def config_bgp_global_af_on_device(
         and Subsequent Address Family Identifier (SAFI) to be configured.
         vrf_name (str, optional): The Virtual Routing and Forwarding (VRF) name.
         Defaults to "default".
+        max_ebgp_paths (int, optional): The maximum number of EBGP paths. Defaults to None.
 
     Returns:
         str: The response from the send_gnmi_set function.
@@ -226,11 +244,14 @@ def config_bgp_global_af_on_device(
         None
 
     Example Usage:
-        config_bgp_global_af_on_device("192.168.1.1", "ipv4-unicast", "VRF1")
+        config_bgp_global_af_on_device("192.168.1.1", "ipv4-unicast", "VRF1", 8)
     """
+    af_config = {"afi_safi": afi_safi, "vrf_name": vrf_name, }
+    if max_ebgp_paths:
+        af_config["max_ebgp_paths"] = max_ebgp_paths
     bgp_global_af_payload = {
         "sonic-bgp-global:BGP_GLOBALS_AF_LIST": [
-            {"afi_safi": afi_safi, "vrf_name": vrf_name}
+            af_config
         ]
     }
 
@@ -283,9 +304,6 @@ def get_bgp_global_af_list_from_device(device_ip):
     Args:
         device_ip (str): The IP address of the device.
 
-    Returns:
-        list: The BGP global address family list obtained from the device.
-
     Raises:
         None
     """
@@ -311,11 +329,11 @@ def del_all_bgp_global_af_from_device(device_ip: str):
 
 
 def config_bgp_neighbors_on_device(
-    device_ip: str,
-    remote_asn: int,
-    neighbor_ip: str,
-    remote_vrf: str,
-    admin_status: bool = True,
+        device_ip: str,
+        remote_asn: int,
+        neighbor_ip: str,
+        remote_vrf: str,
+        admin_status: bool = True,
 ):
     """
     Configures BGP neighbors on a device.
@@ -354,11 +372,11 @@ def config_bgp_neighbors_on_device(
 
 
 def config_bgp_neighbor_af_on_device(
-    device_ip: str,
-    afi_safi: str,
-    neighbor_ip: str,
-    vrf: str,
-    admin_status: bool = True,
+        device_ip: str,
+        afi_safi: str,
+        neighbor_ip: str,
+        vrf: str,
+        admin_status: bool = True,
 ):
     """
     Configures the BGP neighbor address family on a device.
@@ -448,4 +466,184 @@ def del_bgp_global_from_device(device_ip: str, vrf_name: str):
     """
     return send_gnmi_set(
         get_gnmi_del_req(get_bgp_global_list_of_vrf_path(vrf_name)), device_ip
+    )
+
+
+def del_bgp_global_af_from_device(device_ip: str, vrf_name: str, afi_safi: str):
+    """
+    Deletes the BGP global address family configuration from a specific device and virtual routing and forwarding (VRF) instance.
+
+    Args:
+        device_ip (str): The IP address of the device from which the BGP global address family configuration will be deleted.
+        vrf_name (str): The name of the VRF instance.
+        afi_safi (str): The address family identifier.
+
+    Returns:
+        None: This function does not return any value.
+    """
+    if vrf_name and afi_safi:
+        path = get_gnmi_path(
+            f"sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF/BGP_GLOBALS_AF_LIST[vrf_name={vrf_name},afi_safi={afi_safi}]")
+    else:
+        path = get_gnmi_path(f"sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF/BGP_GLOBALS_AF_LIST")
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            path
+        ), device_ip
+    )
+
+
+def get_bgp_af_network_path():
+    return get_gnmi_path("sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF_NETWORK/BGP_GLOBALS_AF_NETWORK_LIST")
+
+
+def config_bgp_global_af_network_on_device(
+        device_ip: str, vrf_name: str, afi_safi: str, ip_prefix: str
+):
+    """
+    Configures the BGP global address family network on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vrf_name (str): The VRF (Virtual Routing and Forwarding) name.
+        afi_safi (str): The address family identifier.
+        ip_prefix (str): The IP address and network prefix.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    path = get_bgp_af_network_path()
+    ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_prefix)
+    bgp_global_af_network_payload = {
+        "sonic-bgp-global:BGP_GLOBALS_AF_NETWORK_LIST": [
+            {"vrf_name": vrf_name, "afi_safi": afi_safi, "ip_prefix": f"{ip}/{prefix_len}"}
+        ]
+    }
+
+    return send_gnmi_set(
+        create_req_for_update(
+            [create_gnmi_update(path, bgp_global_af_network_payload)]
+        ),
+        device_ip,
+    )
+
+
+def get_bgp_global_af_network_from_device(device_ip: str):
+    """
+    Get all BGP global address family network from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+    """
+    path = get_bgp_af_network_path()
+    return send_gnmi_get(device_ip=device_ip, path=[path])
+
+
+def del_bgp_global_af_network_on_device(
+        device_ip: str, vrf_name: str = None, afi_safi: str = None, ip_prefix: str = None
+):
+    """
+    Deletes the BGP global address family network from a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vrf_name (str, optional): The VRF (Virtual Routing and Forwarding) name. Defaults to None.
+        afi_safi (str, optional): The address family identifier. Defaults to None.
+        ip_prefix (str, optional): The IP address and network prefix. Defaults to None.
+
+    Returns:
+        None
+    """
+    if afi_safi and vrf_name and ip_prefix:
+        path = get_gnmi_path(
+            f"sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF_NETWORK/BGP_GLOBALS_AF_NETWORK_LIST[vrf_name={vrf_name},afi_safi={afi_safi},ip_prefix={quote_plus(ip_prefix)}]"
+        )
+    else:
+        path = get_bgp_af_network_path()
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            path
+        ), device_ip
+    )
+
+
+def get_bgp_af_aggregate_addr_path():
+    return get_gnmi_path(
+        "sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF_AGGREGATE_ADDR/BGP_GLOBALS_AF_AGGREGATE_ADDR_LIST"
+    )
+
+
+def config_bgp_global_af_aggregate_addr_on_device(
+        device_ip: str, vrf_name: str, afi_safi: str, ip_prefix: str
+):
+    """
+    Configures the BGP global address family aggregate address on a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vrf_name (str): The VRF (Virtual Routing and Forwarding) name.
+        afi_safi (str): The address family identifier.
+        ip_prefix (str): The IP address and network prefix.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    path = get_bgp_af_aggregate_addr_path()
+    ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_prefix)
+    bgp_global_af_aggregate_addr_payload = {
+        "sonic-bgp-global:BGP_GLOBALS_AF_AGGREGATE_ADDR_LIST": [
+            {"vrf_name": vrf_name, "afi_safi": afi_safi, "ip_prefix": f"{ip}/{prefix_len}"}
+        ]
+    }
+
+    return send_gnmi_set(
+        create_req_for_update(
+            [create_gnmi_update(path, bgp_global_af_aggregate_addr_payload)]
+        ),
+        device_ip,
+    )
+
+
+def get_bgp_global_af_aggregate_addr_from_device(device_ip: str):
+    """
+    Get all BGP global address family aggregate address from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+    """
+    path = get_bgp_af_aggregate_addr_path()
+    return send_gnmi_get(device_ip=device_ip, path=[path])
+
+
+def del_bgp_global_af_aggregate_addr_on_device(
+        device_ip: str, vrf_name: str = None, afi_safi: str = None, ip_prefix: str = None
+):
+    """
+    Deletes the BGP global address family aggregate address from a specific device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        vrf_name (str, optional): The VRF (Virtual Routing and Forwarding) name. Defaults to None.
+        afi_safi (str, optional): The address family identifier. Defaults to None.
+        ip_prefix (str, optional): The IP address and network prefix. Defaults to None.
+
+    Returns:
+        None
+    """
+    if afi_safi and vrf_name and ip_prefix:
+        path = get_gnmi_path(
+            f"sonic-bgp-global:sonic-bgp-global/BGP_GLOBALS_AF_AGGREGATE_ADDR/BGP_GLOBALS_AF_AGGREGATE_ADDR_LIST[vrf_name={vrf_name},afi_safi={afi_safi},ip_prefix={quote_plus(ip_prefix)}]"
+        )
+    else:
+        path = get_bgp_af_aggregate_addr_path()
+    return send_gnmi_set(
+        get_gnmi_del_req(
+            path
+        ), device_ip
     )
