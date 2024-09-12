@@ -331,18 +331,6 @@ def insert_device_bgp_neighbors_in_db(device: Device, bgp_neighbor_list: dict):
 
     saved_bgp_neighbors = get_bgp_neighbor_from_db(device.mgt_ip)
     for i in saved_bgp_neighbors:
-        if i.local_asn:
-            local_bgp = get_bgp_global_with_asn_from_db(device.mgt_ip, i.local_asn)
-            i.local_asn_rel.disconnect_all()
-            if local_bgp:
-                i.local_asn_rel.connect(local_bgp)
-
-        if i.remote_asn:
-            remote_bgp = get_bgp_global_with_asn_from_db(device.mgt_ip, i.remote_asn)
-            i.remote_asn_rel.disconnect_all()
-            if remote_bgp:
-                i.remote_asn_rel.connect(remote_bgp)
-
         if i.neighbor_ip:
             neighbor_sub = get_sub_interface_from_db(i.neighbor_ip)
             i.neighbor_rel.disconnect_all()
@@ -430,3 +418,22 @@ def get_bgp_neighbor_remote_bgp_from_db(device_ip, neighbor_ip: str, asn: int = 
     if asn:
         return bgp_nbr.remote_asn_rel.get_or_none(local_asn=asn) if bgp_nbr else None
     return bgp_nbr.remote_asn_rel.all() if bgp_nbr else None
+
+
+def connect_bgp_neighbor_to_bgp_global():
+    devices = get_device_db_obj()
+    bgp_neighbors = []
+    bgp_globals = []
+    for device in devices:
+        for bgp_neighbor in device.bgp_neighbor.all():
+            bgp_neighbors.append(bgp_neighbor)
+        for bgp_global in device.bgp.all():
+            bgp_globals.append(bgp_global)
+    for bgp_neighbor in bgp_neighbors:
+        bgp_neighbor.local_asn_rel.disconnect_all()
+        bgp_neighbor.remote_asn_rel.disconnect_all()
+        for bgp_global in bgp_globals:
+            if bgp_global.local_asn == bgp_neighbor.remote_asn:
+                bgp_neighbor.remote_asn_rel.connect(bgp_global)
+            if bgp_global.local_asn == bgp_neighbor.local_asn:
+                bgp_neighbor.local_asn_rel.connect(bgp_global)

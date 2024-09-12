@@ -11,7 +11,7 @@ from .bgp_db import (
     get_bgp_global_af_aggregate_addr_from_db,
     insert_device_bgp_neighbors_in_db,
     get_bgp_neighbor_from_db, get_bgp_neighbor_af_from_db, get_bgp_neighbor_local_bgp_from_db,
-    get_bgp_neighbor_remote_bgp_from_db,
+    get_bgp_neighbor_remote_bgp_from_db, connect_bgp_neighbor_to_bgp_global,
 )
 from .bgp_gnmi import (
     config_bgp_global_af_on_device,
@@ -628,6 +628,8 @@ def discover_bgp_neighbors(device_ip: str):
                 f"BGP Neighbor Discovery Failed on device {device.mgt_ip}, Reason: {e}"
             )
             raise
+        finally:
+            connect_bgp_neighbor_to_bgp_global()
 
 
 def _create_bgp_neighbors_graph_objects(device_ip: str):
