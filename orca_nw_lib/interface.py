@@ -19,15 +19,15 @@ from .interface_gnmi import (
     get_interface_from_device,
     set_if_vlan_on_device,
     set_interface_config_on_device,
-    remove_vlan_from_if_from_device,
+    remove_vlan_from_if_from_device, config_interface_breakout_on_device, get_breakout_from_device,
+    delete_interface_breakout_from_device,
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
     get_port_group_id_of_device_interface_from_db,
     get_port_group_of_if_from_db,
 )
-from .utils import get_logging
-
+from .utils import get_logging, get_if_alias
 
 _logger = get_logging().getLogger(__name__)
 
@@ -103,6 +103,17 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
 
             ## Now iterate lane details
             for indx, value in enumerate(if_lane_details or []):
+                breakout_state = {}
+                breakout_config = {}
+                if len(value.get("alias", "").split("/")) > 2:
+                    if_alias = get_if_alias(if_alias=value.get("alias"))
+                    # Get breakout details
+                    breakout_details = get_breakout_from_device(device_ip, if_alias).get(
+                        "openconfig-platform-port:groups", {}
+                    )
+                    for i in breakout_details.get("group", []):
+                        breakout_config = i.get("config", {})
+                        breakout_state = i.get("state", {})
                 if interface.name == value.get("ifname"):
                     interface.alias = value.get("alias")
                     interface.lanes = value.get("lanes")
@@ -110,6 +121,12 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     interface.adv_speeds = value.get("adv_speeds")
                     interface.link_training = value.get("link_training")
                     interface.autoneg = value.get("autoneg")
+                    interface.breakout_mode = "{}x{}".format(
+                        breakout_config.get("num-breakouts"),
+                        Speed.getSpeedStrFromOCStr(breakout_config.get("breakout-speed"))
+                    ) if breakout_config else None
+                    interface.breakout_supported = len(value.get("lanes", "").split(",")) > 1
+                    interface.breakout_status = breakout_state.get("openconfig-port-breakout-ext:status", None)
                     ## To minimize iteration for element in outer loop
                     if_lane_details.pop(indx)
                     break
@@ -392,3 +409,46 @@ def set_if_mode(device_ip: str, if_name: str, if_mode: IFMode, vlan_id: int):
         raise
     finally:
         discover_interfaces(device_ip, if_name)
+
+
+def config_interface_breakout(device_ip: str, if_alias: str, breakout_mode: str):
+    """
+    Configures the breakout configuration on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): Name of the interface.
+        breakout_mode (str): The breakout mode to configure.
+
+    Returns:
+        None
+    """
+    try:
+        config_interface_breakout_on_device(device_ip, if_alias, breakout_mode)
+    except Exception as e:
+        _logger.error(f"Configuring interface breakout on interface {if_alias} failed, Reason: {e}")
+        raise
+    finally:
+        discover_interfaces(device_ip)
+
+
+def delete_interface_breakout(device_ip: str, if_alias: str):
+    """
+    Deletes the breakout configuration from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): Name of the interface.
+    Returns:
+        None
+    """
+    _logger.info(f"Deleting interface breakout on interface Eth{if_alias}.")
+    try:
+        delete_interface_breakout_from_device(device_ip, if_alias)
+    except Exception as e:
+        _logger.error(
+            f"Deleting interface breakout on interface Eth{if_alias} on device {device_ip} failed, Reason: {e}"
+        )
+        raise
+    finally:
+        discover_interfaces(device_ip)

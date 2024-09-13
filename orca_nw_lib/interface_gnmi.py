@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from .common import IFMode, PortFec, Speed
 from .gnmi_pb2 import Path, PathElem
 from .interface_db import get_all_interfaces_name_of_device_from_db
@@ -12,6 +14,7 @@ from .gnmi_util import (
 )
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
+from .utils import get_number_of_breakouts_and_speed, get_if_alias
 
 _logger = get_logging().getLogger(__name__)
 
@@ -233,21 +236,21 @@ def get_intfc_description_path(intfc_name: str):
 
 
 def set_interface_config_on_device(
-    device_ip: str,
-    if_name: str,
-    enable: bool = None,
-    mtu: int = None,
-    description: str = None,
-    speed: Speed = None,
-    ip: str = None,
-    ip_prefix_len: int = 0,
-    index: int = 0,
-    fec: PortFec = None,
-    if_mode: IFMode = None,
-    vlan_id: int = None,
-    autoneg: bool = None,
-    adv_speeds: str = None,
-    link_training: bool = None,
+        device_ip: str,
+        if_name: str,
+        enable: bool = None,
+        mtu: int = None,
+        description: str = None,
+        speed: Speed = None,
+        ip: str = None,
+        ip_prefix_len: int = 0,
+        index: int = 0,
+        fec: PortFec = None,
+        if_mode: IFMode = None,
+        vlan_id: int = None,
+        autoneg: bool = None,
+        adv_speeds: str = None,
+        link_training: bool = None,
 ):
     """
     Set the interface configuration on a device.
@@ -312,7 +315,7 @@ port-fec
     if speed is not None:
         # if switch supports port groups then configure speed on port-group otherwise directly on interface
         if pg_id := orca_nw_lib.portgroup_db.get_port_group_id_of_device_interface_from_db(
-            device_ip, if_name
+                device_ip, if_name
         ):
             _logger.debug(
                 "Interface %s belongs to port-group %s. Speed of port-group will be updated for device_ip: %s, pg_id: %s, speed: %s.",
@@ -381,7 +384,8 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -393,7 +397,8 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -405,7 +410,8 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(
+                    f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -586,7 +592,7 @@ def get_all_subinterfaces_from_device(device_ip: str, intfc_name: str):
 
 
 def remove_vlan_from_if_from_device(
-    device_ip: str, intfc_name: str, if_mode: IFMode = None
+        device_ip: str, intfc_name: str, if_mode: IFMode = None
 ):
     """
     Removes the interface mode from a device.
@@ -693,4 +699,109 @@ def set_if_vlan_on_device(device_ip: str, if_name: str, if_mode: IFMode, vlan_id
     return send_gnmi_set(
         create_req_for_update([get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode)]),
         device_ip,
+    )
+
+
+def get_breakout_path(if_alias):
+    """
+    Returns the GNMI path for the breakout configuration.
+
+    Args:
+        if_alias (str): The alias of the interface.
+
+    Returns:
+        The GNMI path for the breakout configuration.
+    """
+    return get_gnmi_path(
+        f"openconfig-platform:components/component[name={quote_plus(if_alias)}]/port/openconfig-platform-port:breakout-mode/groups"
+    )
+
+
+def get_breakout_sonic_path(if_name: str):
+    """
+    Returns the SONiC path for the breakout configuration.
+
+    Args:
+        if_name (str): The name of the interface.
+
+    Returns:
+        The SONiC path for the breakout configuration.
+    """
+    if if_name:
+        return get_gnmi_path(
+            f"sonic-port-breakout:sonic-port-breakout/BREAKOUT_CFG/BREAKOUT_CFG_LIST[ifname={if_name}]"
+        )
+    else:
+        return get_gnmi_path("sonic-port-breakout:sonic-port-breakout/BREAKOUT_CFG/BREAKOUT_CFG_LIST")
+
+
+def config_interface_breakout_on_device(device_ip: str, if_alias: str, breakout_mode: str):
+    """
+    Configures the breakout mode on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): The alias of the interface.
+        breakout_mode (str): The breakout mode.
+
+    Returns:
+        The result of the GNMI set operation.
+    """
+    if len(if_alias.split()) > 2:
+        raise Exception("Invalid interface for breakout")
+    if_alias = get_if_alias(if_alias)
+    path = get_breakout_path(if_alias)
+    num_breakouts, breakout_speed = get_number_of_breakouts_and_speed(breakout_mode=breakout_mode)
+    config = {"index": 1, "num-physical-channels": 0}
+    if num_breakouts is not None:
+        config["num-breakouts"] = num_breakouts
+    if breakout_speed:
+        config["breakout-speed"] = breakout_speed
+    request = create_gnmi_update(
+        path=path,
+        val={
+            "openconfig-platform-port:groups": {
+                "group": [
+                    {
+                        "index": 1,
+                        "config": config
+                    }
+                ]
+            }
+        }
+    )
+    return send_gnmi_set(
+        req=create_req_for_update([request]),
+        device_ip=device_ip
+    )
+
+
+def get_breakout_from_device(device_ip: str, if_alias: str):
+    """
+    Retrieves the breakout configuration from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str, optional): The alias of the interface.
+    Returns:
+        The breakout configuration as a dictionary.
+    """
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[get_breakout_path(if_alias)],
+    )
+
+
+def delete_interface_breakout_from_device(device_ip: str, if_alias: str):
+    """
+    Deletes the breakout configuration on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): The alias of the interface.
+    """
+    if_alias = get_if_alias(if_alias)
+    path = get_breakout_path(if_alias=if_alias)
+    return send_gnmi_set(
+        get_gnmi_del_req(path=path), device_ip=device_ip
     )
