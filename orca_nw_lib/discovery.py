@@ -12,8 +12,7 @@ from .lldp import discover_lldp_info, get_all_lldp_neighbor_device_ips
 from .portgroup import discover_port_groups
 
 
-from .bgp import discover_bgp
-
+from .bgp import discover_bgp, discover_bgp_neighbors
 
 from .mclag import discover_mclag, discover_mclag_gw_macs
 
@@ -91,6 +90,13 @@ def discover_nw_features(device_ip: str):
     except Exception as e:
         report.append(
             f"STP Discovery Failed on device {device_ip}, Reason: {e}"
+        )
+
+    try:
+        discover_bgp_neighbors(device_ip)
+    except Exception as e:
+        report.append(
+            f"BGP Neighbor Discovery Failed on device {device_ip}, Reason: {e}"
         )
     ## Once Discovered the device, Subscribe for notfications
     gnmi_subscribe(device_ip)

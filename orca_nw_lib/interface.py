@@ -19,7 +19,9 @@ from .interface_gnmi import (
     get_interface_from_device,
     set_if_vlan_on_device,
     set_interface_config_on_device,
-    remove_vlan_from_if_from_device, config_interface_breakout_on_device, get_breakout_from_device,
+    remove_vlan_from_if_from_device,
+    config_interface_breakout_on_device,
+    get_breakout_from_device,
     delete_interface_breakout_from_device,
 )
 from .portgroup import discover_port_groups
@@ -164,15 +166,33 @@ def get_interface(device_ip: str, intfc_name=None):
     """
     if intfc_name:
         return (
-            intfc.__properties__
+            _merge_interface_and_sub_interface(intfc)
             if (intfc := get_interface_of_device_from_db(device_ip, intfc_name))
             else None
         )
     return [
-        intf.__properties__
+        _merge_interface_and_sub_interface(intf)
         for intf in get_all_interfaces_of_device_from_db(device_ip) or []
         if intf
     ]
+
+
+def _merge_interface_and_sub_interface(intfc: Interface):
+    """
+    Merges the interface and sub-interface properties into a single dictionary.
+
+    Args:
+        intfc (Interface): The interface object.
+
+    Returns:
+        Dict[str, Any]: The merged properties of the interface and sub-interface.
+    """
+    subinterfaces = intfc.subInterfaces.all()
+    # Extract the first subinterface IP address if it exists
+    # Only one ip address is allowed per interface
+    if subinterfaces:
+        return {**intfc.__properties__, "ip_address": subinterfaces[0].__properties__.get("ip_address")}
+    return intfc.__properties__
 
 
 def get_pg_of_if(device_ip: str, intfc_name: str):
@@ -220,8 +240,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         mtu (int, optional): The maximum transmission unit of the interface. Defaults to None.
         speed (Speed, optional): The speed of the interface. Defaults to None.
         description (str, optional): The description of the interface. Defaults to None.
-        ip (str, optional): The IP address of the interface. Defaults to None.
-        ip_prefix_len (int, optional): The IP prefix length of the interface. Defaults to 0.
+        ip_with_prefix (str, optional): The IP address and prefix of the interface. Defaults to None.
         index (int, optional): The index of the sub-interface. Defaults to 0.
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
 
@@ -241,7 +260,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         ## discover the interface esp. the subinterfaces if there is a request to set IP
         # on the interface because currently there are no gNMI subscription available
         # for subinterface updates.
-        if kwargs.get("ip"):
+        if kwargs.get("ip_with_prefix"):
             discover_interfaces(device_ip, if_name)
 
 

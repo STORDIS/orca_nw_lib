@@ -3,7 +3,15 @@ from typing import List
 from .utils import get_logging
 from .device_db import get_device_db_obj
 from .interface_db import get_sub_interface_from_db
-from .graph_db_models import BGP, BGP_GLOBAL_AF, Device, BGP_GLOBAL_AF_NETWORK, BGP_GLOBAL_AF_AGGREGATE_ADDR
+from .graph_db_models import (
+    BGP,
+    BGP_GLOBAL_AF,
+    Device,
+    BGP_GLOBAL_AF_NETWORK,
+    BGP_GLOBAL_AF_AGGREGATE_ADDR,
+    BGP_NEIGHBOR,
+    BGP_NEIGHBOR_AF
+)
 
 _logger = get_logging().getLogger(__name__)
 
@@ -22,7 +30,6 @@ def copy_bgp_object_prop(target_obj: BGP, src_obj: BGP):
     target_obj.local_asn = src_obj.local_asn
     target_obj.vrf_name = src_obj.vrf_name
     target_obj.router_id = src_obj.router_id
-    target_obj.neighbor_prop = src_obj.neighbor_prop
 
 
 def get_bgp_from_db(asn: int) -> List[BGP]:
@@ -186,22 +193,6 @@ def get_bgp_global_with_asn_from_db(device_ip, asn: int = None):
     return device.bgp.all() if device else None
 
 
-def get_bgp_neighbor_subinterfaces_from_db(device_ip, asn: str):
-    """
-    Get the BGP neighbor subinterfaces from the database.
-
-    Args:
-        device_ip (str): The IP address of the device.
-        asn (str): The ASN (Autonomous System Number) of the BGP.
-
-    Returns:
-        list: A list of BGP neighbor subinterfaces if found, None otherwise.
-    """
-    device = get_device_db_obj(device_ip)
-    bgp = device.bgp.get_or_none(local_asn=asn) if device else None
-    return bgp.neighbor.all() if bgp else None
-
-
 def get_remote_bgp_asn_from_db(device_ip, asn: str):
     """
     Get the remote BGP ASN nodes from the database for a given device IP and ASN.
@@ -289,3 +280,160 @@ def get_bgp_global_af_aggregate_addr_from_db(
     if afi_safi:
         return bgp.af_aggregate_addr.get_or_none(afi_safi=afi_safi) if bgp else None
     return bgp.af_aggregate_addr.all() if bgp else None
+
+
+def copy_bgp_neighbor_object_prop(src_obj: BGP_NEIGHBOR, target_obj: BGP_NEIGHBOR):
+    """
+    Copies the properties of a source BGP_NEIGHBOR object to a target BGP_NEIGHBOR object.
+
+    Parameters:
+        target_obj (BGP_NEIGHBOR): The target BGP_NEIGHBOR object to copy the properties to.
+        src_obj (BGP_NEIGHBOR): The source BGP_NEIGHBOR object to copy the properties from.
+
+    Returns:
+        None
+    """
+    target_obj.local_asn = src_obj.local_asn
+    target_obj.vrf_name = src_obj.vrf_name
+    target_obj.neighbor_ip = src_obj.neighbor_ip
+    target_obj.remote_asn = src_obj.remote_asn
+
+
+def insert_device_bgp_neighbors_in_db(device: Device, bgp_neighbor_list: dict):
+    """
+    Inserts the BGP neighbors in the database.
+
+    Args:
+        device (Device): The device object.
+        bgp_neighbor_list (dict): A list of BGP_NEIGHBOR objects.
+
+    Returns:
+        None
+    """
+    for bgp_neighbor, family in bgp_neighbor_list.items():
+        if bgp_neighbor_from_db := get_bgp_neighbor_from_db(
+                device_ip=device.mgt_ip, neighbor_ip=bgp_neighbor.neighbor_ip
+        ):
+            copy_bgp_neighbor_object_prop(bgp_neighbor_from_db, bgp_neighbor)
+            bgp_neighbor_from_db.save()
+            device.bgp_neighbor.connect(bgp_neighbor_from_db)
+        else:
+            bgp_neighbor.save()
+            device.bgp_neighbor.connect(bgp_neighbor)
+
+        saved_bgp_neighbor = get_bgp_neighbor_from_db(device.mgt_ip, bgp_neighbor.neighbor_ip)
+        for af in saved_bgp_neighbor.af.all():
+            af.delete()
+        nbr_af_list = family.get("neighbor_af")
+        for af in nbr_af_list:
+            af.save()
+            saved_bgp_neighbor.af.connect(af) if saved_bgp_neighbor else None
+
+    saved_bgp_neighbors = get_bgp_neighbor_from_db(device.mgt_ip)
+    for i in saved_bgp_neighbors:
+        if i.neighbor_ip:
+            neighbor_sub = get_sub_interface_from_db(i.neighbor_ip)
+            i.neighbor_rel.disconnect_all()
+            if neighbor_sub:
+                i.neighbor_rel.connect(neighbor_sub)
+
+    for i in saved_bgp_neighbors:
+        if i not in bgp_neighbor_list:
+            i.delete()
+
+
+def get_bgp_neighbor_from_db(device_ip: str, neighbor_ip: str = None) -> BGP_NEIGHBOR | list[BGP_NEIGHBOR]:
+    """
+    Get the BGP neighbor from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str, optional): The IP address of the neighbor. Defaults to None.
+
+    Returns:
+        BGP_NEIGHBOR: The BGP neighbor if found, None otherwise.
+    """
+    device = get_device_db_obj(device_ip)
+    if neighbor_ip:
+        return device.bgp_neighbor.get_or_none(neighbor_ip=neighbor_ip) if device else None
+    return device.bgp_neighbor.all() if device_ip else None
+
+
+def get_bgp_neighbor_af_from_db(device_ip: str, neighbor_ip: str, afi_safi: str = None) -> list[BGP_NEIGHBOR_AF] | BGP_NEIGHBOR_AF:
+    """
+    Get the BGP neighbor address family from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+        afi_safi (str, optional): The address family identifier (AFI) and sub-address family identifier (SAFI)
+            combination. Defaults to None.
+
+    Returns:
+        list: A list of BGP neighbor address families if found, None otherwise.
+    """
+    bgp_neighbor = get_bgp_neighbor_from_db(device_ip, neighbor_ip)
+    if afi_safi:
+        return bgp_neighbor.af.get_or_none(afi_safi=afi_safi) if bgp_neighbor else None
+    return bgp_neighbor.af.all() if bgp_neighbor else None
+
+
+def get_bgp_neighbor_subinterfaces_from_db(device_ip, neighbor_ip: str):
+    """
+    Get the BGP neighbor subinterfaces from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+    """
+    bgp_nbr = get_bgp_neighbor_from_db(device_ip, neighbor_ip)
+    return bgp_nbr.neighbor_rel.all() if bgp_nbr else None
+
+
+def get_bgp_neighbor_local_bgp_from_db(device_ip, neighbor_ip: str, asn: int = None):
+    """
+    Get the BGP neighbor BGP global from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+        asn (int, optional): The ASN of the BGP. Defaults to None.
+    """
+    bgp_nbr = get_bgp_neighbor_from_db(device_ip, neighbor_ip)
+    if asn:
+        return bgp_nbr.local_asn_rel.get_or_none(local_asn=asn) if bgp_nbr else None
+    return bgp_nbr.local_asn_rel.all() if bgp_nbr else None
+
+
+def get_bgp_neighbor_remote_bgp_from_db(device_ip, neighbor_ip: str, asn: int = None):
+    """
+    Get the BGP neighbor BGP global from the database.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        neighbor_ip (str): The IP address of the neighbor.
+        asn (int, optional): The ASN of the BGP. Defaults to None.
+    """
+    bgp_nbr = get_bgp_neighbor_from_db(device_ip, neighbor_ip)
+    if asn:
+        return bgp_nbr.remote_asn_rel.get_or_none(local_asn=asn) if bgp_nbr else None
+    return bgp_nbr.remote_asn_rel.all() if bgp_nbr else None
+
+
+def connect_bgp_neighbor_to_bgp_global():
+    devices = get_device_db_obj()
+    bgp_neighbors = []
+    bgp_globals = []
+    for device in devices:
+        for bgp_neighbor in device.bgp_neighbor.all():
+            bgp_neighbors.append(bgp_neighbor)
+        for bgp_global in device.bgp.all():
+            bgp_globals.append(bgp_global)
+    for bgp_neighbor in bgp_neighbors:
+        bgp_neighbor.local_asn_rel.disconnect_all()
+        bgp_neighbor.remote_asn_rel.disconnect_all()
+        for bgp_global in bgp_globals:
+            if bgp_global.local_asn == bgp_neighbor.remote_asn:
+                bgp_neighbor.remote_asn_rel.connect(bgp_global)
+            if bgp_global.local_asn == bgp_neighbor.local_asn:
+                bgp_neighbor.local_asn_rel.connect(bgp_global)

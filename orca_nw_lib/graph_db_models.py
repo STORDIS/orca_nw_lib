@@ -32,6 +32,8 @@ class Device(StructuredNode):
     vlans = RelationshipTo("Vlan", "HAS")
     mclag_gw_macs = RelationshipTo("MCLAG_GW_MAC", "HAS")
 
+    bgp_neighbor = RelationshipTo("BGP_NEIGHBOR", "HAS")
+
     stp_global = RelationshipTo("STP_GLOBAL", "HAS")
     stp_port = RelationshipTo("STP_PORT", "HAS")
     stp_vlan = RelationshipTo("STP_VLAN", "HAS")
@@ -245,15 +247,6 @@ class PortGroup(StructuredNode):
         return str(self.port_group_id)
 
 
-class Bgp_Neighbor_Rel(StructuredRel):
-    """
-    Represents a relationship between two BGP neighbors.
-    """
-
-    afi_safi = JSONProperty()
-    vrf_name = StringProperty()
-
-
 class BGP(StructuredNode):
     """
     Represents a BGP neighbor in the database.
@@ -262,10 +255,6 @@ class BGP(StructuredNode):
     local_asn = IntegerProperty()
     vrf_name = StringProperty()
     router_id = StringProperty()
-    neighbor_prop = JSONProperty()
-
-    neighbor = RelationshipTo("SubInterface", "BGP_NEIGHBOR", model=Bgp_Neighbor_Rel)
-    remote_asn_node = RelationshipTo("BGP", "REMOTE_ASN")
 
     af = RelationshipTo("BGP_GLOBAL_AF", "AF")
     af_network = RelationshipTo("BGP_GLOBAL_AF_NETWORK", "AF_NETWORK")
@@ -455,6 +444,62 @@ class BGP_GLOBAL_AF_AGGREGATE_ADDR(StructuredNode):
     afi_safi = StringProperty()
     vrf_name = StringProperty()
     ip_prefix = StringProperty()
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.afi_safi == other.afi_safi
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.afi_safi)
+
+    def __str__(self):
+        return str(self.afi_safi)
+
+
+class BGP_NEIGHBOR(StructuredNode):
+    """
+    Represents a BGP Neighbor in the database.
+    """
+
+    local_asn = IntegerProperty()
+    remote_asn = IntegerProperty()
+    neighbor_ip = StringProperty()
+    vrf_name = StringProperty()
+    admin_status = StringProperty()
+    ebgp_multihop = BooleanProperty()
+    ebgp_multihop_ttl = IntegerProperty()
+    enforce_multihop = BooleanProperty()
+    auth_password = StringProperty()
+
+    remote_asn_rel = RelationshipTo("BGP", "ASN")
+    local_asn_rel = RelationshipTo("BGP", "LOCAL_ASN")
+    neighbor_rel = RelationshipTo("SubInterface", "BGP_NEIGHBOR")
+
+    af = RelationshipTo("BGP_NEIGHBOR_AF", "BGP_NEIGHBOR_AF")
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.neighbor_ip == other.neighbor_ip
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.neighbor_ip)
+
+    def __str__(self):
+        return str(self.neighbor_ip)
+
+
+class BGP_NEIGHBOR_AF(StructuredNode):
+    """
+    Represents a BGP Neighbor AF in the database.
+    """
+
+    afi_safi = StringProperty()
+    vrf_name = StringProperty()
+    admin_status = StringProperty()
+    send_community = StringProperty()
+    neighbor_ip = StringProperty()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
