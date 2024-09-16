@@ -175,6 +175,9 @@ def copy_intfc_object_props(target_intfc: Interface, source_intfc: Interface):
     target_intfc.adv_speeds = source_intfc.adv_speeds
     target_intfc.link_training = source_intfc.link_training
     target_intfc.autoneg = source_intfc.autoneg
+    target_intfc.breakout_mode = source_intfc.breakout_mode
+    target_intfc.breakout_supported = source_intfc.breakout_supported
+    target_intfc.breakout_status = source_intfc.breakout_status
 
 
 def set_interface_config_in_db(

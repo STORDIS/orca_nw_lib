@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from orca_nw_lib.utils import validate_and_get_ip_prefix
 
 from .common import IFMode, PortFec, Speed
@@ -14,6 +16,7 @@ from .gnmi_util import (
 )
 import orca_nw_lib.portgroup_db
 import orca_nw_lib.portgroup_gnmi
+from .utils import get_number_of_breakouts_and_speed, get_if_alias
 
 _logger = get_logging().getLogger(__name__)
 
@@ -268,7 +271,7 @@ def set_interface_config_on_device(
         autoneg (bool, optional): Whether to enable auto-negotiation. Defaults to None.
         adv_speeds (str, optional): The list of advertised speeds. Defaults to "all".
         link_training (bool, optional): Whether to enable link training. Defaults to None.
-        
+
     Returns:
         None: If no updates were made.
         str: The response from sending the GNMI set request.
@@ -694,4 +697,109 @@ def set_if_vlan_on_device(device_ip: str, if_name: str, if_mode: IFMode, vlan_id
     return send_gnmi_set(
         create_req_for_update([get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode)]),
         device_ip,
+    )
+
+
+def get_breakout_path(if_alias):
+    """
+    Returns the GNMI path for the breakout configuration.
+
+    Args:
+        if_alias (str): The alias of the interface.
+
+    Returns:
+        The GNMI path for the breakout configuration.
+    """
+    return get_gnmi_path(
+        f"openconfig-platform:components/component[name={quote_plus(if_alias)}]/port/openconfig-platform-port:breakout-mode/groups"
+    )
+
+
+def get_breakout_sonic_path(if_name: str):
+    """
+    Returns the SONiC path for the breakout configuration.
+
+    Args:
+        if_name (str): The name of the interface.
+
+    Returns:
+        The SONiC path for the breakout configuration.
+    """
+    if if_name:
+        return get_gnmi_path(
+            f"sonic-port-breakout:sonic-port-breakout/BREAKOUT_CFG/BREAKOUT_CFG_LIST[ifname={if_name}]"
+        )
+    else:
+        return get_gnmi_path("sonic-port-breakout:sonic-port-breakout/BREAKOUT_CFG/BREAKOUT_CFG_LIST")
+
+
+def config_interface_breakout_on_device(device_ip: str, if_alias: str, breakout_mode: str):
+    """
+    Configures the breakout mode on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): The alias of the interface.
+        breakout_mode (str): The breakout mode.
+
+    Returns:
+        The result of the GNMI set operation.
+    """
+    if len(if_alias.split()) > 2:
+        raise Exception("Invalid interface for breakout")
+    if_alias = get_if_alias(if_alias)
+    path = get_breakout_path(if_alias)
+    num_breakouts, breakout_speed = get_number_of_breakouts_and_speed(breakout_mode=breakout_mode)
+    config = {"index": 1, "num-physical-channels": 0}
+    if num_breakouts is not None:
+        config["num-breakouts"] = num_breakouts
+    if breakout_speed:
+        config["breakout-speed"] = breakout_speed
+    request = create_gnmi_update(
+        path=path,
+        val={
+            "openconfig-platform-port:groups": {
+                "group": [
+                    {
+                        "index": 1,
+                        "config": config
+                    }
+                ]
+            }
+        }
+    )
+    return send_gnmi_set(
+        req=create_req_for_update([request]),
+        device_ip=device_ip
+    )
+
+
+def get_breakout_from_device(device_ip: str, if_alias: str):
+    """
+    Retrieves the breakout configuration from a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str, optional): The alias of the interface.
+    Returns:
+        The breakout configuration as a dictionary.
+    """
+    return send_gnmi_get(
+        device_ip=device_ip,
+        path=[get_breakout_path(if_alias)],
+    )
+
+
+def delete_interface_breakout_from_device(device_ip: str, if_alias: str):
+    """
+    Deletes the breakout configuration on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_alias (str): The alias of the interface.
+    """
+    if_alias = get_if_alias(if_alias)
+    path = get_breakout_path(if_alias=if_alias)
+    return send_gnmi_set(
+        get_gnmi_del_req(path=path), device_ip=device_ip
     )
