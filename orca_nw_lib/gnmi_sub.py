@@ -2,7 +2,8 @@ from threading import Thread
 import threading
 from typing import List
 from .common import PortFec, Speed
-from .device_db import get_all_devices_ip_from_db
+from .device_db import get_all_devices_ip_from_db, update_device_status
+from .device_gnmi import get_device_state_url
 from .gnmi_pb2 import (
     Encoding,
     SubscribeRequest,
@@ -262,6 +263,19 @@ def handle_stp_port_config(device_ip: str, resp: SubscribeResponse):
     )
 
 
+def handle_device_state(device_ip: str, resp: SubscribeResponse):
+    for u in resp.update.update:
+        resource = None
+        status = None
+        for ele in u.path.elem:
+            if ele.name == "resource":
+                resource = u.val.string_val
+            if ele.name == "text":
+                status = u.val.string_val
+        if resource == "system_status":
+            update_device_status(device_ip, status)
+
+
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
     device_gnmi_stub = getGrpcStubs(device_ip)
     subscriptionlist = SubscriptionList(
@@ -311,6 +325,13 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_stp_port_config(device_ip, resp)
+                    if ele.name == get_device_state_url().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription device state update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        handle_device_state(device_ip, resp)
             elif resp.sync_response:
                 global device_sync_responses
                 _logger.info(
@@ -477,6 +498,13 @@ def get_subscription_path_for_config_change(device_ip: str):
         Subscription(
             path=get_stp_port_path(),
             mode=SubscriptionMode.ON_CHANGE
+        )
+    )
+
+    subscriptions.append(
+        Subscription(
+            path=get_device_state_url(),
+            mode=SubscriptionMode.TARGET_DEFINED,
         )
     )
 

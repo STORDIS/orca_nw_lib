@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 from orca_nw_lib.device_db import get_device_db_obj, insert_devices_in_db
-from orca_nw_lib.device_gnmi import get_device_details_from_device
+from orca_nw_lib.device_gnmi import get_device_details_from_device, get_device_status_from_device
 from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.utils import get_logging
 
@@ -19,6 +19,14 @@ def create_device_graph_object(ip_addr: str) -> Device | None:
 
     """
     device_detail = get_device_details_from_device(ip_addr)
+    device_status = get_device_status_from_device(ip_addr).get("openconfig-events:events", {})
+    device_status_event = device_status.get("event", [])
+    system_status = None
+    for event in reversed(device_status_event):
+        state = event.get("state", {})
+        if state.get("resource") == "system_status":
+            system_status = state.get("text")
+            break
     return Device(
         img_name=device_detail.get("img_name"),
         mgt_intf=device_detail.get("mgt_intf"),
@@ -27,6 +35,7 @@ def create_device_graph_object(ip_addr: str) -> Device | None:
         mac=device_detail.get("mac"),
         platform=device_detail.get("platform"),
         type=device_detail.get("type"),
+        system_status=system_status
     ) if device_detail else None
 
 

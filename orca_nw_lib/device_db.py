@@ -79,3 +79,10 @@ def insert_devices_in_db(device:Device):
         dev.save()
     else:
         device.save()
+
+
+def update_device_status(mgt_ip: str, status: str):
+    device = get_device_db_obj(mgt_ip)
+    if device:
+        device.status = status
+        device.save()

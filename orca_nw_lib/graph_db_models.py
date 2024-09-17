@@ -23,6 +23,8 @@ class Device(StructuredNode):
     platform = StringProperty()
     type = StringProperty()
 
+    system_status = StringProperty()
+
     neighbor = RelationshipTo("Device", "LLDP")
     interfaces = RelationshipTo("Interface", "HAS")
     port_chnl = RelationshipTo("PortChannel", "HAS")
@@ -49,6 +51,7 @@ class Device(StructuredNode):
         self.mac = other.mac
         self.platform = other.platform
         self.type = other.type
+        self.system_status = other.system_status
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

@@ -1,5 +1,5 @@
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_get
+from .gnmi_util import send_gnmi_get, get_gnmi_path
 
 
 def get_device_meta_data(device_ip: str):
@@ -140,3 +140,14 @@ def get_device_details_from_device(device_ip: str):
     for key, val in op_dict.items():
         op_dict[key] = "" if val is None else val
     return op_dict
+
+
+def get_device_state_url():
+    return get_gnmi_path("openconfig-system:system/openconfig-events:events")
+
+
+def get_device_status_from_device(device_ip: str):
+    return send_gnmi_get(
+        path=[get_device_state_url()],
+        device_ip=device_ip,
+    )
