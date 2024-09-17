@@ -4,6 +4,8 @@ from typing import List
 from urllib.parse import unquote
 
 import grpc
+from orca_nw_lib.device_db import get_device_db_obj
+
 from .gnmi_pb2 import (
     JSON_IETF,
     GetRequest,
@@ -43,7 +45,7 @@ def getGrpcStubs(device_ip):
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
 
-    if not ping_ok(device_ip):
+    if not ping_ok(device_ip, 10):
         raise Exception("Device %s is not reachable !!" % device_ip)
 
     if stubs and stubs.get(device_ip):
@@ -82,6 +84,7 @@ def getGrpcStubs(device_ip):
 
 
 def send_gnmi_get(device_ip, path: list[Path]):
+    is_device_ready(device_ip)
     op = {}
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
@@ -126,6 +129,7 @@ def get_gnmi_del_reqs(paths: list[Path]):
 
 
 def send_gnmi_set(req: SetRequest, device_ip: str):
+    is_device_ready(device_ip)
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
         if device_gnmi_stub:
@@ -184,3 +188,16 @@ def get_gnmi_path(path: str) -> Path:
         else:
             gnmi_path.elem.append(PathElem(name=pe_entry))
     return gnmi_path
+
+
+def is_device_ready(device_ip: str):
+    devices_data = get_device_db_obj(device_ip)
+    devices = devices_data if isinstance(devices_data, list) else [devices_data]
+
+    for device in devices:
+        if device is None:
+            continue
+        system_status = (device.system_status or "").lower()
+        if "system is not ready" in system_status:
+            raise Exception(f"Device at {device.mgt_ip} is not ready")
+    return True
