@@ -24,6 +24,7 @@ class Device(StructuredNode):
     type = StringProperty()
 
     system_status = StringProperty()
+    image_list = ArrayProperty()
 
     neighbor = RelationshipTo("Device", "LLDP")
     interfaces = RelationshipTo("Interface", "HAS")
@@ -52,6 +53,7 @@ class Device(StructuredNode):
         self.platform = other.platform
         self.type = other.type
         self.system_status = other.system_status
+        self.image_list = other.image_list
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

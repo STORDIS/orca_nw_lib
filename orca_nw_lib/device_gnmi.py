@@ -1,5 +1,5 @@
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_get, get_gnmi_path
+from .gnmi_util import send_gnmi_get, get_gnmi_path, send_gnmi_set, create_req_for_update, create_gnmi_update
 
 
 def get_device_meta_data(device_ip: str):
@@ -149,5 +149,15 @@ def get_device_state_url():
 def get_device_status_from_device(device_ip: str):
     return send_gnmi_get(
         path=[get_device_state_url()],
+        device_ip=device_ip,
+    )
+
+
+def get_image_list_from_device(device_ip: str):
+    path = get_gnmi_path(
+        "sonic-image-management:sonic-image-management/IMAGE_TABLE/IMAGE_TABLE_LIST"
+    )
+    return send_gnmi_get(
+        path=[path],
         device_ip=device_ip,
     )
