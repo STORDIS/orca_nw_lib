@@ -252,6 +252,7 @@ def set_interface_config_on_device(
     autoneg: bool = None,
     adv_speeds: str = None,
     link_training: bool = None,
+    secondary: bool = False,
 ):
     """
     Set the interface configuration on a device.
@@ -360,7 +361,7 @@ port-fec
                                     "ip": ip,
                                     "config": {
                                         "prefix-length": prefix_len,
-                                        "secondary": False,
+                                        "secondary": secondary,
                                     },
                                 }
                             ]

@@ -93,14 +93,16 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
-                sub_intf_obj = SubInterface()
                 for addr in (
                     sub_intfc.get("openconfig-if-ip:ipv4", {})
                     .get("addresses", {})
                     .get("address", [])
                 ):
+                    sub_intf_obj = SubInterface()
                     if addr.get("ip"):
-                        sub_intf_obj.ip_address = addr.get("ip")
+                        state = addr.get("state", {})
+                        sub_intf_obj.ip_address = state.get("ip")
+                        sub_intf_obj.secondary = state.get("secondary")
                     sub_intf_obj_list.append(sub_intf_obj)
 
             ## Now iterate lane details
@@ -191,7 +193,12 @@ def _merge_interface_and_sub_interface(intfc: Interface):
     # Extract the first subinterface IP address if it exists
     # Only one ip address is allowed per interface
     if subinterfaces:
-        return {**intfc.__properties__, "ip_address": subinterfaces[0].__properties__.get("ip_address")}
+        return {**intfc.__properties__, "ip_address": [
+            {
+                "ip_address": i.__properties__.get("ip_address"),
+                "secondary": i.__properties__.get("secondary")
+            } for i in subinterfaces
+        ]}
     return intfc.__properties__
 
 
@@ -243,6 +250,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         ip_with_prefix (str, optional): The IP address and prefix of the interface. Defaults to None.
         index (int, optional): The index of the sub-interface. Defaults to 0.
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
+        secondary (bool, optional): The secondary status of the interface. Defaults to False.
 
     """
     _logger.debug("Configuring interface %s on device %s", if_name, device_ip)
