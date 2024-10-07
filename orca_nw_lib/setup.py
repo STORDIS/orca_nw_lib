@@ -1,6 +1,8 @@
 import ipaddress
 
 import paramiko
+from orca_nw_lib.device import discover_device
+
 from orca_nw_lib.discovery import trigger_discovery
 from paramiko.auth_strategy import AuthStrategy
 
@@ -173,13 +175,18 @@ def switch_image_on_device(device_ip: str, image_name: str):
         device_ip (str): The IP address of the device.
         image_name (str): The name of the image to switch to.
     """
-    cmd = f"sudo sonic-installer set_default {image_name}"
-    output, error = run_sonic_cli_command(device_ip, cmd)
-    if error:
-        _logger.error("Error: %s", error)
-    else:
-        _logger.info("Successfully changed image on device %s.", device_ip)
+    try:
+        cmd = f"sudo sonic-installer set_default {image_name}"
+        output, error = run_sonic_cli_command(device_ip, cmd)
+        if error:
+            _logger.error("Error: %s", error)
+        else:
+            _logger.info("Successfully changed image on device %s.", device_ip)
 
-    # Rebooting the device to apply the change
-    run_sonic_cli_command(device_ip, "sudo reboot")
-    return output, error
+        # Rebooting the device to apply the change
+        run_sonic_cli_command(device_ip, "sudo reboot")
+        return output, error
+    except Exception as e:
+        _logger.error("Failed to change image on device %s. Error: %s", device_ip, e)
+    finally:
+        discover_device(device_ip)
