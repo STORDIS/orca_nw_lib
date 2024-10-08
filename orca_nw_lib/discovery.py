@@ -2,6 +2,7 @@ import ipaddress
 import time
 
 from orca_nw_lib.lldp_db import create_lldp_relations_in_db
+from .common import DiscoveryFeature
 
 from .device import discover_device, get_device_details
 from .device_db import get_all_devices_ip_from_db
@@ -10,7 +11,6 @@ from .gnmi_sub import gnmi_subscribe, sync_response_received
 from .interface import discover_interfaces, enable_all_ifs
 from .lldp import discover_lldp_info, get_all_lldp_neighbor_device_ips
 from .portgroup import discover_port_groups
-
 
 from .bgp import discover_bgp, discover_bgp_neighbors
 
@@ -23,84 +23,9 @@ from .stp_vlan import discover_stp_vlan
 from .vlan import discover_vlan
 from .utils import get_logging, get_networks, ping_ok
 
-
 _logger = get_logging().getLogger(__name__)
 
-
 topology = {}
-
-
-def discover_nw_features(device_ip: str):
-    """
-    Discovers various network features on the device with the given IP address.
-
-    Parameters:
-    - device_ip (str): The IP address of the device to be discovered.
-
-    Returns:
-    - report (list): A list of strings containing any errors or failures encountered during the discovery process.
-    """
-
-    report = []
-
-    create_lldp_relations_in_db(device_ip)
-
-    try:
-        discover_vlan(device_ip)
-    except Exception as e:
-        report.append(f"VLAN Discovery Failed on device {device_ip}, Reason: {e}")
-
-    try:
-        discover_port_chnl(device_ip)
-    except Exception as e:
-        report.append(
-            f"Port Channel Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-
-    try:
-        discover_mclag(device_ip)
-    except Exception as e:
-        report.append(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
-    try:
-        discover_mclag_gw_macs(device_ip)
-    except Exception as e:
-        report.append(
-            f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-    try:
-        discover_bgp(device_ip)
-    except Exception as e:
-        report.append(f"BGP Discovery Failed on device {device_ip}, Reason: {e}")
-    try:
-        discover_stp(device_ip)
-    except Exception as e:
-        report.append(
-            f"STP Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-
-    try:
-        discover_stp_port(device_ip)
-    except Exception as e:
-        report.append(
-            f"STP Port Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-
-    try:
-        discover_stp_vlan(device_ip)
-    except Exception as e:
-        report.append(
-            f"STP Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-
-    try:
-        discover_bgp_neighbors(device_ip)
-    except Exception as e:
-        report.append(
-            f"BGP Neighbor Discovery Failed on device {device_ip}, Reason: {e}"
-        )
-    ## Once Discovered the device, Subscribe for notfications
-    gnmi_subscribe(device_ip)
-    return report
 
 
 def discover_device_and_enable_ifs(device_ip: str):
@@ -113,20 +38,11 @@ def discover_device_and_enable_ifs(device_ip: str):
         return
     _logger.info("Discovering device :{}".format(device_ip))
 
-    try:
-        discover_device(device_ip)
-    except Exception as e:
-        _logger.info(f"Device Discovery Failed on device {device_ip}, Reason: {e}")
+    discover_nw_features(device_ip, DiscoveryFeature.device_info)
 
-    try:
-        discover_interfaces(device_ip)
-    except Exception as e:
-        _logger.info(f"Interface Discovery Failed on device {device_ip}, Reason: {e}")
+    discover_nw_features(device_ip, DiscoveryFeature.interface)
 
-    try:
-        discover_port_groups(device_ip)
-    except Exception as e:
-        report.append(f"Port Group Discovery Failed on device {device_ip}, Reason: {e}")
+    discover_nw_features(device_ip, DiscoveryFeature.port_group)
 
     ## Once Discovered the device's interfaces and port groups, Subscribe for notifications
     gnmi_subscribe(device_ip, force_resubscribe=True)
@@ -156,17 +72,14 @@ def discover_device_and_enable_ifs(device_ip: str):
     except Exception as e:
         _logger.info(f"Interface Enable Failed on device {device_ip}, Reason: {e}")
 
-    try:
-        discover_lldp_info(device_ip)
-    except Exception as e:
-        _logger.info(f"LLDP Info Discovery Failed on device {device_ip}, Reason: {e}")
+    discover_nw_features(device_ip, DiscoveryFeature.lldp_info)
 
 
 def discover_device_and_lldp_info(device_ip):
     discover_device_and_enable_ifs(device_ip)
     for nbr_ip in get_all_lldp_neighbor_device_ips(device_ip):
         if not get_device_details(
-            nbr_ip
+                nbr_ip
         ):  # Discover only if not already discovered in order to prevent loop
             discover_device_and_lldp_info(nbr_ip)
 
@@ -175,7 +88,17 @@ def trigger_discovery(device_ip):
     discover_device_and_lldp_info(device_ip)
     # some links can only be created after all teh topology devices are discovered
     for ip in get_all_devices_ip_from_db() or []:
-        discover_nw_features(ip)
+        create_lldp_relations_in_db(ip)
+        discover_nw_features(ip, DiscoveryFeature.port_channel)
+        discover_nw_features(ip, DiscoveryFeature.vlan)
+        discover_nw_features(ip, DiscoveryFeature.mclag)
+        discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
+        discover_nw_features(ip, DiscoveryFeature.bgp)
+        discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
+        discover_nw_features(ip, DiscoveryFeature.stp)
+        discover_nw_features(ip, DiscoveryFeature.stp_port)
+        discover_nw_features(ip, DiscoveryFeature.stp_vlan)
+        gnmi_subscribe(ip)
 
 
 def discover_device_from_config() -> []:
@@ -206,9 +129,9 @@ def discover_device_from_config() -> []:
     return report
 
 
-def trigger_discovery_by_feature(device_ip: str, feature: str) -> None:
+def discover_nw_features(device_ip: str, feature: DiscoveryFeature) -> None:
     """
-    Trigger discovery by feature.
+    Discover network features for a given device.
 
     Parameters:
         device_ip (str): Device IP address.
@@ -218,28 +141,84 @@ def trigger_discovery_by_feature(device_ip: str, feature: str) -> None:
         None
     """
     match feature:
-        case "interface":
-            discover_interfaces(device_ip)
-        case "port_group":
-            discover_port_groups(device_ip)
-        case "device":
-            discover_device(device_ip)
-        case "port_channel":
-            discover_port_chnl(device_ip)
-        case "bgp":
-            discover_bgp(device_ip)
-        case "stp":
-            discover_stp(device_ip)
-        case "bgp_neighbor":
-            discover_bgp_neighbors(device_ip)
-        case "stp_port":
-            discover_stp_port(device_ip)
-        case "stp_vlan":
-            discover_stp_vlan(device_ip)
-        case "vlan":
-            discover_vlan(device_ip)
-        case "mclag":
-            discover_mclag(device_ip)
+        case DiscoveryFeature.interface:
+            try:
+                discover_interfaces(device_ip)
+            except Exception as e:
+                _logger.info(f"Interface Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"Interface Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.port_group:
+            try:
+                discover_port_groups(device_ip)
+            except Exception as e:
+                _logger.info(f"Port Group Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"Port Group Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.device_info:
+            try:
+                discover_device(device_ip)
+            except Exception as e:
+                _logger.info(f"Device Info Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"Device Info Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.lldp_info:
+            try:
+                discover_lldp_info(device_ip)
+            except Exception as e:
+                _logger.info(f"LLDP Info Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"LLDP Info Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.mclag:
+            try:
+                discover_mclag(device_ip)
+            except Exception as e:
+                _logger.info(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.mclag_gw_macs:
+            try:
+                discover_mclag_gw_macs(device_ip)
+            except Exception as e:
+                _logger.info(f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"MCLAG GW MAC Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.vlan:
+            try:
+                discover_vlan(device_ip)
+            except Exception as e:
+                _logger.info(f"VLAN Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"VLAN Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.port_channel:
+            try:
+                discover_port_chnl(device_ip)
+            except Exception as e:
+                _logger.info(f"Port Channel Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"Port Channel Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.bgp:
+            try:
+                discover_bgp(device_ip)
+            except Exception as e:
+                _logger.info(f"BGP Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"BGP Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.bgp_neighbors:
+            try:
+                discover_bgp_neighbors(device_ip)
+            except Exception as e:
+                _logger.info(f"BGP Neighbor Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"BGP Neighbor Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.stp:
+            try:
+                discover_stp(device_ip)
+            except Exception as e:
+                _logger.info(f"STP Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"STP Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.stp_port:
+            try:
+                discover_stp_port(device_ip)
+            except Exception as e:
+                _logger.info(f"STP Port Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"STP Port Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.stp_vlan:
+            try:
+                discover_stp_vlan(device_ip)
+            except Exception as e:
+                _logger.info(f"STP VLAN Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"STP VLAN Discovery Failed on device {device_ip}, Reason: {e}"
         case _:
-            _logger.error(f"Invalid feature: {feature}")
-            raise Exception(f"Invalid feature: {feature}")
+            _logger.error("Invalid feature specified")
+            return "Invalid feature specified"
