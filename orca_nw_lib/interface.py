@@ -102,6 +102,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                     if addr.get("ip"):
                         state = addr.get("state", {})
                         sub_intf_obj.ip_address = state.get("ip")
+                        sub_intf_obj.prefix = state.get("prefix-length")
                         sub_intf_obj.secondary = state.get("secondary")
                     sub_intf_obj_list.append(sub_intf_obj)
 
@@ -196,7 +197,8 @@ def _merge_interface_and_sub_interface(intfc: Interface):
         return {**intfc.__properties__, "ip_address": [
             {
                 "ip_address": i.__properties__.get("ip_address"),
-                "secondary": i.__properties__.get("secondary")
+                "secondary": i.__properties__.get("secondary"),
+                "prefix": i.__properties__.get("prefix"),
             } for i in subinterfaces
         ]}
     return intfc.__properties__
