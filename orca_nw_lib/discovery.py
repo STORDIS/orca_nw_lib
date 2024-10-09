@@ -11,7 +11,6 @@ from .interface import discover_interfaces, enable_all_ifs
 from .lldp import discover_lldp_info, get_all_lldp_neighbor_device_ips
 from .portgroup import discover_port_groups
 
-
 from .bgp import discover_bgp, discover_bgp_neighbors
 
 from .mclag import discover_mclag, discover_mclag_gw_macs
@@ -23,9 +22,7 @@ from .stp_vlan import discover_stp_vlan
 from .vlan import discover_vlan
 from .utils import get_logging, get_networks, ping_ok
 
-
 _logger = get_logging().getLogger(__name__)
-
 
 topology = {}
 
@@ -166,7 +163,7 @@ def discover_device_and_lldp_info(device_ip):
     discover_device_and_enable_ifs(device_ip)
     for nbr_ip in get_all_lldp_neighbor_device_ips(device_ip):
         if not get_device_details(
-            nbr_ip
+                nbr_ip
         ):  # Discover only if not already discovered in order to prevent loop
             discover_device_and_lldp_info(nbr_ip)
 
@@ -204,3 +201,34 @@ def discover_device_from_config() -> []:
             device_ip = str(device_ip)
             trigger_discovery(device_ip)
     return report
+
+
+def trigger_discovery_by_feature(device_ip, feature):
+    match feature:
+        case "interface":
+            discover_interfaces(device_ip)
+        case "port_group":
+            discover_port_groups(device_ip)
+        case "device":
+            discover_device(device_ip)
+        case "port_channel":
+            discover_port_chnl(device_ip)
+        case "bgp":
+            discover_bgp(device_ip)
+        case "stp":
+            discover_stp(device_ip)
+        case "bgp_neighbor":
+            discover_bgp_neighbors(device_ip)
+        case "stp_port":
+            discover_stp_port(device_ip)
+        case "stp_vlan":
+            discover_stp_vlan(device_ip)
+        case "vlan":
+            discover_vlan(device_ip)
+        case "mclag":
+            discover_mclag(device_ip)
+        case _:
+            _logger.error(f"Invalid feature: {feature}")
+            raise Exception(f"Invalid feature: {feature}")
+
+
