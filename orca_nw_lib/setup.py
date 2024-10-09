@@ -1,4 +1,5 @@
 import ipaddress
+import time
 
 import paramiko
 from orca_nw_lib.device import discover_device
@@ -11,6 +12,35 @@ from orca_nw_lib.utils import get_device_username, get_device_password, get_logg
 _logger = get_logging().getLogger(__name__)
 
 
+def create_ssh_client(device_ip: str, username: str, password: str = None) -> paramiko.SSHClient:
+    """
+    Creates an SSH client for a device.
+    Args:
+        device_ip (str): The IP address of the device.
+        username (str): The username to use for authentication.
+        password (str, optional): The password to use for authentication. Defaults to None.
+
+    Returns:
+        paramiko.SSHClient: The SSH client.
+    """
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    params = {
+        "hostname": device_ip,
+        "timeout": 5,
+    }
+
+    if password:
+        params["username"] = username
+        params["password"] = password
+    else:
+        params["auth_strategy"] = paramiko.auth_strategy.NoneAuth(
+            username="root"
+        )
+    ssh.connect(**params)
+    return ssh
+
+
 def run_sonic_cli_command(device_ip: str, command: str) -> str:
     """
     Runs a command on a device and returns the output.
@@ -21,13 +51,7 @@ def run_sonic_cli_command(device_ip: str, command: str) -> str:
     Returns:
         str: The output of the command.
     """
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(
-        hostname=device_ip,
-        username=get_device_username(),
-        password=get_device_password(),
-    )
+    ssh = create_ssh_client(device_ip, get_device_username(), get_device_password())
 
     stdin, stdout, stderr = ssh.exec_command(command)
     error = stderr.read().decode("utf-8")
@@ -47,15 +71,7 @@ def run_onie_cli_command(device_ip: str, command: str) -> str:
         str: The output of the command.
     """
     try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(
-            hostname=device_ip,
-            auth_strategy=paramiko.auth_strategy.NoneAuth(
-                username="root"
-            ),
-            timeout=5
-        )
+        ssh = create_ssh_client(device_ip, "root")
         stdin, stdout, stderr = ssh.exec_command(command)
         error = stderr.read().decode("utf-8")
         output = stdout.read().decode("utf-8")
@@ -99,6 +115,14 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
             ]
         else:
             output, error = _install_image(device_ip, image_url)
+
+            # Rebooting the device after installing the image
+            reboot_device(device_ip)
+
+            # Wait for the device to reconnect
+            wait_for_reconnect(device_ip, get_device_username(), get_device_password())
+
+            # Trigger discovery if discover_also is True
             if discover_also and not error:
                 trigger_discovery(device_ip)
             return {"output": output, "error": error}
@@ -126,6 +150,7 @@ def install_image_on_onie_device(device_ip: str, image_url: str):
         device_ip (str): The IP address of the ONIE device.
         image_url (str): The URL of the image to install.
     """
+    _logger.info("Installing image on ONIE device %s", device_ip)
     command = f"onie-nos-install {image_url}"
     output, error = run_onie_cli_command(device_ip, command)
     return output, error
@@ -138,12 +163,12 @@ def install_image_on_sonic_device(device_ip: str, image_url: str):
         device_ip (str): The IP address of the SONiC device.
         image_url (str): The URL of the image to install.
     """
+    _logger.info("Installing image on SONiC device %s", device_ip)
     command = f"sudo sonic-installer install {image_url} -y"
     output, error = run_sonic_cli_command(device_ip, command)
 
     # Rebooting the device after installing the image
-    command = "sudo reboot"
-    run_sonic_cli_command(device_ip, command)
+    reboot_device(device_ip)
     return output, error
 
 
@@ -176,7 +201,8 @@ def switch_image_on_device(device_ip: str, image_name: str):
         image_name (str): The name of the image to switch to.
     """
     try:
-        cmd = f"sudo sonic-installer set_default {image_name}"
+        _logger.info("Switching image on device %s.", device_ip)
+        cmd = f"sudo sonic-installer set-default {image_name}"
         output, error = run_sonic_cli_command(device_ip, cmd)
         if error:
             _logger.error("Error: %s", error)
@@ -188,5 +214,36 @@ def switch_image_on_device(device_ip: str, image_name: str):
         return output, error
     except Exception as e:
         _logger.error("Failed to change image on device %s. Error: %s", device_ip, e)
-    finally:
-        discover_device(device_ip)
+
+
+def reboot_device(device_ip: str):
+    """
+    Reboots a device.
+    Args:
+        device_ip (str): The IP address of the device.
+    """
+    try:
+        _logger.info("Rebooting device %s.", device_ip)
+        return run_sonic_cli_command(device_ip, "sudo reboot")
+    except Exception as e:
+        _logger.error("Failed to reboot device %s. Error: %s", device_ip, e)
+
+
+def wait_for_reconnect(host, username, password, retries=10, wait_time=10):
+    """
+    Waits for the device to come back online, attempting to reconnect up to `retries` times.
+    Returns the SSH client once reconnected or None if it fails.
+    """
+    attempt = 0
+    while attempt < retries:
+        try:
+            _logger.info(f"Attempting to reconnect (Attempt {attempt + 1}/{retries})...")
+            client = create_ssh_client(host, username, password)
+            _logger.info("Reconnected successfully!")
+            return client
+        except (paramiko.ssh_exception.NoValidConnectionsError, OSError):
+            _logger.info(f"Connection attempt failed. Waiting {wait_time} seconds before retrying...")
+            time.sleep(wait_time)
+            attempt += 1
+    _logger.error("Failed to reconnect after multiple attempts.")
+    return None
