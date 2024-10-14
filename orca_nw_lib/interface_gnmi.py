@@ -347,35 +347,36 @@ port-fec
                     {"port-speed": speed.get_oc_val()},
                 )
             )
-    ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_with_prefix)
-    if ip is not None:
-        ip_payload = {
-            "openconfig-interfaces:subinterface": [
-                {
-                    "config": {"index": index},
-                    "index": index,
-                    "openconfig-if-ip:ipv4": {
-                        "addresses": {
-                            "address": [
-                                {
-                                    "ip": ip,
-                                    "config": {
-                                        "prefix-length": prefix_len,
-                                        "secondary": secondary,
-                                    },
-                                }
-                            ]
-                        }
-                    },
-                }
-            ]
-        }
-        updates.append(
-            create_gnmi_update(
-                get_sub_interface_path(if_name),
-                ip_payload,
+    if ip_with_prefix is not None:
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_with_prefix)
+        if ip is not None:
+            ip_payload = {
+                "openconfig-interfaces:subinterface": [
+                    {
+                        "config": {"index": index},
+                        "index": index,
+                        "openconfig-if-ip:ipv4": {
+                            "addresses": {
+                                "address": [
+                                    {
+                                        "ip": ip,
+                                        "config": {
+                                            "prefix-length": prefix_len,
+                                            "secondary": secondary,
+                                        },
+                                    }
+                                ]
+                            }
+                        },
+                    }
+                ]
+            }
+            updates.append(
+                create_gnmi_update(
+                    get_sub_interface_path(if_name),
+                    ip_payload,
+                )
             )
-        )
     if if_mode and vlan_id:
         updates.append(get_if_vlan_gnmi_update_req(vlan_id, if_name, if_mode))
     if autoneg is not None:
@@ -386,7 +387,7 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -398,7 +399,7 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -410,7 +411,7 @@ port-fec
         }
         updates.append(
             create_gnmi_update(
-                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"), 
+                get_gnmi_path(f"openconfig-interfaces:interfaces/interface[name={if_name}]/openconfig-if-ethernet:ethernet/config"),
                 payload
             )
         )
@@ -801,6 +802,38 @@ def delete_interface_breakout_from_device(device_ip: str, if_alias: str):
     """
     if_alias = get_if_alias(if_alias)
     path = get_breakout_path(if_alias=if_alias)
+    return send_gnmi_set(
+        get_gnmi_del_req(path=path), device_ip=device_ip
+    )
+
+
+def delete_interface_ip_from_device(
+        device_ip: str, if_name: str, index: int = 0, ip_address: str = None, secondary: bool = False
+):
+    """
+    Deletes the IP configuration on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        if_name (str): The name of the interface.
+        secondary (bool): Whether the IP configuration is secondary or not.
+        index (int, optional): The index of the subinterface. Defaults to 0.
+        ip_address (str, optional): The IP address to delete. Defaults to None.
+    """
+    if ip_address:
+        ip, nw_addr, prefix_len = validate_and_get_ip_prefix(ip_address)
+        if secondary:
+            path = get_gnmi_path(
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/subinterfaces/subinterface[index={index}]/openconfig-if-ip:ipv4/addresses/address[ip={ip}]/config/secondary"
+            )
+        else:
+            path = get_gnmi_path(
+                f"openconfig-interfaces:interfaces/interface[name={if_name}]/subinterfaces/subinterface[index={index}]/openconfig-if-ip:ipv4/addresses/address[ip={ip}]"
+            )
+    else:
+        path = get_gnmi_path(
+            f"openconfig-interfaces:interfaces/interface[name={if_name}]/subinterfaces/subinterface[index={index}]/openconfig-if-ip:ipv4/addresses/address"
+        )
     return send_gnmi_set(
         get_gnmi_del_req(path=path), device_ip=device_ip
     )

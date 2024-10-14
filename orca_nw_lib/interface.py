@@ -23,6 +23,7 @@ from .interface_gnmi import (
     config_interface_breakout_on_device,
     get_breakout_from_device,
     delete_interface_breakout_from_device,
+    delete_interface_ip_from_device,
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
@@ -274,17 +275,24 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
             discover_interfaces(device_ip, if_name)
 
 
-def del_ip_from_intf(device_ip: str, intfc_name: str):
+def del_ip_from_intf(
+        device_ip: str, intfc_name: str, index: int = 0, ip_address: str = None, secondary: bool = False
+):
     """
     Delete an IP address from an interface.
 
     Parameters:
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
+        index (int, optional): The index of the subinterface. Defaults to 0.
+        ip_address (str, optional): The IP address to delete. Defaults to None.
+        secondary (bool, optional): The secondary status of the interface. Defaults to False.
 
     """
     try:
-        del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
+        delete_interface_ip_from_device(
+            device_ip=device_ip, if_name=intfc_name, ip_address=ip_address, secondary=secondary
+        )
     except Exception as e:
         _logger.error(
             f"Deleting IP address from interface {intfc_name} on device {device_ip} failed, Reason: {e}"
