@@ -7,7 +7,7 @@ from orca_nw_lib.device import discover_device
 from orca_nw_lib.discovery import trigger_discovery
 from paramiko.auth_strategy import AuthStrategy
 
-from orca_nw_lib.utils import get_device_username, get_device_password, get_logging
+from orca_nw_lib.utils import get_device_username, get_device_password, get_logging, is_grpc_device_listening
 
 _logger = get_logging().getLogger(__name__)
 
@@ -120,10 +120,10 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
             reboot_device(device_ip)
 
             # Wait for the device to reconnect
-            wait_for_reconnect(device_ip, get_device_username(), get_device_password())
+            is_grpc_device_listening(device_ip, max_retries=10, interval=10)
 
             # Trigger discovery if discover_also is True
-            if discover_also and not error:
+            if discover_also:
                 trigger_discovery(device_ip)
             return {"output": output, "error": error}
     except Exception as e:
@@ -153,6 +153,8 @@ def install_image_on_onie_device(device_ip: str, image_url: str):
     _logger.info("Installing image on ONIE device %s", device_ip)
     command = f"onie-nos-install {image_url}"
     output, error = run_onie_cli_command(device_ip, command)
+    print("output: ", output)
+    print("error: ", error)
     return output, error
 
 
@@ -228,22 +230,3 @@ def reboot_device(device_ip: str):
     except Exception as e:
         _logger.error("Failed to reboot device %s. Error: %s", device_ip, e)
 
-
-def wait_for_reconnect(host, username, password, retries=10, wait_time=10):
-    """
-    Waits for the device to come back online, attempting to reconnect up to `retries` times.
-    Returns the SSH client once reconnected or None if it fails.
-    """
-    attempt = 0
-    while attempt < retries:
-        try:
-            _logger.info(f"Attempting to reconnect (Attempt {attempt + 1}/{retries})...")
-            client = create_ssh_client(host, username, password)
-            _logger.info("Reconnected successfully!")
-            return client
-        except (paramiko.ssh_exception.NoValidConnectionsError, OSError):
-            _logger.info(f"Connection attempt failed. Waiting {wait_time} seconds before retrying...")
-            time.sleep(wait_time)
-            attempt += 1
-    _logger.error("Failed to reconnect after multiple attempts.")
-    return None

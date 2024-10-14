@@ -20,7 +20,7 @@ import ast
 from .utils import (
     get_conn_timeout,
     get_logging,
-    ping_ok,
+    is_grpc_device_listening,
     get_device_grpc_port,
     get_device_username,
     get_device_password,
@@ -45,7 +45,7 @@ def getGrpcStubs(device_ip):
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
 
-    if not ping_ok(device_ip, 10):
+    if not is_grpc_device_listening(device_ip, 10):
         raise Exception("Device %s is not reachable !!" % device_ip)
 
     if stubs and stubs.get(device_ip):

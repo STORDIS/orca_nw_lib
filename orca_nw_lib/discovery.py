@@ -20,7 +20,7 @@ from .stp import discover_stp
 from .stp_port import discover_stp_port
 from .stp_vlan import discover_stp_vlan
 from .vlan import discover_vlan
-from .utils import get_logging, get_networks, ping_ok
+from .utils import get_logging, get_networks, is_grpc_device_listening
 
 _logger = get_logging().getLogger(__name__)
 
@@ -103,7 +103,7 @@ def discover_nw_features(device_ip: str):
 def discover_device_and_enable_ifs(device_ip: str):
     report = []
     device_ip = str(device_ip)
-    if not ping_ok(device_ip):
+    if not is_grpc_device_listening(device_ip):
         log_msg = f"Can not discover, Device {device_ip} is not reachable !!"
         _logger.error(log_msg)
         report.append(log_msg)

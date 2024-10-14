@@ -116,7 +116,7 @@ import time
 _logger = get_logging().getLogger(__name__)
 
 
-def ping_ok(host, max_retries=1):
+def is_grpc_device_listening(host, max_retries=1, interval=1):
     retry = 0
     status = False
     port = get_device_grpc_port()
@@ -132,7 +132,7 @@ def ping_ok(host, max_retries=1):
             _logger.error("Failed to connect to %s on port %s: %s", host, port, e)
             retry += 1
             status = False
-            time.sleep(1)  # Wait before retrying
+            time.sleep(interval)  # Wait before retrying
         finally:
             sock.close()
             return status
