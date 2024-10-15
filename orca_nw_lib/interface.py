@@ -497,4 +497,6 @@ def delete_interface_breakout(device_ip: str, if_alias: str):
         )
         raise
     finally:
+        for intf in get_all_interfaces_of_device_from_db(device_ip):
+            intf.delete()
         discover_interfaces(device_ip)

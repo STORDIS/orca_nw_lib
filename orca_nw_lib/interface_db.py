@@ -323,11 +323,6 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             sub_i.save()
             saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
-        # Removing interface from db it not on device.
-        for interface in get_all_interfaces_of_device_from_db(device.mgt_ip):
-            if interface not in interfaces:
-                interface.delete()
-
 
 def get_all_interfaces_name_of_device_from_db(device_ip: str) -> Optional[List[str]]:
     """
