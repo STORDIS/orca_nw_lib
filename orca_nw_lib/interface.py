@@ -51,13 +51,17 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     if_lane_details = interfaces_json.get("sonic-port:PORT_LIST")
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
-        if_type = intfc.get("config").get("type")
+        config = intfc.get("config")
+        if config is None:
+            continue
+        if_type = config.get("type", "")
 
         if (
             ("ether" or "loopback" in if_type.lower())
             and "PortChannel" not in intfc_state.get("name")
             and "Vlan" not in intfc_state.get("name")
             and "Management" not in intfc_state.get("name")
+            and if_type != "openconfig-if-types-ext:IF_NVE"
         ):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
@@ -145,7 +149,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
 
         else:
             _logger.debug(
-                f"Interface will not be discovered in Ethernet discovery. Interface type: {if_type}."
+                f"Interface {intfc.get('name', '')} will not be discovered in Ethernet discovery. Interface type: {if_type}."
             )
 
     return intfc_graph_obj_list
@@ -232,7 +236,12 @@ def enable_all_ifs(device_ip: str):
     """
     if_name_list = get_all_interfaces_name_of_device_from_db(device_ip)
     for intf_name in if_name_list or []:
-        config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
+        try:
+            config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
+        except Exception as e:
+            _logger.debug(
+                f"Failed to enable interface {intf_name} on device {device_ip}. Error: {e}"
+            )
 
 
 @check_gnmi_subscription_and_apply_config
