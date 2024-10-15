@@ -151,10 +151,8 @@ def install_image_on_onie_device(device_ip: str, image_url: str):
         image_url (str): The URL of the image to install.
     """
     _logger.info("Installing image on ONIE device %s", device_ip)
-    command = f"onie-nos-install {image_url}"
+    command = f'/bin/sh -l -c "onie-nos-install {image_url}"'
     output, error = run_onie_cli_command(device_ip, command)
-    print("output: ", output)
-    print("error: ", error)
     return output, error
 
 
@@ -229,4 +227,3 @@ def reboot_device(device_ip: str):
         return run_sonic_cli_command(device_ip, "sudo reboot")
     except Exception as e:
         _logger.error("Failed to reboot device %s. Error: %s", device_ip, e)
-

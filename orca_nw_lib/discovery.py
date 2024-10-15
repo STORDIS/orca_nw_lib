@@ -201,34 +201,3 @@ def discover_device_from_config() -> []:
             device_ip = str(device_ip)
             trigger_discovery(device_ip)
     return report
-
-
-def trigger_discovery_by_feature(device_ip, feature):
-    match feature:
-        case "interface":
-            discover_interfaces(device_ip)
-        case "port_group":
-            discover_port_groups(device_ip)
-        case "device":
-            discover_device(device_ip)
-        case "port_channel":
-            discover_port_chnl(device_ip)
-        case "bgp":
-            discover_bgp(device_ip)
-        case "stp":
-            discover_stp(device_ip)
-        case "bgp_neighbor":
-            discover_bgp_neighbors(device_ip)
-        case "stp_port":
-            discover_stp_port(device_ip)
-        case "stp_vlan":
-            discover_stp_vlan(device_ip)
-        case "vlan":
-            discover_vlan(device_ip)
-        case "mclag":
-            discover_mclag(device_ip)
-        case _:
-            _logger.error(f"Invalid feature: {feature}")
-            raise Exception(f"Invalid feature: {feature}")
-
-
