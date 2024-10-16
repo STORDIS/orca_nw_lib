@@ -211,6 +211,14 @@ def switch_image_on_device(device_ip: str, image_name: str):
 
         # Rebooting the device to apply the change
         run_sonic_cli_command(device_ip, "sudo reboot")
+        # Wait for the device to reconnect
+        is_grpc_device_listening(device_ip, max_retries=10, interval=10)
+
+        # Trigger discovery if discover_also is True
+        try:
+            trigger_discovery(device_ip)
+        except Exception as e:
+            _logger.error("Failed to trigger discovery on device %s. Error: %s", device_ip, e)
         return output, error
     except Exception as e:
         _logger.error("Failed to change image on device %s. Error: %s", device_ip, e)
