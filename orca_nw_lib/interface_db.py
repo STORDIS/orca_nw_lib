@@ -323,6 +323,15 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             sub_i.save()
             saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
+        # Checking more than one interface exists for the device, because we currently discover all or only one.
+        # This only works if we discover all interfaces.
+        # This is necessary to manage breakout interface deletions, if they haven't been removed from the database.
+        # Remove all interfaces that are not present in the dictionary.
+        if len(interfaces) > 1:
+            for interface in get_all_interfaces_of_device_from_db(device.mgt_ip):
+                if interface not in interfaces:
+                    interface.delete()
+
 
 def get_all_interfaces_name_of_device_from_db(device_ip: str) -> Optional[List[str]]:
     """
@@ -339,3 +348,24 @@ def get_all_interfaces_name_of_device_from_db(device_ip: str) -> Optional[List[s
         return None
     intfcs = get_all_interfaces_of_device_from_db(device_ip)
     return [intfc.name for intfc in intfcs] if intfcs else None
+
+
+def get_interface_by_alias_from_db(device_ip: str, alias: str) -> Optional[Interface]:
+    """
+    Get the interface object of a device by its alias.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        alias (str): The alias of the interface.
+
+    Returns:
+        Interface: The interface object if the interface exists, else None.
+    """
+    if not device_ip:
+        _logger.error("Device IP is required.")
+        return None
+    if not alias:
+        _logger.error("Interface alias is required.")
+        return None
+    device = get_device_db_obj(device_ip)
+    return device.interfaces.get_or_none(alias=alias) if device else None

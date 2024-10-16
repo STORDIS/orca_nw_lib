@@ -11,7 +11,7 @@ from .interface_db import (
     get_all_interfaces_of_device_from_db,
     get_interface_of_device_from_db,
     get_sub_interface_of_intfc_from_db,
-    insert_device_interfaces_in_db,
+    insert_device_interfaces_in_db, get_interface_by_alias_from_db,
 )
 from .interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
@@ -497,6 +497,43 @@ def delete_interface_breakout(device_ip: str, if_alias: str):
         )
         raise
     finally:
-        for intf in get_all_interfaces_of_device_from_db(device_ip):
-            intf.delete()
-        discover_interfaces(device_ip)
+        # Generate a list of interface aliases using a helper function.
+        # It generates aliases from 'if_alias', with range from 1 to 4. example: Eth1/1/1, Eth1/1/2, Eth1/1/3, Eth1/1/4
+        aliases = _generate_interface_alias_list(if_alias, 1, 4)
+
+        # Deleting interface from database 2-4 alias
+        for i in aliases[1:]:
+            # Get the interface associated with the alias from the database using the device's IP
+            interface = get_interface_by_alias_from_db(device_ip=device_ip, alias=i)
+            # Delete the interface entry if it exists
+            if interface:
+                interface.delete()
+        # After the loop, get the main interface using the original 'if_alias'
+        interface = get_interface_by_alias_from_db(device_ip=device_ip, alias=aliases[0])
+
+        # If the interface is found, call a function to discover the interface with its name
+        if interface:
+            discover_interfaces(device_ip, interface.name)
+
+
+def _generate_interface_alias_list(alias, start, end):
+    """
+    Generate a list of interface names based on the provided range.
+
+    Args:
+        alias (str): The alias of the interface.
+        start (int): The starting number of the range.
+        end (int): The ending number of the range.
+
+    Returns:
+        list: A list of interface aliases.
+    """
+    # Remove the last number from the interface base
+    alias_split = alias.split('/')
+    base_interface = f"{alias_split[0]}/{alias_split[1]}"
+
+    # Generate and return the new interfaces in the range from start to end
+    generated_aliases = [f"{base_interface}/{i}" for i in range(start, end + 1)]
+
+    # Return the list of interfaces
+    return generated_aliases
