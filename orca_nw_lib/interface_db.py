@@ -323,10 +323,14 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
             sub_i.save()
             saved_i.subInterfaces.connect(sub_i) if saved_i else None
 
-        # Checking more than one interface exists for the device, because we currently discover all or only one.
-        # This only works if we discover all interfaces.
-        # This is necessary to manage breakout interface deletions, if they haven't been removed from the database.
-        # Remove all interfaces that are not present in the dictionary.
+        # Assuming that this function will receive either one interface or all in the param. (Nothing in between)
+        # Any thing more than one is considered to be all the interfaces of the device (may be it wont be true in coming future).
+        # So, the param contains all the interfaces from device, we delete interfaces from the neo4j which are not in the ,
+        # interface list from device.
+        # This is useful in the cases e.g. breakout has been deletd from device 
+        # but due to some error the broken out ports are not cleared from neo4j db,
+        # User will still have a chance to resync the device interfaces because here the broken out port will be deleted from neo4j.
+        # And neo4j is back in sync.
         if len(interfaces) > 1:
             for interface in get_all_interfaces_of_device_from_db(device.mgt_ip):
                 if interface not in interfaces:
