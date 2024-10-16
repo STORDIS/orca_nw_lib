@@ -236,3 +236,23 @@ class STPPortGuard(str, Enum):
 
     def __str__(self) -> str:
         return self.name
+
+
+class DiscoveryFeature(str, Enum):
+    interface = auto()
+    vlan = auto()
+    port_channel = auto()
+    mclag = auto()
+    port_group = auto()
+    bgp = auto()
+    bgp_neighbors = auto()
+    stp = auto()
+    stp_port = auto()
+    stp_vlan = auto()
+    device_info = auto()
+    lldp_info = auto()
+    mclag_gw_macs = auto()
+
+    @staticmethod
+    def get_enum_from_str(name: str):
+        return DiscoveryFeature[name] if name in DiscoveryFeature.__members__ else None
