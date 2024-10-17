@@ -171,6 +171,8 @@ class SubInterface(StructuredNode):
     """
 
     ip_address = StringProperty()
+    secondary = BooleanProperty()
+    prefix = IntegerProperty()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
