@@ -497,6 +497,8 @@ def delete_interface_breakout(device_ip: str, if_alias: str):
         )
         raise
     finally:
+        ## Explicitly delete the broken out ports from neo4j db.
+        
         # Generate a list of interface aliases using a helper function.
         # It generates aliases from 'if_alias', with range from 1 to 4. example: Eth1/1/1, Eth1/1/2, Eth1/1/3, Eth1/1/4
         aliases = _generate_interface_alias_list(if_alias, 1, 4)
