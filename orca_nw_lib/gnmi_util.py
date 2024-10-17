@@ -1,6 +1,6 @@
 import json
 import ssl
-from typing import List
+from typing import List, Iterator
 from urllib.parse import unquote
 
 import grpc
@@ -217,6 +217,27 @@ def is_device_ready(device_ip: str):
         if "system is not ready" in system_status:
             raise Exception(f"Device at {device.mgt_ip} is not ready")
     return True
+
+
+def send_gnmi_subscribe(device_ip: str, subscribe_request: Iterator, resend: bool = False):
+    is_device_ready(device_ip)
+    try:
+        device_gnmi_stub = getGrpcStubs(device_ip)
+        if device_gnmi_stub:
+            return device_gnmi_stub.Subscribe(subscribe_request)
+        else:
+            _logger.error(f"no gnmi stub found for device {device_ip}")
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:
+            if not resend:
+                remove_stub(device_ip)
+                return send_gnmi_subscribe(device_ip=device_ip, subscribe_request=subscribe_request, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
+    except Exception as e:
+        _logger.debug(f"{e} \n on device_ip : {device_ip} \n subscribe request : {subscribe_request}")
+        raise
 
 
 def remove_stub(device_ip: str):
