@@ -105,10 +105,10 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
                 ):
                     sub_intf_obj = SubInterface()
                     if addr.get("ip"):
-                        state = addr.get("state", {})
-                        sub_intf_obj.ip_address = state.get("ip")
-                        sub_intf_obj.prefix = state.get("prefix-length")
-                        sub_intf_obj.secondary = state.get("secondary")
+                        config = addr.get("config", {})
+                        sub_intf_obj.ip_address = addr.get("ip")
+                        sub_intf_obj.prefix = config.get("prefix-length")
+                        sub_intf_obj.secondary = config.get("secondary")
                     sub_intf_obj_list.append(sub_intf_obj)
 
             ## Now iterate lane details
