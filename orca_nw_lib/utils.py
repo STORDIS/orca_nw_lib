@@ -135,7 +135,7 @@ def is_grpc_device_listening(host, max_retries=1, interval=1):
             time.sleep(interval)  # Wait before retrying
         finally:
             sock.close()
-            return status
+    return status
 
 
 def validate_and_get_ip_prefix(network_address: str):

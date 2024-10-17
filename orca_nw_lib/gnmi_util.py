@@ -83,7 +83,7 @@ def getGrpcStubs(device_ip):
             raise
 
 
-def send_gnmi_get(device_ip, path: list[Path]):
+def send_gnmi_get(device_ip, path: list[Path], resend: bool = False):
     is_device_ready(device_ip)
     op = {}
     try:
@@ -103,6 +103,14 @@ def send_gnmi_get(device_ip, path: list[Path]):
                 for u in n.update:
                     op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
         return op
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:
+            if not resend:
+                remove_stub(device_ip)
+                return send_gnmi_get(device_ip=device_ip, path=path, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
     except Exception as e:
         _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
@@ -128,7 +136,7 @@ def get_gnmi_del_reqs(paths: list[Path]):
     return SetRequest(delete=paths)
 
 
-def send_gnmi_set(req: SetRequest, device_ip: str):
+def send_gnmi_set(req: SetRequest, device_ip: str, resend: bool = False):
     is_device_ready(device_ip)
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
@@ -136,6 +144,14 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
             device_gnmi_stub.Set(req, timeout=get_conn_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:
+            if not resend:
+                remove_stub(device_ip)
+                return send_gnmi_set(req=req, device_ip=device_ip, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
     except Exception as e:
         _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
@@ -201,3 +217,8 @@ def is_device_ready(device_ip: str):
         if "system is not ready" in system_status:
             raise Exception(f"Device at {device.mgt_ip} is not ready")
     return True
+
+
+def remove_stub(device_ip: str):
+    global stubs
+    stubs.pop(device_ip, None)
