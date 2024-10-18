@@ -11,7 +11,7 @@ from .interface_db import (
     get_all_interfaces_of_device_from_db,
     get_interface_of_device_from_db,
     get_sub_interface_of_intfc_from_db,
-    insert_device_interfaces_in_db,
+    insert_device_interfaces_in_db, get_interface_by_alias_from_db,
 )
 from .interface_gnmi import (
     del_all_subinterfaces_of_all_interfaces_from_device,
@@ -23,6 +23,7 @@ from .interface_gnmi import (
     config_interface_breakout_on_device,
     get_breakout_from_device,
     delete_interface_breakout_from_device,
+    delete_interface_ip_from_device,
 )
 from .portgroup import discover_port_groups
 from .portgroup_db import (
@@ -50,13 +51,17 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     if_lane_details = interfaces_json.get("sonic-port:PORT_LIST")
     for intfc in interfaces_json.get("openconfig-interfaces:interface") or []:
         intfc_state = intfc.get("state", {})
-        if_type = intfc.get("config").get("type")
+        config = intfc.get("config")
+        if config is None:
+            continue
+        if_type = config.get("type", "")
 
         if (
             ("ether" or "loopback" in if_type.lower())
             and "PortChannel" not in intfc_state.get("name")
             and "Vlan" not in intfc_state.get("name")
             and "Management" not in intfc_state.get("name")
+            and if_type != "openconfig-if-types-ext:IF_NVE"
         ):
             # Port channels are separately discovered so skip them in interface discovery
             interface = Interface(
@@ -93,14 +98,17 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
             )
             sub_intf_obj_list = []
             for sub_intfc in intfc.get("subinterfaces", {}).get("subinterface", []):
-                sub_intf_obj = SubInterface()
                 for addr in (
                     sub_intfc.get("openconfig-if-ip:ipv4", {})
                     .get("addresses", {})
                     .get("address", [])
                 ):
+                    sub_intf_obj = SubInterface()
                     if addr.get("ip"):
+                        config = addr.get("config", {})
                         sub_intf_obj.ip_address = addr.get("ip")
+                        sub_intf_obj.prefix = config.get("prefix-length")
+                        sub_intf_obj.secondary = config.get("secondary")
                     sub_intf_obj_list.append(sub_intf_obj)
 
             ## Now iterate lane details
@@ -141,7 +149,7 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
 
         else:
             _logger.debug(
-                f"Interface will not be discovered in Ethernet discovery. Interface type: {if_type}."
+                f"Interface {intfc.get('name', '')} will not be discovered in Ethernet discovery. Interface type: {if_type}."
             )
 
     return intfc_graph_obj_list
@@ -191,7 +199,13 @@ def _merge_interface_and_sub_interface(intfc: Interface):
     # Extract the first subinterface IP address if it exists
     # Only one ip address is allowed per interface
     if subinterfaces:
-        return {**intfc.__properties__, "ip_address": subinterfaces[0].__properties__.get("ip_address")}
+        return {**intfc.__properties__, "ip_address": [
+            {
+                "ip_address": i.__properties__.get("ip_address"),
+                "secondary": i.__properties__.get("secondary"),
+                "prefix": i.__properties__.get("prefix"),
+            } for i in subinterfaces
+        ]}
     return intfc.__properties__
 
 
@@ -222,7 +236,12 @@ def enable_all_ifs(device_ip: str):
     """
     if_name_list = get_all_interfaces_name_of_device_from_db(device_ip)
     for intf_name in if_name_list or []:
-        config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
+        try:
+            config_interface(device_ip=device_ip, if_name=intf_name, enable=True)
+        except Exception as e:
+            _logger.debug(
+                f"Failed to enable interface {intf_name} on device {device_ip}. Error: {e}"
+            )
 
 
 @check_gnmi_subscription_and_apply_config
@@ -243,6 +262,7 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
         ip_with_prefix (str, optional): The IP address and prefix of the interface. Defaults to None.
         index (int, optional): The index of the sub-interface. Defaults to 0.
         fec (PortFec, optional): Enable disable forward error correction. Defaults to None.
+        secondary (bool, optional): The secondary status of the interface. Defaults to False.
 
     """
     _logger.debug("Configuring interface %s on device %s", if_name, device_ip)
@@ -264,17 +284,24 @@ def config_interface(device_ip: str, if_name: str, **kwargs):
             discover_interfaces(device_ip, if_name)
 
 
-def del_ip_from_intf(device_ip: str, intfc_name: str):
+def del_ip_from_intf(
+        device_ip: str, intfc_name: str, index: int = 0, ip_address: str = None, secondary: bool = False
+):
     """
     Delete an IP address from an interface.
 
     Parameters:
         device_ip (str): The IP address of the device.
         intfc_name (str): The name of the interface.
+        index (int, optional): The index of the subinterface. Defaults to 0.
+        ip_address (str, optional): The IP address to delete. Defaults to None.
+        secondary (bool, optional): The secondary status of the interface. Defaults to False.
 
     """
     try:
-        del_all_subinterfaces_of_interface_from_device(device_ip, intfc_name)
+        delete_interface_ip_from_device(
+            device_ip=device_ip, if_name=intfc_name, ip_address=ip_address, secondary=secondary
+        )
     except Exception as e:
         _logger.error(
             f"Deleting IP address from interface {intfc_name} on device {device_ip} failed, Reason: {e}"
@@ -470,4 +497,45 @@ def delete_interface_breakout(device_ip: str, if_alias: str):
         )
         raise
     finally:
-        discover_interfaces(device_ip)
+        ## Explicitly delete the broken out ports from neo4j db.
+        
+        # Generate a list of interface aliases using a helper function.
+        # It generates aliases from 'if_alias', with range from 1 to 4. example: Eth1/1/1, Eth1/1/2, Eth1/1/3, Eth1/1/4
+        aliases = _generate_interface_alias_list(if_alias, 1, 4)
+
+        # Deleting interface from database 2-4 alias
+        for i in aliases[1:]:
+            # Get the interface associated with the alias from the database using the device's IP
+            interface = get_interface_by_alias_from_db(device_ip=device_ip, alias=i)
+            # Delete the interface entry if it exists
+            if interface:
+                interface.delete()
+        # After the loop, get the main interface using the original 'if_alias'
+        interface = get_interface_by_alias_from_db(device_ip=device_ip, alias=aliases[0])
+
+        # If the interface is found, call a function to discover the interface with its name
+        if interface:
+            discover_interfaces(device_ip, interface.name)
+
+
+def _generate_interface_alias_list(alias, start, end):
+    """
+    Generate a list of interface names based on the provided range.
+
+    Args:
+        alias (str): The alias of the interface.
+        start (int): The starting number of the range.
+        end (int): The ending number of the range.
+
+    Returns:
+        list: A list of interface aliases.
+    """
+    # Remove the last number from the interface base
+    alias_split = alias.split('/')
+    base_interface = f"{alias_split[0]}/{alias_split[1]}"
+
+    # Generate and return the new interfaces in the range from start to end
+    generated_aliases = [f"{base_interface}/{i}" for i in range(start, end + 1)]
+
+    # Return the list of interfaces
+    return generated_aliases
