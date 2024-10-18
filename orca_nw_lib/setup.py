@@ -99,13 +99,15 @@ def check_onie_on_device(device_ip: str) -> bool:
     return True
 
 
-def install_image_on_device(device_ip: str, image_url: str, discover_also: bool = False):
+def install_image_on_device(device_ip: str, image_url: str, discover_also: bool = False, username: str = None, password: str = None):
     """
     Installs an image on a device.
     Args:
         device_ip (str): The IP address of the device.
         image_url (str): The URL of the image to install.
         discover_also (bool, optional): Whether to discover the device. Defaults to False.
+        username (str, optional): The username to use for authentication. Defaults to None.
+        password (str, optional): The password to use for authentication. Defaults to None.
     """
     try:
         if "/" in device_ip:
@@ -114,7 +116,7 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
                 get_onie_device_details(str(ip)) for ip in network if check_onie_on_device(str(ip))
             ]
         else:
-            output, error = _install_image(device_ip, image_url)
+            output, error = _install_image(device_ip, image_url, username, password)
 
             # Rebooting the device after installing the image
             reboot_device(device_ip)
@@ -130,17 +132,20 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
         return {"output": "", "error": str(e)}
 
 
-def _install_image(device_ip: str, image_url: str):
+def _install_image(device_ip: str, image_url: str, username: str = None, password: str = None):
     """
     Installs an image on a device.
     Args:
         device_ip (str): The IP address of the device.
         image_url (str): The URL of the image to install.
+        username (str, optional): The username to use for authentication. Defaults to None.
+        password (str, optional): The password to use for authentication. Defaults to None.
     """
+    image_url_with_credentials = create_url_with_credentials(image_url, username, password)
     if check_onie_on_device(device_ip):
-        return install_image_on_onie_device(device_ip, image_url)
+        return install_image_on_onie_device(device_ip, image_url_with_credentials)
     else:
-        return install_image_on_sonic_device(device_ip, image_url)
+        return install_image_on_sonic_device(device_ip, image_url_with_credentials)
 
 
 def install_image_on_onie_device(device_ip: str, image_url: str):
@@ -235,3 +240,26 @@ def reboot_device(device_ip: str):
         return run_sonic_cli_command(device_ip, "sudo reboot")
     except Exception as e:
         _logger.error("Failed to reboot device %s. Error: %s", device_ip, e)
+
+
+def create_url_with_credentials(base_url, username: str = None, password: str = None):
+    """
+    Function to generate a URL with embedded username and password.
+
+    Parameters:
+        base_url (str): The base URL without credentials (e.g., "https://example.com").
+        username (str): The username to embed in the URL.
+        password (str): The password to embed in the URL.
+
+    Returns:
+        str: The URL with embedded username and password.
+    """
+
+    if username and password:
+        # Extract the scheme (http/https) and the rest of the URL
+        scheme, url_without_scheme = base_url.split("://")
+        # Embed the username and password into the URL
+        url_with_credentials = f"{scheme}://{username}:{password}@{url_without_scheme}"
+        return url_with_credentials
+    else:
+        return base_url
