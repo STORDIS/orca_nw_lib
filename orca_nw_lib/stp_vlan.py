@@ -61,8 +61,6 @@ def discover_stp_vlan(device_ip: str):
             _logger.error(
                 f"Couldn't discover STP VLAN on device {device_ip}, Reason: {e}"
             )
-            import traceback
-            print(traceback.format_exc())
             raise
 
 

@@ -12,7 +12,7 @@ from .gnmi_pb2 import (
     SubscriptionList,
     SubscriptionMode,
 )
-from orca_nw_lib.gnmi_util import get_logging, getGrpcStubs
+from orca_nw_lib.gnmi_util import get_logging, getGrpcStubs, send_gnmi_subscribe
 
 from orca_nw_lib.interface_db import (
     get_all_interfaces_name_of_device_from_db,
@@ -277,7 +277,7 @@ def handle_device_state(device_ip: str, resp: SubscribeResponse):
 
 
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
-    device_gnmi_stub = getGrpcStubs(device_ip)
+    # device_gnmi_stub = getGrpcStubs(device_ip)
     subscriptionlist = SubscriptionList(
         subscription=subscriptions,
         mode=SubscriptionList.Mode.Value("STREAM"),
@@ -286,7 +286,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
-    for resp in device_gnmi_stub.Subscribe(subscribe_to_path(sub_req)):
+    for resp in send_gnmi_subscribe(device_ip=device_ip, subscribe_request=subscribe_to_path(sub_req)):
         try:
             if not resp.sync_response:
                 for ele in resp.update.prefix.elem:

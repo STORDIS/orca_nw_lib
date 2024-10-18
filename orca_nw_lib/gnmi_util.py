@@ -1,6 +1,6 @@
 import json
 import ssl
-from typing import List
+from typing import List, Iterator
 from urllib.parse import unquote
 
 import grpc
@@ -20,7 +20,7 @@ import ast
 from .utils import (
     get_conn_timeout,
     get_logging,
-    ping_ok,
+    is_grpc_device_listening,
     get_device_grpc_port,
     get_device_username,
     get_device_password,
@@ -45,7 +45,7 @@ def getGrpcStubs(device_ip):
             "Invalid value port : {}, user : {}, passwd : {}".format(port, user, passwd)
         )
 
-    if not ping_ok(device_ip, 10):
+    if not is_grpc_device_listening(device_ip, 10):
         raise Exception("Device %s is not reachable !!" % device_ip)
 
     if stubs and stubs.get(device_ip):
@@ -83,7 +83,7 @@ def getGrpcStubs(device_ip):
             raise
 
 
-def send_gnmi_get(device_ip, path: list[Path]):
+def send_gnmi_get(device_ip, path: list[Path], resend: bool = False):
     is_device_ready(device_ip)
     op = {}
     try:
@@ -103,6 +103,17 @@ def send_gnmi_get(device_ip, path: list[Path]):
                 for u in n.update:
                     op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
         return op
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:  # check if the device is not ready
+            if not resend:
+                # remove stub from global stubs
+                remove_stub(device_ip)
+
+                # send the same request again, it will create a new stub
+                return send_gnmi_get(device_ip=device_ip, path=path, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
     except Exception as e:
         _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
@@ -128,7 +139,7 @@ def get_gnmi_del_reqs(paths: list[Path]):
     return SetRequest(delete=paths)
 
 
-def send_gnmi_set(req: SetRequest, device_ip: str):
+def send_gnmi_set(req: SetRequest, device_ip: str, resend: bool = False):
     is_device_ready(device_ip)
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
@@ -136,6 +147,17 @@ def send_gnmi_set(req: SetRequest, device_ip: str):
             device_gnmi_stub.Set(req, timeout=get_conn_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:  # check if the device is not ready
+            if not resend:
+                # remove the stub from global stubs
+                remove_stub(device_ip)
+
+                # resend the request again, it will create a new stub
+                return send_gnmi_set(req=req, device_ip=device_ip, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
     except Exception as e:
         _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
@@ -191,6 +213,15 @@ def get_gnmi_path(path: str) -> Path:
 
 
 def is_device_ready(device_ip: str):
+    """
+    Check if the device is ready or not
+
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        bool: True if device is ready else False
+    """
     devices_data = get_device_db_obj(device_ip)
     devices = devices_data if isinstance(devices_data, list) else [devices_data]
 
@@ -201,3 +232,44 @@ def is_device_ready(device_ip: str):
         if "system is not ready" in system_status:
             raise Exception(f"Device at {device.mgt_ip} is not ready")
     return True
+
+
+def send_gnmi_subscribe(device_ip: str, subscribe_request: Iterator, resend: bool = False):
+    """
+    Send the subscribe request to the device. If the device is not ready, it will resend the subscribe request.
+    Args:
+        device_ip (str): The IP address of the device.
+        subscribe_request (Iterator): The subscribe request iterator.
+        resend (bool, optional): Resend the subscribe request if device is not ready. Defaults to False.
+    """
+    is_device_ready(device_ip)
+    try:
+        device_gnmi_stub = getGrpcStubs(device_ip)
+        if device_gnmi_stub:
+            return device_gnmi_stub.Subscribe(subscribe_request)
+        else:
+            _logger.error(f"no gnmi stub found for device {device_ip}")
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.UNAVAILABLE:  # check if the device is not ready
+            if not resend:
+                # remove the device stub
+                remove_stub(device_ip)
+
+                # resend the subscribe request, it will try to connect to the device again
+                return send_gnmi_subscribe(device_ip=device_ip, subscribe_request=subscribe_request, resend=True)
+            else:
+                _logger.error("Device %s is not reachable !!" % device_ip)
+                raise
+    except Exception as e:
+        _logger.debug(f"{e} \n on device_ip : {device_ip} \n subscribe request : {subscribe_request}")
+        raise
+
+
+def remove_stub(device_ip: str):
+    """
+    Remove the device stub from global stubs
+    Args:
+        device_ip (str): The IP address of the device.
+    """
+    global stubs
+    stubs.pop(device_ip, None)
