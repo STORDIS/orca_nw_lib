@@ -1,5 +1,5 @@
 from .gnmi_pb2 import Path, PathElem
-from .gnmi_util import send_gnmi_get, get_gnmi_path, send_gnmi_set, create_req_for_update, create_gnmi_update
+from .gnmi_util import send_gnmi_get, get_gnmi_path
 
 
 def get_device_meta_data(device_ip: str):

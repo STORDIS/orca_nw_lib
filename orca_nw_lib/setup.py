@@ -1,18 +1,22 @@
 import ipaddress
-import time
 
 import paramiko
-from orca_nw_lib.device import discover_device
 
 from orca_nw_lib.discovery import trigger_discovery
-from paramiko.auth_strategy import AuthStrategy
 
-from orca_nw_lib.utils import get_device_username, get_device_password, get_logging, is_grpc_device_listening
+from orca_nw_lib.utils import (
+    get_device_username,
+    get_device_password,
+    get_logging,
+    is_grpc_device_listening,
+)
 
 _logger = get_logging().getLogger(__name__)
 
 
-def create_ssh_client(device_ip: str, username: str, password: str = None) -> paramiko.SSHClient:
+def create_ssh_client(
+    device_ip: str, username: str, password: str = None
+) -> paramiko.SSHClient:
     """
     Creates an SSH client for a device.
     Args:
@@ -34,9 +38,7 @@ def create_ssh_client(device_ip: str, username: str, password: str = None) -> pa
         params["username"] = username
         params["password"] = password
     else:
-        params["auth_strategy"] = paramiko.auth_strategy.NoneAuth(
-            username="root"
-        )
+        params["auth_strategy"] = paramiko.auth_strategy.NoneAuth(username="root")
     ssh.connect(**params)
     return ssh
 
@@ -99,7 +101,13 @@ def check_onie_on_device(device_ip: str) -> bool:
     return True
 
 
-def install_image_on_device(device_ip: str, image_url: str, discover_also: bool = False, username: str = None, password: str = None):
+def install_image_on_device(
+    device_ip: str,
+    image_url: str,
+    discover_also: bool = False,
+    username: str = None,
+    password: str = None,
+):
     """
     Installs an image on a device.
     Args:
@@ -113,7 +121,9 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
         if "/" in device_ip:
             network = ipaddress.ip_network(device_ip, strict=False)
             return [
-                get_onie_device_details(str(ip)) for ip in network if check_onie_on_device(str(ip))
+                get_onie_device_details(str(ip))
+                for ip in network
+                if check_onie_on_device(str(ip))
             ]
         else:
             output, error = _install_image(device_ip, image_url, username, password)
@@ -132,7 +142,9 @@ def install_image_on_device(device_ip: str, image_url: str, discover_also: bool 
         return {"output": "", "error": str(e)}
 
 
-def _install_image(device_ip: str, image_url: str, username: str = None, password: str = None):
+def _install_image(
+    device_ip: str, image_url: str, username: str = None, password: str = None
+):
     """
     Installs an image on a device.
     Args:
@@ -141,7 +153,9 @@ def _install_image(device_ip: str, image_url: str, username: str = None, passwor
         username (str, optional): The username to use for authentication. Defaults to None.
         password (str, optional): The password to use for authentication. Defaults to None.
     """
-    image_url_with_credentials = create_url_with_credentials(image_url, username, password)
+    image_url_with_credentials = create_url_with_credentials(
+        image_url, username, password
+    )
     if check_onie_on_device(device_ip):
         return install_image_on_onie_device(device_ip, image_url_with_credentials)
     else:
@@ -183,9 +197,7 @@ def get_onie_device_details(device_ip: str):
     Args:
         device_ip (str): The IP address of the device.
     """
-    details = {
-        "ip": device_ip
-    }
+    details = {"ip": device_ip}
     output, error = run_onie_cli_command(device_ip, "onie-sysinfo -e")
     if not error:
         details["mac_address"] = output.replace("\n", "")
@@ -223,7 +235,9 @@ def switch_image_on_device(device_ip: str, image_name: str):
             try:
                 trigger_discovery(device_ip)
             except Exception as e:
-                _logger.error("Failed to trigger discovery on device %s. Error: %s", device_ip, e)
+                _logger.error(
+                    "Failed to trigger discovery on device %s. Error: %s", device_ip, e
+                )
         return output, error
     except Exception as e:
         _logger.error("Failed to change image on device %s. Error: %s", device_ip, e)

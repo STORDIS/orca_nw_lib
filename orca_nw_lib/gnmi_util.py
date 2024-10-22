@@ -16,7 +16,6 @@ from .gnmi_pb2 import (
     Update,
 )
 from .gnmi_pb2_grpc import gNMIStub
-import ast
 from .utils import (
     get_conn_timeout,
     get_logging,
