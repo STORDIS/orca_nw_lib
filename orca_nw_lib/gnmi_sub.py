@@ -618,16 +618,16 @@ def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> No
     thread_name = get_subscription_thread_name(device_ip)
     for thread in threading.enumerate():
         if thread.name == thread_name:
-            _logger.info("Removing gNMI channel thread for %s", device_ip)
+            _logger.info("Removing gNMI channel thread device for %s", device_ip)
             terminate_thread(thread)
             break
     while retries > 0:
         if thread_name in get_running_thread_names():
-            _logger.error("Failed to remove gNMI channel thread for %s", device_ip)
+            _logger.error("Failed to remove gNMI channel thread for device %s", device_ip)
         else:
-            _logger.info("Removed gNMI channel thread for %s", device_ip)
+            _logger.info("Removed gNMI channel thread for device %s", device_ip)
             break
-        _logger.info("Retrying to remove gNMI channel thread for %s", device_ip)
+        _logger.info("Retrying to remove gNMI channel thread for device %s", device_ip)
         time.sleep(timeout)
         retries -= 1
     _logger.debug("Currently running threads %s", get_running_thread_names())
