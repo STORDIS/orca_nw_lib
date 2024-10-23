@@ -1,3 +1,4 @@
+import time
 from threading import Thread
 import threading
 from typing import List
@@ -541,12 +542,14 @@ def gnmi_unsubscribe_for_all_devices_in_db():
         gnmi_unsubscribe(device_ip)
 
 
-def gnmi_unsubscribe(device_ip: str):
+def gnmi_unsubscribe(device_ip: str, retries: int = 5, timeout: int = 1) -> None:
     """
     Unsubscribes from the GNMI device with the specified IP address.
 
     Args:
         device_ip (str): The IP address of the GNMI device.
+        retries (int, optional): The number of retries. Defaults to 5.
+        timeout (int, optional): The timeout between retries. Defaults to 1.
 
     Returns:
         None
@@ -558,16 +561,75 @@ def gnmi_unsubscribe(device_ip: str):
     else:
         _logger.debug(f"Device {device_ip} not found in device_sync_responses dictionary.")
 
+    subscriptions = get_subscription_path_for_config_change(device_ip)
+    device_gnmi_stub = getGrpcStubs(device_ip)
+    subscriptionlist = SubscriptionList(
+        subscription=subscriptions,
+        mode=SubscriptionList.Mode.Value("STREAM"),
+        encoding=Encoding.Value("PROTO"),
+        updates_only=True,
+    )
+    sub_req = SubscribeRequest(subscribe=subscriptionlist)
+    stream = device_gnmi_stub.Subscribe(subscribe_to_path(sub_req))
+    stream.cancel()
+
     thread_name = get_subscription_thread_name(device_ip)
     for thread in threading.enumerate():
         if thread.name == thread_name:
             _logger.info("Removing subscription for %s", device_ip)
+            # terminate the thread if it is still running,
             terminate_thread(thread)
             break
-    if thread_name in get_running_thread_names():
-        _logger.error("Failed to remove subscription for %s", device_ip)
-    else:
-        _logger.info("Removed subscription for %s", device_ip)
+
+    while retries > 0:
+        if thread_name in get_running_thread_names():
+            _logger.error("Failed to remove subscription for %s", device_ip)
+        else:
+            _logger.info("Removed subscription for %s", device_ip)
+            break
+        _logger.info("Retrying to remove subscription for %s", device_ip)
+        time.sleep(timeout)
+        retries -= 1
+    _logger.debug("Currently running threads %s", get_running_thread_names())
+
+
+def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> None:
+    """
+    Closes the GNMI channel for the given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        retries (int, optional): The number of retries. Defaults to 5.
+        timeout (int, optional): The timeout in seconds. Defaults to 1.
+
+    Returns:
+        None
+    """
+
+    # close gnmi channel
+    device_gnmi_stub = getGrpcStubs(device_ip)
+    device_gnmi_stub.channel.close()
+    _logger.info("Closed channel for %s", device_ip)
+
+    # remove gnmi stub from global stubs
+    from gnmi_util import stubs
+    stubs.pop(device_ip, None)
+
+    thread_name = get_subscription_thread_name(device_ip)
+    for thread in threading.enumerate():
+        if thread.name == thread_name:
+            _logger.info("Removing gNMI channel thread for %s", device_ip)
+            terminate_thread(thread)
+            break
+    while retries > 0:
+        if thread_name in get_running_thread_names():
+            _logger.error("Failed to remove gNMI channel thread for %s", device_ip)
+        else:
+            _logger.info("Removed gNMI channel thread for %s", device_ip)
+            break
+        _logger.info("Retrying to remove gNMI channel thread for %s", device_ip)
+        time.sleep(timeout)
+        retries -= 1
     _logger.debug("Currently running threads %s", get_running_thread_names())
 
 
