@@ -97,6 +97,18 @@ def get_port_group_of_interface(device_ip: str, if_name:str):
 
 
 def get_port_groups(device_ip: str, port_group_id=None):
+    """
+    Retrieves the port groups for a given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_group_id (int, optional): The ID of the port group. Defaults to None.
+
+    Returns:
+        dict or list: A dictionary representing the properties of the specified port group if 'port_group_id' is provided, 
+        otherwise returns a list of dictionaries representing the properties of all port groups associated with the device IP.
+        Each dictionary includes the member interfaces of the port group.
+    """
     if port_group_id:
         db_output = (
             port_group.__properties__
@@ -124,6 +136,18 @@ def discover_port_groups(
     port_group_id: str = None,
     config_triggered_discovery: bool = False,
 ):
+    
+    """
+    Discovers port groups for a given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_group_id (str, optional): The ID of the port group. Defaults to None.
+        config_triggered_discovery (bool, optional): Flag to indicate if the discovery is triggered by configuration update. Defaults to False.
+
+    Returns:
+        None
+    """
     _logger.info("Port-groups Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
@@ -141,6 +165,21 @@ def discover_port_groups(
 
 @check_gnmi_subscription_and_apply_config
 def set_port_group_speed(device_ip: str, port_group_id: str, speed: Speed):
+    """
+    Sets the speed of a port group on a device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        port_group_id (str): The ID of the port group.
+        speed (Speed): The desired speed for the port group.
+
+    Returns:
+        None
+        
+    Raises:
+        Exception: If the speed change fails.
+    """
+    _logger.debug("Setting port group %s speed to %s on device %s", port_group_id, speed, device_ip)
     try:
         set_port_group_speed_on_device(device_ip, port_group_id, speed)
     except Exception as e:

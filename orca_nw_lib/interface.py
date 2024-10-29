@@ -155,10 +155,6 @@ def _create_interface_graph_objects(device_ip: str, intfc_name: str = None):
     return intfc_graph_obj_list
 
 
-def get_possible_speeds():
-    return [str(e) for e in Speed]
-
-
 def get_interface(device_ip: str, intfc_name=None):
     """
     Returns the properties of a network interface on a device.
