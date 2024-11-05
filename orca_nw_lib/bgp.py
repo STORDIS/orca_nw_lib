@@ -1,9 +1,7 @@
 from typing import List
 from .bgp_db import (
-    create_bgp_peer_link_rel,
     get_bgp_global_af_list_from_db,
     get_bgp_global_with_vrf_from_db,
-    get_remote_bgp_asn_from_db,
     get_bgp_neighbor_subinterfaces_from_db,
     insert_device_bgp_in_db,
     get_bgp_global_af_from_db,
@@ -22,13 +20,10 @@ from .bgp_gnmi import (
     del_all_bgp_neighbors_from_device,
     del_all_neighbor_af_from_device,
     del_bgp_global_from_device,
-    get_bgp_global_af_list_from_device,
-    get_bgp_global_list_from_device,
     get_bgp_neighbors_from_device, del_bgp_global_af_from_device, config_bgp_global_af_network_on_device,
-    get_bgp_global_af_network_from_device, del_bgp_global_af_network_on_device,
+    del_bgp_global_af_network_on_device,
     config_bgp_global_af_aggregate_addr_on_device, del_bgp_global_af_aggregate_addr_on_device,
-    get_bgp_global_af_aggregate_addr_from_device, get_bgp_details_from_device, del_bgp_neighbor_from_device,
-    del_bgp_neighbor_af_from_device,
+    get_bgp_details_from_device, del_bgp_neighbor_from_device,
 )
 from .device_db import get_device_db_obj
 
