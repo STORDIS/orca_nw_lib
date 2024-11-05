@@ -72,7 +72,7 @@ def getGrpcStubs(device_ip):
 
             optns = (("grpc.ssl_target_name_override", "localhost"),)
             channel = grpc.secure_channel(f"{device_ip}:{port}", creds, options=optns)
-            stub = gNMIStub(channel)
+            stub = gNMIStubExtension(channel)
             stubs[device_ip] = stub
             return stub
         except TimeoutError as te:
@@ -201,3 +201,10 @@ def is_device_ready(device_ip: str):
         if "system is not ready" in system_status:
             raise Exception(f"Device at {device.mgt_ip} is not ready")
     return True
+
+
+class gNMIStubExtension(gNMIStub):
+
+    def __init__(self, channel):
+        super().__init__(channel)
+        self.channel = channel

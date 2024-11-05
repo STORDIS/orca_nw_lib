@@ -14,7 +14,6 @@ class gNMIStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.channel = channel
         self.Capabilities = channel.unary_unary(
                 '/gnmi.gNMI/Capabilities',
                 request_serializer=gnmi__pb2.CapabilityRequest.SerializeToString,
