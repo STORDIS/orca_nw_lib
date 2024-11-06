@@ -185,9 +185,6 @@ def install_image_on_sonic_device(device_ip: str, image_url: str):
     _logger.info("Installing image on SONiC device %s", device_ip)
     command = f"sudo sonic-installer install {image_url} -y"
     output, error = run_sonic_cli_command(device_ip, command)
-
-    # Rebooting the device after installing the image
-    reboot_device(device_ip)
     return output, error
 
 
