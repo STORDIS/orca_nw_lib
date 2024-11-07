@@ -120,11 +120,17 @@ def install_image_on_device(
     try:
         if "/" in device_ip:
             network = ipaddress.ip_network(device_ip, strict=False)
-            return [
-                get_onie_device_details(str(ip))
-                for ip in network
-                if check_onie_on_device(str(ip))
-            ]
+            if network.prefixlen >= 22:
+                return [
+                    get_onie_device_details(str(ip))
+                    for ip in network
+                    if check_onie_on_device(str(ip))
+                ]
+            else:
+                return {
+                    "output": "",
+                    "error": "Network prefix length must be greater than or equal to 22.",
+                }
         else:
             output, error = _install_image(device_ip, image_url, username, password)
 
