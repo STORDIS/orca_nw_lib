@@ -54,6 +54,7 @@ def getGrpcStubs(device_ip):
             sw_cert = ssl.get_server_certificate(
                 (device_ip, port), timeout=get_conn_timeout()
             ).encode("utf-8")
+
             # Option 1
             # creds = grpc.ssl_channel_credentials(root_certificates=sw_cert)
             # stub.Get(GetRequest(path=[path], type=GetRequest.ALL, encoding=JSON_IETF),
@@ -71,7 +72,7 @@ def getGrpcStubs(device_ip):
 
             optns = (("grpc.ssl_target_name_override", "localhost"),)
             channel = grpc.secure_channel(f"{device_ip}:{port}", creds, options=optns)
-            stub = gNMIStub(channel)
+            stub = gNMIStubExtension(channel)
             stubs[device_ip] = stub
             return stub
         except TimeoutError as te:
@@ -193,7 +194,8 @@ def get_gnmi_path(path: str) -> Path:
                     gnmi_path.elem.append(
                         PathElem(
                             name=pe_entry[: match.start()],
-                            key={i.split("=")[0]: unquote(i.split("=")[1]) for i in key_val.split(",")},  # decoding encoded value
+                            key={i.split("=")[0]: unquote(i.split("=")[1]) for i in key_val.split(",")},
+                            # decoding encoded value
                         )
                     )
                 except ValueError as ve:
@@ -205,7 +207,8 @@ def get_gnmi_path(path: str) -> Path:
             _logger.error(
                 f"Invalid property identifier {pe_entry} : filter arg should be a start with [ and end with ]"
             )
-            raise ValueError(f"Invalid property identifier {pe_entry} : filter arg should be a start with [ and end with ]")
+            raise ValueError(
+                f"Invalid property identifier {pe_entry} : filter arg should be a start with [ and end with ]")
         else:
             gnmi_path.elem.append(PathElem(name=pe_entry))
     return gnmi_path
@@ -272,3 +275,9 @@ def remove_stub(device_ip: str):
     """
     global stubs
     stubs.pop(device_ip, None)
+
+
+class gNMIStubExtension(gNMIStub):
+    def __init__(self, channel):
+        super().__init__(channel)
+        self.channel = channel

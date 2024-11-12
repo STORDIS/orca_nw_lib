@@ -10,7 +10,7 @@ from orca_nw_lib.device_gnmi import get_image_list_from_device
 _logger=logger = get_logging().getLogger(__name__)
 
 
-def create_device_graph_object(ip_addr: str) -> Device | None:
+def _create_device_graph_object(ip_addr: str) -> Device | None:
     """
     Create a Device object based on the given IP address.
 
@@ -52,7 +52,13 @@ def create_device_graph_object(ip_addr: str) -> Device | None:
 def get_device_details(mgt_ip: Optional[str] = None) -> Union[dict, List[dict]]:
     """
     Retrieves the details of a device based on its management IP address.
+    If no management IP address is provided, it returns a list of dictionaries containing the details of all devices.
 
+    .. code-block:: python
+
+        get_device_details(mgt_ip="10.10.10.10")
+        get_device_details()
+        
     Args:
         mgt_ip (Optional[str]): The management IP address of the device. Defaults to None.
 
@@ -77,9 +83,19 @@ def get_device_details(mgt_ip: Optional[str] = None) -> Union[dict, List[dict]]:
 
 
 def discover_device(device_ip:str):
+    """
+    Discover a device by its IP address and insert the device details into the database.
+
+    Args:
+        device_ip (str): The IP address of the device to be discovered.
+
+    Raises:
+        Exception: If an error occurs during the discovery process.
+    """
+    _logger.debug("Discovering device with IP: %s", device_ip)
     try:
         _logger.info("Discovering device with IP: %s", device_ip)
-        insert_devices_in_db(create_device_graph_object(device_ip))
+        insert_devices_in_db(_create_device_graph_object(device_ip))
     except Exception as e:
         _logger.error("Error discovering device with IP %s: %s", device_ip, str(e))
         raise

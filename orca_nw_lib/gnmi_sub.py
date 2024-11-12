@@ -1,3 +1,4 @@
+import time
 from threading import Thread
 import threading
 from typing import List
@@ -12,7 +13,7 @@ from .gnmi_pb2 import (
     SubscriptionList,
     SubscriptionMode,
 )
-from orca_nw_lib.gnmi_util import get_logging, send_gnmi_subscribe
+from orca_nw_lib.gnmi_util import get_logging, send_gnmi_subscribe, getGrpcStubs
 
 from orca_nw_lib.interface_db import (
     get_all_interfaces_name_of_device_from_db,
@@ -38,6 +39,8 @@ from .stp_port_db import set_stp_port_config_in_db, delete_stp_port_member_from_
 from .stp_port_gnmi import get_stp_port_path
 
 _logger = get_logging().getLogger(__name__)
+
+gnmi_subscriptions = {}
 
 
 def subscribe_to_path(request):
@@ -288,9 +291,12 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
-    for resp in send_gnmi_subscribe(
+    subscription = send_gnmi_subscribe(
         device_ip=device_ip, subscribe_request=subscribe_to_path(sub_req)
-    ):
+    )
+    global gnmi_subscriptions
+    gnmi_subscriptions[device_ip] = subscription
+    for resp in subscription:
         try:
             if not resp.sync_response:
                 for ele in resp.update.prefix.elem:
@@ -544,12 +550,14 @@ def gnmi_unsubscribe_for_all_devices_in_db():
         gnmi_unsubscribe(device_ip)
 
 
-def gnmi_unsubscribe(device_ip: str):
+def gnmi_unsubscribe(device_ip: str, retries: int = 5, timeout: int = 1) -> None:
     """
     Unsubscribes from the GNMI device with the specified IP address.
 
     Args:
         device_ip (str): The IP address of the GNMI device.
+        retries (int, optional): The number of retries. Defaults to 5.
+        timeout (int, optional): The timeout between retries. Defaults to 1.
 
     Returns:
         None
@@ -564,16 +572,67 @@ def gnmi_unsubscribe(device_ip: str):
             f"Device {device_ip} not found in device_sync_responses dictionary."
         )
 
-    thread_name = get_subscription_thread_name(device_ip)
-    for thread in threading.enumerate():
-        if thread.name == thread_name:
+    global gnmi_subscriptions
+    subscription = gnmi_subscriptions.get(device_ip)
+    if subscription:
+        try:
             _logger.info("Removing subscription for %s", device_ip)
-            terminate_thread(thread)
+            subscription.cancel()
+        except Exception as e:
+            _logger.debug("Failed to remove subscription for %s: %s", device_ip, e)
+            raise
+
+    thread_name = get_subscription_thread_name(device_ip)
+    while retries > 0:
+        _logger.info("Checking if subscription removed for %s", device_ip)
+        if thread_name in get_running_thread_names():
+            _logger.error("Subscription not removed for %s", device_ip)
+        else:
+            _logger.info("Removed subscription for %s", device_ip)
             break
-    if thread_name in get_running_thread_names():
-        _logger.error("Failed to remove subscription for %s", device_ip)
-    else:
-        _logger.info("Removed subscription for %s", device_ip)
+        time.sleep(timeout)
+        retries -= 1
+    _logger.debug("Currently running threads %s", get_running_thread_names())
+
+
+def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> None:
+    """
+    Closes the GNMI channel for the given device IP.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        retries (int, optional): The number of retries. Defaults to 5.
+        timeout (int, optional): The timeout in seconds. Defaults to 1.
+
+    Returns:
+        None
+    """
+    # currently this function is not used.
+    # we are keeping it for future use. i.e., when remove device from db, we need to close the channel.
+
+    # close gnmi channel
+    device_gnmi_stub = getGrpcStubs(device_ip)
+    try:
+        device_gnmi_stub.channel.close()
+        _logger.info("Closed channel for %s", device_ip)
+    except Exception as e:
+        _logger.debug("Failed to close channel for %s: %s", device_ip, e)
+        raise
+
+    # remove gnmi stub from global stubs
+    from orca_nw_lib.gnmi_util import remove_stub
+    remove_stub(device_ip)
+
+    thread_name = get_subscription_thread_name(device_ip)
+    while retries > 0:
+        _logger.info("checking if channel closed for %s", device_ip)
+        if thread_name in get_running_thread_names():
+            _logger.error("Failed to close channel thread for %s", device_ip)
+        else:
+            _logger.info("Closed channel thread for %s", device_ip)
+            break
+        time.sleep(timeout)
+        retries -= 1
     _logger.debug("Currently running threads %s", get_running_thread_names())
 
 
@@ -621,7 +680,7 @@ def check_gnmi_subscription_and_apply_config(config_func):
                 kwargs.get("device_ip"),
             )
             if gnmi_subscribe(ip) and sync_response_received(
-                ip
+                    ip
             ):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
                 # gNMI subscription will occur in case not already Subscribed.
                 result = config_func(*args, **kwargs)

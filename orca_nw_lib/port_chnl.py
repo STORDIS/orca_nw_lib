@@ -125,6 +125,15 @@ def _create_port_chnl_graph_object(device_ip: str) -> Dict[PortChannel, List[str
 
 
 def discover_port_chnl(device_ip: str = None):
+    """
+    Discovers the port channels of a device and inserts them into the database.
+
+    Args:
+        device_ip (str, optional): The IP address of the device. Defaults to None.
+
+    Returns:
+        None
+    """
     _logger.info("Port Channel Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:

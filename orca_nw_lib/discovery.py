@@ -28,7 +28,7 @@ _logger = get_logging().getLogger(__name__)
 topology = {}
 
 
-def discover_device_and_enable_ifs(device_ip: str):
+def _discover_device_and_enable_ifs(device_ip: str):
     report = []
     device_ip = str(device_ip)
     if not is_grpc_device_listening(device_ip):
@@ -75,17 +75,40 @@ def discover_device_and_enable_ifs(device_ip: str):
     discover_nw_features(device_ip, DiscoveryFeature.lldp_info)
 
 
-def discover_device_and_lldp_info(device_ip):
-    discover_device_and_enable_ifs(device_ip)
+def _discover_device_and_lldp_info(device_ip):
+    """
+    Recursively discover a device and its neighbors using LLDP information.
+
+    The function first discovers the device using discover_device_and_enable_ifs
+    and then discovers all its LLDP neighbors. If a neighbor is not already
+    discovered, it calls itself to discover the neighbor and so on.
+
+    Args:
+        device_ip (str): The IP address of the device to be discovered.
+
+    Returns:
+        None
+    """
+    _discover_device_and_enable_ifs(device_ip)
     for nbr_ip in get_all_lldp_neighbor_device_ips(device_ip):
         if not get_device_details(
                 nbr_ip
         ):  # Discover only if not already discovered in order to prevent loop
-            discover_device_and_lldp_info(nbr_ip)
+            _discover_device_and_lldp_info(nbr_ip)
 
 
 def trigger_discovery(device_ip):
-    discover_device_and_lldp_info(device_ip)
+    """
+    Trigger discovery for a given device.
+
+    Parameters:
+        device_ip (str): Device IP address.
+
+    Returns:
+        None
+    """
+    
+    _discover_device_and_lldp_info(device_ip)
     # some links can only be created after all teh topology devices are discovered
     for ip in get_all_devices_ip_from_db() or []:
         create_lldp_relations_in_db(ip)
