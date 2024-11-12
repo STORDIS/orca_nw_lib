@@ -1,4 +1,5 @@
 import ipaddress
+import re
 
 import paramiko
 
@@ -200,17 +201,12 @@ def get_onie_device_details(device_ip: str):
     Args:
         device_ip (str): The IP address of the device.
     """
-    details = {"ip": device_ip}
-    output, error = run_onie_cli_command(device_ip, "onie-sysinfo -e")
+    result = {}
+    output, error = run_onie_cli_command(device_ip, "onie-syseeprom")
     if not error:
-        details["mac_address"] = output.replace("\n", "")
-    output, error = run_onie_cli_command(device_ip, "onie-sysinfo -p")
-    if not error:
-        details["platform"] = output.replace("\n", "")
-    output, error = run_onie_cli_command(device_ip, "onie-sysinfo -v")
-    if not error:
-        details["version"] = output.replace("\n", "")
-    return details
+        result = parse_onie_info(output)
+    result["mgt_ip"] = device_ip
+    return result
 
 
 def switch_image_on_device(device_ip: str, image_name: str):
@@ -280,3 +276,26 @@ def create_url_with_credentials(base_url, username: str = None, password: str = 
         return url_with_credentials
     else:
         return base_url
+
+
+def parse_onie_info(output: str) -> dict:
+    """
+    Function to parse the output of the onie-syseeprom command.
+
+    Args:
+        output (str): The output of the onie-nos-install command.
+
+    Returns:
+        dict: A dictionary containing the parsed output.
+    """
+    parsed_data = {}
+
+    # Regex pattern to match each TLV entry
+    pattern = re.compile(r'(.+?)\s+0x([0-9A-F]+)\s+\d+\s+(.+)')
+
+    for line in output.splitlines():
+        match = pattern.match(line)
+        if match:
+            name, _, value = match.groups()
+            parsed_data[name.strip()] = value.strip()
+    return parsed_data
