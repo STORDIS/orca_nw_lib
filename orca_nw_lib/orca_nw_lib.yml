@@ -26,3 +26,12 @@ neo4j_password: "password"
 # neo4j_url: "abcd1234.databases.neo4j.io"
 # neo4j_user: "neo4j"
 # neo4j_password: "as8d76asd868a9sd6fsa89f6as9d86asd98f6ss6"
+
+## variables for monsoon2.0
+live_monitoring: true
+
+## InfluxDB credentials used by orca_nw_lib
+influxdb_url: "http://localhost:8086"
+influxdb_token: "VNkJYo7W5ZY-cdt7vccmlGnzbiOp2bzCYhyUJpVt-xj2s3_6UAJeDruQ_hooRssD4Z_ka88pW-RH9RiJ-Haxqg=="
+influxdb_org: "parth-org"
+influxdb_bucket: "monsoon-bucket"
