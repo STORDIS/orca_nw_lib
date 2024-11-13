@@ -13,6 +13,17 @@ default_orca_nw_lib_config = os.environ.get(
     const.env_default_orca_nw_lib_config_file, f"{dname}/orca_nw_lib.yml"
 )
 
+# Load configuration from YAML file
+with open(default_orca_nw_lib_config, 'r') as file:
+    try:
+        config = yaml.safe_load(file)
+        if config.get('live_monitoring', False):
+            load_influxdb_config()
+    except yaml.YAMLError as exc:
+        print(exc)
+
+
+
 load_orca_config()
 
 ## Also subscribe for gnmi events for all devices already discovered in the database.
