@@ -134,13 +134,8 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
         tuple[bool, dict or str]: A tuple containing a boolean indicating if SONiC details were found and a dictionary containing the SONiC details or an error message.
     """
     if is_grpc_device_listening(device_ip):
-        device = get_device_db_obj(device_ip)
-        if device:
-            return True, device.__properties__
-        else:
-            details = get_device_details_from_device(device_ip)
-            close_gnmi_channel(device_ip)
-            return True, details
+        details = get_device_details_from_device(device_ip)
+        return True, details
     return False, "SONiC not found"
 
 
