@@ -15,6 +15,8 @@ _settings = {}
 # influxDB client
 _influxdb_client = None
 
+_live_monitoring = False
+
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
 dname = os.path.dirname(abspath)
@@ -25,6 +27,11 @@ default_orca_nw_lib_config = os.environ.get(
 default_logging_config = os.environ.get(
     const.env_default_logging_config_file, f"{dname}/orca_nw_lib_logging.yml"
 )
+
+
+def is_live_monitoring():
+    global _live_monitoring
+    return _live_monitoring
 
 
 def init_influxdb_client():
@@ -107,7 +114,7 @@ def load_influxdb_config(orca_config_file: str = default_orca_nw_lib_config):
     Returns:
         dict: The parsed settings from the Orca configuration file.
     """
-    global _settings
+    global _settings, _live_monitoring
     if not _settings:
         with open(orca_config_file, "r") as stream:
             try:
@@ -115,6 +122,7 @@ def load_influxdb_config(orca_config_file: str = default_orca_nw_lib_config):
                 print("Loaded InfluxDB config from {0}".format(orca_config_file))
             except yaml.YAMLError as exc:
                 print(exc)
+        _live_monitoring = True
         init_influxdb_client()
     return _settings
 

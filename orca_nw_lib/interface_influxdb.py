@@ -55,7 +55,6 @@ def inster_intfc_counters_influxdb(device_ip: str, resp: SubscribeResponse):
             point.field(key, value)
     point.time(datetime.utcnow())
     write_to_influx(point=point)
-    print(f"{ether} counters send to influxdb")
     
 
 # Modifed handle_update function to use the new influxdb function:
