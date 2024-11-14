@@ -46,6 +46,22 @@ def get_conn_timeout():
     )
 
 
+def get_request_timeout():
+    return int(
+        os.environ.get(
+            const.request_timeout, _settings.get(const.request_timeout)
+        )
+    )
+
+
+def get_ping_timeout():
+    return int(
+        os.environ.get(
+            const.ping_timeout, _settings.get(const.ping_timeout)
+        )
+    )
+
+
 def get_device_password():
     return os.environ.get(const.device_password, _settings.get(const.device_password))
 
@@ -124,7 +140,7 @@ def is_grpc_device_listening(host, max_retries=1, interval=1):
         # Create a TCP socket object
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            sock.settimeout(get_conn_timeout())
+            sock.settimeout(get_ping_timeout())
             sock.connect((host, port))
             status = True
             break

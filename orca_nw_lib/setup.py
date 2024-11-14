@@ -2,8 +2,12 @@ import ipaddress
 import re
 
 import paramiko
+from orca_nw_lib.device_db import get_device_db_obj
+
+from orca_nw_lib.device_gnmi import get_device_details_from_device
 
 from orca_nw_lib.discovery import trigger_discovery
+from orca_nw_lib.gnmi_sub import close_gnmi_channel
 
 from orca_nw_lib.utils import (
     get_device_username,
@@ -16,7 +20,7 @@ _logger = get_logging().getLogger(__name__)
 
 
 def create_ssh_client(
-    device_ip: str, username: str, password: str = None
+        device_ip: str, username: str, password: str = None
 ) -> paramiko.SSHClient:
     """
     Creates an SSH client for a device.
@@ -32,7 +36,7 @@ def create_ssh_client(
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     params = {
         "hostname": device_ip,
-        "timeout": 5,
+        "timeout": 2,
     }
 
     if password:
@@ -102,12 +106,50 @@ def check_onie_on_device(device_ip: str) -> bool:
     return True
 
 
+def validate_and_get_onie_details_from_device(device_ip: str) -> tuple[bool, dict or str]:
+    """
+    Validates and gets ONIE details from a device.
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        tuple[bool, dict or str]: A tuple containing a boolean indicating if ONIE details were found and a dictionary containing the ONIE details or an error message.
+    """
+    command = "onie-syseeprom || echo 'ONIE not found'"
+    output, error = run_onie_cli_command(device_ip, command)
+    if error:
+        return False, error
+    if "ONIE not found" in output:
+        return False, ""
+    return True, {**parse_onie_info(output), "mgt_ip": device_ip}
+
+
+def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, dict or str]:
+    """
+    Validates and gets SONiC details from a device.
+    Args:
+        device_ip (str): The IP address of the device.
+
+    Returns:
+        tuple[bool, dict or str]: A tuple containing a boolean indicating if SONiC details were found and a dictionary containing the SONiC details or an error message.
+    """
+    if is_grpc_device_listening(device_ip):
+        device = get_device_db_obj(device_ip)
+        if device:
+            return True, device.__properties__
+        else:
+            details = get_device_details_from_device(device_ip)
+            close_gnmi_channel(device_ip)
+            return True, details
+    return False, "SONiC not found"
+
+
 def install_image_on_device(
-    device_ip: str,
-    image_url: str,
-    discover_also: bool = False,
-    username: str = None,
-    password: str = None,
+        device_ip: str,
+        image_url: str,
+        discover_also: bool = False,
+        username: str = None,
+        password: str = None,
 ):
     """
     Installs an image on a device.
@@ -119,38 +161,44 @@ def install_image_on_device(
         password (str, optional): The password to use for authentication. Defaults to None.
     """
     try:
-        if "/" in device_ip:
-            network = ipaddress.ip_network(device_ip, strict=False)
-            if network.prefixlen >= 22:
-                return [
-                    get_onie_device_details(str(ip))
-                    for ip in network
-                    if check_onie_on_device(str(ip))
-                ]
-            else:
-                return {
-                    "output": "",
-                    "error": "Network prefix length must be greater than or equal to 22.",
-                }
-        else:
-            output, error = _install_image(device_ip, image_url, username, password)
+        output, error = _install_image(device_ip, image_url, username, password)
 
-            # Rebooting the device after installing the image
-            reboot_device(device_ip)
+        # Rebooting the device after installing the image
+        reboot_device(device_ip)
 
-            # Wait for the device to reconnect
-            is_grpc_device_listening(device_ip, max_retries=10, interval=10)
+        # Wait for the device to reconnect
+        is_grpc_device_listening(device_ip, max_retries=10, interval=10)
 
-            # Trigger discovery if discover_also is True
-            if discover_also:
-                trigger_discovery(device_ip)
-            return {"output": output, "error": error}
+        # Trigger discovery if discover_also is True
+        if discover_also:
+            trigger_discovery(device_ip)
+        return {"output": output, "error": error}
     except Exception as e:
         return {"output": "", "error": str(e)}
 
 
+def scan_networks(network_ip: str) -> tuple[list, list]:
+    """
+    Scans networks on a list of devices.
+    Args:
+        network_ip (str): The IP address of the network.
+    Returns:
+        tuple[list, list]: A tuple containing a list of ONIE devices and a list of SONiC devices.
+    """
+    onie_devices = []
+    sonic_devices = []
+    network = ipaddress.ip_network(network_ip, strict=False)
+    for ip in network:
+        device_ip = str(ip)
+        if (result := validate_and_get_onie_details_from_device(device_ip=device_ip))[0]:
+            onie_devices.append(result[1])
+        elif (result := validate_and_get_sonic_details_from_device(device_ip=device_ip))[0]:
+            sonic_devices.append(result[1])
+    return onie_devices, sonic_devices
+
+
 def _install_image(
-    device_ip: str, image_url: str, username: str = None, password: str = None
+        device_ip: str, image_url: str, username: str = None, password: str = None
 ):
     """
     Installs an image on a device.

@@ -14,6 +14,8 @@ device_username: admin # username to make gNMI connection with device defined in
 device_password: YourPaSsWoRd # password to make gNMI connection with device defined in network above
 device_gnmi_port: 8080 # port to make gNMI connection with device defined in network above
 device_conn_timeout: 60 #connection timeout in seconds - used in - device ping , getting certificate and gnmi requests.
+request_timeout: 60 #request timeout in seconds - used in - getting certificate and gnmi requests.
+ping_timeout: 60 #ping timeout in seconds - used in - device ping
 
 ## Neo4j credentials used by orca_nw_lib
 neo4j_protocol: "bolt"
