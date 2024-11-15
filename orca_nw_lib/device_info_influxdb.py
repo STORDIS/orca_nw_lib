@@ -1,12 +1,15 @@
 import json
 import datetime
 import logging
+
 from orca_nw_lib.device_gnmi import (
     get_device_meta_data,
     get_device_mgmt_intfc_info,
     get_device_img_name,
     get_device_details_from_device
 )
+from orca_nw_lib.influxdb_utils import create_point, write_to_influx
+
 # Variables
 host1 = {
     "ip": "10.10.229.124",
@@ -15,12 +18,10 @@ host1 = {
     "password": "YourPaSsWoRd",
 }
 
-from orca_nw_lib.influxdb_utils import create_point, write_to_influx
-
 # Configure logging
 logger = logging.getLogger(__name__)
-
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 
 def get_device_info(device_ip=host1["ip"]):
     """
@@ -41,7 +42,7 @@ def get_device_info(device_ip=host1["ip"]):
         details = get_device_details_from_device(device_ip)
         
         influx_data = {
-            #"Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
+            "Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
             "Image Name": details["img_name"],
             "Management Interface": details["mgt_intf"],
             "Management IP": details["mgt_ip"],
@@ -50,9 +51,11 @@ def get_device_info(device_ip=host1["ip"]):
             "Platform": details["platform"],
             "Device Type": details["type"]
         }
-        print("Device data for InfluxDB: ", influx_data)
+        
+        print("Device data for InfluxDB:", influx_data)
         send_to_influxdb(device_name="Device_Info", details=influx_data)
         logger.info("Device info sent to InfluxDB successfully for IP: %s", device_ip)
+    
     except Exception as e:
         logger.error("Error retrieving device info for IP %s: %s", device_ip, e)
 
@@ -70,8 +73,8 @@ def send_to_influxdb(device_name: str, details: dict):
     """
     try:
         logger.info("Sending metrics to InfluxDB for device: %s", device_name)
+        
         point = create_point(device_name)
-
         point.tag("device", "Device_Info")
         
         for key, value in details.items():
@@ -82,9 +85,10 @@ def send_to_influxdb(device_name: str, details: dict):
         
         logger.debug("Metrics for %s: %s", device_name, details)
         logger.info("Metrics for device %s sent to InfluxDB.", device_name)
+    
     except Exception as e:
-        print(e)
-        #logger.error("Error writing data to InfluxDB for device %s: %s", device_name, e)
+        logger.error("Error writing data to InfluxDB for device %s: %s", device_name, e)
+
 
 def fetch_timeseries_data(device_ip: str):
     """
@@ -109,5 +113,6 @@ def fetch_timeseries_data(device_ip: str):
         
         send_to_influxdb(device_name="default_device", details=details)
         logger.info("Time series data sent to InfluxDB for IP: %s", device_ip)
+    
     except Exception as e:
         logger.error("Error fetching time series data for device IP %s: %s", device_ip, e)
