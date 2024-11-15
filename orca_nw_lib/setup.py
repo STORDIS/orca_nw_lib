@@ -5,6 +5,7 @@ import paramiko
 from orca_nw_lib.device_gnmi import get_device_details_from_device
 
 from orca_nw_lib.discovery import trigger_discovery
+from orca_nw_lib.gnmi_sub import close_gnmi_channel
 
 from orca_nw_lib.utils import (
     get_device_username,
@@ -128,8 +129,16 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
     try:
         _logger.info("validating sonic on %s", device_ip)
         if is_grpc_device_listening(device_ip):
+            try:
+                close_gnmi_channel(device_ip)
+            except Exception as e:
+                _logger.error("Failed to close gNMI channel: %s", e)
             _logger.info("Getting device details from %s", device_ip)
             details = get_device_details_from_device(device_ip)
+            try:
+                close_gnmi_channel(device_ip)
+            except Exception as e:
+                _logger.error("Failed to close gNMI channel: %s", e)
             return True, details
         return False, "SONiC not found"
     except Exception as e:
