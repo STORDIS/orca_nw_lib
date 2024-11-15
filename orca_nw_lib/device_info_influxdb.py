@@ -7,13 +7,6 @@ from orca_nw_lib.device_gnmi import (
     get_device_img_name,
     get_device_details_from_device
 )
-# Variables
-host1 = {
-    "ip": "10.10.229.124",
-    "port": 8080,
-    "username": "admin",
-    "password": "YourPaSsWoRd",
-}
 
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 
@@ -22,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def get_device_info(device_ip=host1["ip"]):
+def get_device_info(device_ip):
     """
     Retrieves the details of a device based on its IP address and sends the details to InfluxDB.
     
@@ -41,7 +34,7 @@ def get_device_info(device_ip=host1["ip"]):
         details = get_device_details_from_device(device_ip)
         
         influx_data = {
-            #"Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
+            "Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
             "Image Name": details["img_name"],
             "Management Interface": details["mgt_intf"],
             "Management IP": details["mgt_ip"],

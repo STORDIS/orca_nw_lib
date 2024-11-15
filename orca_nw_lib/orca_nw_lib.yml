@@ -30,8 +30,8 @@ neo4j_password: "password"
 ## variables for monsoon2.0
 live_monitoring: true
 
-## InfluxDB credentials used by orca_nw_lib
+# InfluxDB credentials
 influxdb_url: "http://localhost:8086"
-influxdb_token: "VNkJYo7W5ZY-cdt7vccmlGnzbiOp2bzCYhyUJpVt-xj2s3_6UAJeDruQ_hooRssD4Z_ka88pW-RH9RiJ-Haxqg=="
-influxdb_org: "parth-org"
-influxdb_bucket: "monsoon-bucket"
+influxdb_org: "ramya-org"
+influxdb_bucket: "my-first-bucket"
+influxdb_token: "Li7pjXQKsCgLEgDI_edJzWN5RlR3lGXN4q5wIVZCGy5QCWrnXOHea5ON8Qtr2WPtsLoqVQuFPnlnKTT7msYafQ=="
