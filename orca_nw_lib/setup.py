@@ -10,7 +10,7 @@ from orca_nw_lib.utils import (
     get_device_username,
     get_device_password,
     get_logging,
-    is_grpc_device_listening,
+    is_grpc_device_listening, get_request_timeout,
 )
 
 _logger = get_logging().getLogger(__name__)
@@ -29,20 +29,25 @@ def create_ssh_client(
     Returns:
         paramiko.SSHClient: The SSH client.
     """
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    params = {
-        "hostname": device_ip,
-        "timeout": 2,
-    }
+    _logger.info("Creating SSH client for device %s", device_ip)
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        params = {
+            "hostname": device_ip,
+            "timeout": 2,
+        }
 
-    if password:
-        params["username"] = username
-        params["password"] = password
-    else:
-        params["auth_strategy"] = paramiko.auth_strategy.NoneAuth(username="root")
-    ssh.connect(**params)
-    return ssh
+        if password:
+            params["username"] = username
+            params["password"] = password
+        else:
+            params["auth_strategy"] = paramiko.auth_strategy.NoneAuth(username="root")
+        ssh.connect(**params)
+        return ssh
+    except Exception as e:
+        _logger.error("Failed to create SSH client for device %s: %s", device_ip, e)
+        raise
 
 
 def run_sonic_cli_command(device_ip: str, command: str) -> str:
@@ -55,13 +60,17 @@ def run_sonic_cli_command(device_ip: str, command: str) -> str:
     Returns:
         str: The output of the command.
     """
-    ssh = create_ssh_client(device_ip, get_device_username(), get_device_password())
+    try:
+        _logger.debug("Running command %s on device %s", command, device_ip)
+        ssh = create_ssh_client(device_ip, get_device_username(), get_device_password())
 
-    stdin, stdout, stderr = ssh.exec_command(command)
-    error = stderr.read().decode("utf-8")
-    output = stdout.read().decode("utf-8")
-    ssh.close()
-    return output, error
+        stdin, stdout, stderr = ssh.exec_command(command, timeout=get_request_timeout())
+        error = stderr.read().decode("utf-8")
+        output = stdout.read().decode("utf-8")
+        ssh.close()
+        return output, error
+    except Exception as e:
+        return "", str(e)
 
 
 def run_onie_cli_command(device_ip: str, command: str) -> str:
@@ -96,6 +105,7 @@ def validate_and_get_onie_details_from_device(device_ip: str) -> tuple[bool, dic
     """
     try:
         command = "onie-syseeprom || echo 'ONIE not found'"
+        _logger.info("validating onie on %s", device_ip)
         output, error = run_onie_cli_command(device_ip, command)
         if error:
             return False, error
@@ -116,11 +126,14 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
         tuple[bool, dict or str]: A tuple containing a boolean indicating if SONiC details were found and a dictionary containing the SONiC details or an error message.
     """
     try:
+        _logger.info("validating sonic on %s", device_ip)
         if is_grpc_device_listening(device_ip):
+            _logger.info("Getting device details from %s", device_ip)
             details = get_device_details_from_device(device_ip)
             return True, details
         return False, "SONiC not found"
     except Exception as e:
+        _logger.error("Failed to get device details from %s: %s", device_ip, e)
         return False, str(e)
 
 
@@ -151,9 +164,11 @@ def install_image_on_device(
 
         # Trigger discovery if discover_also is True
         if discover_also:
+            _logger.info("Triggering discovery on %s", device_ip)
             trigger_discovery(device_ip)
         return {"output": output, "error": error}
     except Exception as e:
+        _logger.error("Failed to install image on device %s: %s", device_ip, e)
         return {"output": "", "error": str(e)}
 
 
@@ -168,13 +183,18 @@ def scan_networks(network_ip: str) -> tuple[list, list]:
     onie_devices = []
     sonic_devices = []
     network = ipaddress.ip_network(network_ip, strict=False)
-    for ip in network:
-        device_ip = str(ip)
-        if (result := validate_and_get_onie_details_from_device(device_ip=device_ip))[0]:
-            onie_devices.append(result[1])
-        elif (result := validate_and_get_sonic_details_from_device(device_ip=device_ip))[0]:
-            sonic_devices.append(result[1])
-    return onie_devices, sonic_devices
+    try:
+        for ip in network:
+            device_ip = str(ip)
+            _logger.info("Scanning device %s", device_ip)
+            if (result := validate_and_get_onie_details_from_device(device_ip=device_ip))[0]:
+                onie_devices.append(result[1])
+            elif (result := validate_and_get_sonic_details_from_device(device_ip=device_ip))[0]:
+                sonic_devices.append(result[1])
+        return onie_devices, sonic_devices
+    except Exception as e:
+        _logger.error("Failed to scan networks: %s", e)
+        return onie_devices, sonic_devices
 
 
 def _install_image(
@@ -191,6 +211,7 @@ def _install_image(
     image_url_with_credentials = create_url_with_credentials(
         image_url, username, password
     )
+    _logger.info("Checking device type on %s", device_ip)
     if validate_and_get_onie_details_from_device(device_ip)[0]:
         return install_image_on_onie_device(device_ip, image_url_with_credentials)
     else:
@@ -230,6 +251,7 @@ def get_onie_device_details(device_ip: str):
         device_ip (str): The IP address of the device.
     """
     result = {}
+    _logger.info("Getting ONIE details of device %s", device_ip)
     output, error = run_onie_cli_command(device_ip, "onie-syseeprom")
     if not error:
         result = parse_onie_info(output)
@@ -260,6 +282,7 @@ def switch_image_on_device(device_ip: str, image_name: str):
         if status:
             # Trigger discovery if discover_also is True
             try:
+                _logger.info("Triggering discovery on device %s.", device_ip)
                 trigger_discovery(device_ip)
             except Exception as e:
                 _logger.error(
