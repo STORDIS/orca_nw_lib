@@ -10,7 +10,7 @@ from orca_nw_lib.utils import (
     get_device_username,
     get_device_password,
     get_logging,
-    is_grpc_device_listening, get_request_timeout,
+    is_grpc_device_listening, get_request_timeout, get_ping_timeout,
 )
 
 _logger = get_logging().getLogger(__name__)
@@ -35,7 +35,7 @@ def create_ssh_client(
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         params = {
             "hostname": device_ip,
-            "timeout": 2,
+            "timeout": get_ping_timeout(),
         }
 
         if password:
@@ -64,7 +64,7 @@ def run_sonic_cli_command(device_ip: str, command: str) -> str:
         _logger.debug("Running command %s on device %s", command, device_ip)
         ssh = create_ssh_client(device_ip, get_device_username(), get_device_password())
 
-        stdin, stdout, stderr = ssh.exec_command(command, timeout=get_request_timeout())
+        stdin, stdout, stderr = ssh.exec_command(command)
         error = stderr.read().decode("utf-8")
         output = stdout.read().decode("utf-8")
         ssh.close()
