@@ -5,6 +5,7 @@ import paramiko
 from orca_nw_lib.device_gnmi import get_device_details_from_device
 
 from orca_nw_lib.discovery import trigger_discovery
+from orca_nw_lib.gnmi_util import remove_stub
 
 from orca_nw_lib.utils import (
     get_device_username,
@@ -50,7 +51,7 @@ def create_ssh_client(
         raise
 
 
-def run_sonic_cli_command(device_ip: str, command: str) -> str:
+def run_sonic_cli_command(device_ip: str, command: str) -> tuple[str, str]:
     """
     Runs a command on a device and returns the output.
     Args:
@@ -73,7 +74,7 @@ def run_sonic_cli_command(device_ip: str, command: str) -> str:
         return "", str(e)
 
 
-def run_onie_cli_command(device_ip: str, command: str) -> str:
+def run_onie_cli_command(device_ip: str, command: str) -> tuple[str, str]:
     """
     Runs a command on a device and returns the output.
     Args:
@@ -135,6 +136,8 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
     except Exception as e:
         _logger.error("Failed to get device details from %s: %s", device_ip, e)
         return False, str(e)
+    finally:
+        remove_stub(device_ip=device_ip)
 
 
 def install_image_on_device(

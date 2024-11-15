@@ -103,11 +103,14 @@ def send_gnmi_get(device_ip, path: list[Path], resend: bool = False):
                     op.update(json.loads(u.val.json_ietf_val.decode("utf-8")))
         return op
     except grpc.RpcError as e:
+        _logger.error("Failed to get details from %s: %s", device_ip, e)
         if e.code() == grpc.StatusCode.UNAVAILABLE:  # check if the device is not ready
             if not resend:
                 # remove stub from global stubs
+                _logger.debug("Removing stub for %s", device_ip)
                 remove_stub(device_ip)
 
+                _logger.info("Resending request to get details from %s", device_ip)
                 # send the same request again, it will create a new stub
                 return send_gnmi_get(device_ip=device_ip, path=path, resend=True)
             else:
@@ -147,11 +150,14 @@ def send_gnmi_set(req: SetRequest, device_ip: str, resend: bool = False):
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
     except grpc.RpcError as e:
+        _logger.info("Failed to send set request for device %s" % device_ip)
         if e.code() == grpc.StatusCode.UNAVAILABLE:  # check if the device is not ready
             if not resend:
                 # remove the stub from global stubs
+                _logger.debug("Removing stub for device %s" % device_ip)
                 remove_stub(device_ip)
 
+                _logger.info("Re-sending set request again for device %s" % device_ip)
                 # resend the request again, it will create a new stub
                 return send_gnmi_set(req=req, device_ip=device_ip, resend=True)
             else:
@@ -273,10 +279,19 @@ def remove_stub(device_ip: str):
         device_ip (str): The IP address of the device.
     """
     global stubs
-    stubs.pop(device_ip, None)
+    stub = stubs.pop(device_ip, None)
+    if stub:
+        stub.channel.close()
 
 
 class gNMIStubExtension(gNMIStub):
     def __init__(self, channel):
         super().__init__(channel)
         self.channel = channel
+
+
+def close_all_stubs():
+    global stubs
+    for i in stubs.values():
+        i.channel.close()
+    stubs = {}
