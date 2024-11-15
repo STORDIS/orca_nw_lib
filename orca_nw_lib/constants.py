@@ -17,6 +17,9 @@ influxdb_token='influxdb_token'
 influxdb_org='influxdb_org'
 influxdb_bucket='influxdb_bucket'
 
+#flasgs
+live_monitoring='live_monitoring'
+
 #env_var
 env_default_orca_nw_lib_config_file="ORCA_NW_LIB_CONFIG_FILE"
 env_default_logging_config_file = "ORCA_NW_LIB_LOGGING_CONFIG_FILE"
