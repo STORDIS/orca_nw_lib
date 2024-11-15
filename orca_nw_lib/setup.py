@@ -2,12 +2,9 @@ import ipaddress
 import re
 
 import paramiko
-from orca_nw_lib.device_db import get_device_db_obj
-
 from orca_nw_lib.device_gnmi import get_device_details_from_device
 
 from orca_nw_lib.discovery import trigger_discovery
-from orca_nw_lib.gnmi_sub import close_gnmi_channel
 
 from orca_nw_lib.utils import (
     get_device_username,
@@ -88,24 +85,6 @@ def run_onie_cli_command(device_ip: str, command: str) -> str:
         return "", str(e)
 
 
-def check_onie_on_device(device_ip: str) -> bool:
-    """
-    Checks if ONIE is installed on a device.
-    Args:
-        device_ip (str): The IP address of the device.
-
-    Returns:
-        bool: True if ONIE is installed, False otherwise.
-    """
-    command = "onie-sysinfo || echo 'ONIE not found'"
-    output, error = run_onie_cli_command(device_ip, command)
-    if error:
-        return False
-    if "ONIE not found" in output:
-        return False
-    return True
-
-
 def validate_and_get_onie_details_from_device(device_ip: str) -> tuple[bool, dict or str]:
     """
     Validates and gets ONIE details from a device.
@@ -115,13 +94,16 @@ def validate_and_get_onie_details_from_device(device_ip: str) -> tuple[bool, dic
     Returns:
         tuple[bool, dict or str]: A tuple containing a boolean indicating if ONIE details were found and a dictionary containing the ONIE details or an error message.
     """
-    command = "onie-syseeprom || echo 'ONIE not found'"
-    output, error = run_onie_cli_command(device_ip, command)
-    if error:
-        return False, error
-    if "ONIE not found" in output:
-        return False, ""
-    return True, {**parse_onie_info(output), "mgt_ip": device_ip}
+    try:
+        command = "onie-syseeprom || echo 'ONIE not found'"
+        output, error = run_onie_cli_command(device_ip, command)
+        if error:
+            return False, error
+        if "ONIE not found" in output:
+            return False, ""
+        return True, {**parse_onie_info(output), "mgt_ip": device_ip}
+    except Exception as e:
+        return False, str(e)
 
 
 def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, dict or str]:
@@ -133,10 +115,13 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
     Returns:
         tuple[bool, dict or str]: A tuple containing a boolean indicating if SONiC details were found and a dictionary containing the SONiC details or an error message.
     """
-    if is_grpc_device_listening(device_ip):
-        details = get_device_details_from_device(device_ip)
-        return True, details
-    return False, "SONiC not found"
+    try:
+        if is_grpc_device_listening(device_ip):
+            details = get_device_details_from_device(device_ip)
+            return True, details
+        return False, "SONiC not found"
+    except Exception as e:
+        return False, str(e)
 
 
 def install_image_on_device(
@@ -206,7 +191,7 @@ def _install_image(
     image_url_with_credentials = create_url_with_credentials(
         image_url, username, password
     )
-    if check_onie_on_device(device_ip):
+    if validate_and_get_onie_details_from_device(device_ip)[0]:
         return install_image_on_onie_device(device_ip, image_url_with_credentials)
     else:
         return install_image_on_sonic_device(device_ip, image_url_with_credentials)

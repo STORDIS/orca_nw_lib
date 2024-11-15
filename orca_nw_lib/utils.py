@@ -38,14 +38,6 @@ def get_networks():
     )
 
 
-def get_conn_timeout():
-    return int(
-        os.environ.get(
-            const.device_conn_timeout, _settings.get(const.device_conn_timeout)
-        )
-    )
-
-
 def get_request_timeout():
     return int(
         os.environ.get(

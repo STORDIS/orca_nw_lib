@@ -17,12 +17,11 @@ from .gnmi_pb2 import (
 )
 from .gnmi_pb2_grpc import gNMIStub
 from .utils import (
-    get_conn_timeout,
     get_logging,
     is_grpc_device_listening,
     get_device_grpc_port,
     get_device_username,
-    get_device_password,
+    get_device_password, get_request_timeout,
 )
 import re
 
@@ -52,7 +51,7 @@ def getGrpcStubs(device_ip):
     else:
         try:
             sw_cert = ssl.get_server_certificate(
-                (device_ip, port), timeout=get_conn_timeout()
+                (device_ip, port), timeout=get_request_timeout()
             ).encode("utf-8")
 
             # Option 1
@@ -91,7 +90,7 @@ def send_gnmi_get(device_ip, path: list[Path], resend: bool = False):
         resp = (
             device_gnmi_stub.Get(
                 GetRequest(path=path, type=GetRequest.ALL, encoding=JSON_IETF),
-                timeout=get_conn_timeout(),
+                timeout=get_request_timeout(),
             )
             if device_gnmi_stub
             else _logger.error(f"no gnmi stub found for device {device_ip}")
@@ -144,7 +143,7 @@ def send_gnmi_set(req: SetRequest, device_ip: str, resend: bool = False):
     try:
         device_gnmi_stub = getGrpcStubs(device_ip)
         if device_gnmi_stub:
-            device_gnmi_stub.Set(req, timeout=get_conn_timeout())
+            device_gnmi_stub.Set(req, timeout=get_request_timeout())
         else:
             _logger.error(f"no gnmi stub found for device {device_ip}")
     except grpc.RpcError as e:
