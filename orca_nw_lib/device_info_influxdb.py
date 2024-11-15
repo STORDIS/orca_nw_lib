@@ -41,7 +41,7 @@ def get_device_info(device_ip=host1["ip"]):
         details = get_device_details_from_device(device_ip)
         
         influx_data = {
-            #"Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
+            "Hostname": metadata["sonic-device-metadata:DEVICE_METADATA"]["DEVICE_METADATA_LIST"][0]["hostname"],
             "Image Name": details["img_name"],
             "Management Interface": details["mgt_intf"],
             "Management IP": details["mgt_ip"],
