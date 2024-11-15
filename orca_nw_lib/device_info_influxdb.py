@@ -10,20 +10,12 @@ from orca_nw_lib.device_gnmi import (
 )
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 
-# Variables
-host1 = {
-    "ip": "10.10.229.124",
-    "port": 8080,
-    "username": "admin",
-    "password": "YourPaSsWoRd",
-}
-
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
-def get_device_info(device_ip=host1["ip"]):
+def get_device_info(device_ip):
     """
     Retrieves the details of a device based on its IP address and sends the details to InfluxDB.
     
