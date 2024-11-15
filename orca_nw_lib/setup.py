@@ -10,7 +10,7 @@ from orca_nw_lib.utils import (
     get_device_username,
     get_device_password,
     get_logging,
-    is_grpc_device_listening, get_request_timeout, get_ping_timeout,
+    is_grpc_device_listening, get_ping_timeout,
 )
 
 _logger = get_logging().getLogger(__name__)
