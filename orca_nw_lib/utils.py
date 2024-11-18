@@ -38,10 +38,18 @@ def get_networks():
     )
 
 
-def get_conn_timeout():
+def get_request_timeout():
     return int(
         os.environ.get(
-            const.device_conn_timeout, _settings.get(const.device_conn_timeout)
+            const.request_timeout, _settings.get(const.request_timeout)
+        )
+    )
+
+
+def get_ping_timeout():
+    return int(
+        os.environ.get(
+            const.ping_timeout, _settings.get(const.ping_timeout)
         )
     )
 
@@ -116,7 +124,7 @@ import time
 _logger = get_logging().getLogger(__name__)
 
 
-def ping_ok(host, max_retries=1):
+def is_grpc_device_listening(host, max_retries=1, interval=1):
     retry = 0
     status = False
     port = get_device_grpc_port()
@@ -124,7 +132,7 @@ def ping_ok(host, max_retries=1):
         # Create a TCP socket object
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            sock.settimeout(get_conn_timeout())
+            sock.settimeout(get_ping_timeout())
             sock.connect((host, port))
             status = True
             break
@@ -132,10 +140,10 @@ def ping_ok(host, max_retries=1):
             _logger.error("Failed to connect to %s on port %s: %s", host, port, e)
             retry += 1
             status = False
-            time.sleep(1)  # Wait before retrying
+            time.sleep(interval)  # Wait before retrying
         finally:
             sock.close()
-            return status
+    return status
 
 
 def validate_and_get_ip_prefix(network_address: str):
