@@ -291,6 +291,15 @@ class gNMIStubExtension(gNMIStub):
 
 
 def close_all_stubs():
+    """
+    Close all the stubs.
+
+    Notes:
+        This function is mainly used to close all gnmi channels.
+        Because when running with celery workers,
+        the same channel is used for all the workers, it is creating segmentation fault.
+
+    """
     global stubs
     for i in stubs.values():
         i.channel.close()
