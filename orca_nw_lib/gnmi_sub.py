@@ -13,7 +13,7 @@ from .gnmi_pb2 import (
     SubscriptionList,
     SubscriptionMode,
 )
-from orca_nw_lib.gnmi_util import get_logging, getGrpcStubs
+from orca_nw_lib.gnmi_util import get_logging, send_gnmi_subscribe, getGrpcStubs
 
 from orca_nw_lib.interface_db import (
     get_all_interfaces_name_of_device_from_db,
@@ -41,6 +41,7 @@ from .stp_port_gnmi import get_stp_port_path
 _logger = get_logging().getLogger(__name__)
 
 gnmi_subscriptions = {}
+
 
 def subscribe_to_path(request):
     yield request
@@ -143,11 +144,11 @@ def handle_stp_config(device_ip: str, resp: SubscribeResponse):
     bpdu_filter = None
     loop_guard = None
     disabled_vlans = None
-    rootguard_timeout = None,
-    portfast = None,
-    hello_time = None,
-    max_age = None,
-    forwarding_delay = None,
+    rootguard_timeout = (None,)
+    portfast = (None,)
+    hello_time = (None,)
+    max_age = (None,)
+    forwarding_delay = (None,)
     bridge_priority = None
     for u in resp.update.update:
         for ele in u.path.elem:
@@ -183,7 +184,7 @@ def handle_stp_config(device_ip: str, resp: SubscribeResponse):
         hello_time,
         max_age,
         forwarding_delay,
-        bridge_priority
+        bridge_priority,
     )
     set_stp_config_in_db(
         device_ip=device_ip,
@@ -196,7 +197,7 @@ def handle_stp_config(device_ip: str, resp: SubscribeResponse):
         hello_time=hello_time,
         max_age=max_age,
         forwarding_delay=forwarding_delay,
-        bridge_priority=bridge_priority
+        bridge_priority=bridge_priority,
     )
 
 
@@ -217,7 +218,9 @@ def handle_stp_port_config(device_ip: str, resp: SubscribeResponse):
         for ele in del_item.elem:
             if ele.name == "interface":
                 if_name = ele.key.get("name")
-                return delete_stp_port_member_from_db(device_ip=device_ip, if_name=if_name)
+                return delete_stp_port_member_from_db(
+                    device_ip=device_ip, if_name=if_name
+                )
 
     for u in resp.update.update:
         for ele in u.path.elem:
@@ -261,7 +264,7 @@ def handle_stp_port_config(device_ip: str, resp: SubscribeResponse):
         stp_enabled=stp_enabled,
         uplink_fast=uplink_fast,
         cost=cost,
-        port_priority=port_priority
+        port_priority=port_priority,
     )
 
 
@@ -279,7 +282,7 @@ def handle_device_state(device_ip: str, resp: SubscribeResponse):
 
 
 def handle_update(device_ip: str, subscriptions: List[Subscription]):
-    device_gnmi_stub = getGrpcStubs(device_ip)
+    # device_gnmi_stub = getGrpcStubs(device_ip)
     subscriptionlist = SubscriptionList(
         subscription=subscriptions,
         mode=SubscriptionList.Mode.Value("STREAM"),
@@ -288,7 +291,9 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
-    subscription = device_gnmi_stub.Subscribe(subscribe_to_path(sub_req))
+    subscription = send_gnmi_subscribe(
+        device_ip=device_ip, subscribe_request=subscribe_to_path(sub_req)
+    )
     global gnmi_subscriptions
     gnmi_subscriptions[device_ip] = subscription
     for resp in subscription:
@@ -412,7 +417,9 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
 
     thread_name = get_subscription_thread_name(device_ip)
     if force_resubscribe:
-        _logger.info("The force subscription is true, first removing the existing subscription if any.")
+        _logger.info(
+            "The force subscription is true, first removing the existing subscription if any."
+        )
         gnmi_unsubscribe(device_ip)
 
     if thread_name in get_running_thread_names() and not force_resubscribe:
@@ -500,10 +507,7 @@ def get_subscription_path_for_config_change(device_ip: str):
     # )
 
     subscriptions.append(
-        Subscription(
-            path=get_stp_port_path(),
-            mode=SubscriptionMode.ON_CHANGE
-        )
+        Subscription(path=get_stp_port_path(), mode=SubscriptionMode.ON_CHANGE)
     )
 
     subscriptions.append(
@@ -561,15 +565,22 @@ def gnmi_unsubscribe(device_ip: str, retries: int = 5, timeout: int = 1) -> None
     sync_response = device_sync_responses.pop(device_ip, None)
     if sync_response is not None:
         _logger.debug(
-            f"Removed device {device_ip} with sync_response {sync_response} from device_sync_responses dictionary.")
+            f"Removed device {device_ip} with sync_response {sync_response} from device_sync_responses dictionary."
+        )
     else:
-        _logger.debug(f"Device {device_ip} not found in device_sync_responses dictionary.")
+        _logger.debug(
+            f"Device {device_ip} not found in device_sync_responses dictionary."
+        )
 
     global gnmi_subscriptions
     subscription = gnmi_subscriptions.get(device_ip)
     if subscription:
-        _logger.info("Removing subscription for %s", device_ip)
-        subscription.cancel()
+        try:
+            _logger.info("Removing subscription for %s", device_ip)
+            subscription.cancel()
+        except Exception as e:
+            _logger.debug("Failed to remove subscription for %s: %s", device_ip, e)
+            raise
 
     thread_name = get_subscription_thread_name(device_ip)
     while retries > 0:
@@ -601,12 +612,16 @@ def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> No
 
     # close gnmi channel
     device_gnmi_stub = getGrpcStubs(device_ip)
-    device_gnmi_stub.channel.close()
-    _logger.info("Closed channel for %s", device_ip)
+    try:
+        device_gnmi_stub.channel.close()
+        _logger.info("Closed channel for %s", device_ip)
+    except Exception as e:
+        _logger.debug("Failed to close channel for %s: %s", device_ip, e)
+        raise
 
     # remove gnmi stub from global stubs
-    from orca_nw_lib.gnmi_util import stubs
-    stubs.pop(device_ip, None)
+    from orca_nw_lib.gnmi_util import remove_stub
+    remove_stub(device_ip)
 
     thread_name = get_subscription_thread_name(device_ip)
     while retries > 0:
@@ -665,7 +680,8 @@ def check_gnmi_subscription_and_apply_config(config_func):
                 kwargs.get("device_ip"),
             )
             if gnmi_subscribe(ip) and sync_response_received(
-                    ip):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
+                    ip
+            ):  ## Check if the snyc response has been received for the given device also attempt to subscribe to gNMI,
                 # gNMI subscription will occur in case not already Subscribed.
                 result = config_func(*args, **kwargs)
                 return result

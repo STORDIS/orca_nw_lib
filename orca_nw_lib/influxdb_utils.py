@@ -1,12 +1,8 @@
 """ Utils for Influx DB """
 
 import os
-import re
-import ipaddress
-import logging.config
-import logging
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS, WriteOptions
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 import yaml
 from . import constants as const
 
@@ -14,6 +10,8 @@ _settings = {}
 
 # influxDB client
 _influxdb_client = None
+
+_influxdb_monitoring = False
 
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
@@ -27,22 +25,35 @@ default_logging_config = os.environ.get(
 )
 
 
+def is_influxdb_monitoring():
+    global _influxdb_monitoring
+    return _influxdb_monitoring
+
+
 def init_influxdb_client():
     """
     Initialize Influxdb client
 
-    Args:
-        metric_name: Name of the point or data in InfluxDB (eg: interface, bgp, mclag).
-
     Returns:
-        Influxdb Point obj
+        Influxdb client obj
     """
     global _influxdb_client
     _influxdb_client = InfluxDBClient(
-        url= os.environ.get(const.influxdb_url, _settings.get(const.influxdb_url)),
+        url= f"http://{os.environ.get(const.influxdb_url, _settings.get(const.influxdb_url))}",
         token= os.environ.get(const.influxdb_token, _settings.get(const.influxdb_token)),
         org= os.environ.get(const.influxdb_org, _settings.get(const.influxdb_org))
         )
+
+
+def get_influxdb_client():
+    """
+    Returns the initialized InfluxDB client.
+    
+    Returns:
+        InfluxDB Client: The client for InfluxDB.
+    """
+    global _influxdb_client
+    return _influxdb_client
 
 
 def create_point(metric_name):
@@ -71,6 +82,7 @@ def get_write_api():
     client = get_influxdb_client()
     return client.write_api(write_options=SYNCHRONOUS)
 
+
 def write_to_influx(point):
     """
     Write a data point to the specified InfluxDB bucket.
@@ -85,36 +97,26 @@ def write_to_influx(point):
     write_api.write(bucket=bucket, record=point, org=os.environ.get(const.influxdb_org, _settings.get(const.influxdb_org)))
 
 
-def get_influxdb_client():
-    """
-    Returns the initialized InfluxDB client.
-    
-    Returns:
-        InfluxDB Client: The client for InfluxDB.
-    """
-    global _influxdb_client
-    return _influxdb_client
 
 
-def load_influxdb_config(orca_config_file: str = default_orca_nw_lib_config):
+def load_influxdb_config(orca_settings):
     """
-    Read the Orca configuration file and return the parsed settings.
+    Gets Orca configuration and return the parsed settings.
 
     Parameters:
-        orca_config_file (str, optional): The path to the Orca configuration file.
-            Defaults to "./orca.yml".
+        orca_settings (dict): Orca config in key, value pairs.
 
     Returns:
         dict: The parsed settings from the Orca configuration file.
     """
-    global _settings
+    global _settings, _influxdb_monitoring
     if not _settings:
-        with open(orca_config_file, "r") as stream:
-            try:
-                _settings = yaml.safe_load(stream)
-                print("Loaded InfluxDB config from {0}".format(orca_config_file))
-            except yaml.YAMLError as exc:
-                print(exc)
+        try:
+            _settings = orca_settings
+            print("Loaded InfluxDB config.")
+        except yaml.YAMLError as exc:
+            print(exc)
         init_influxdb_client()
+        _influxdb_monitoring = True
     return _settings
 

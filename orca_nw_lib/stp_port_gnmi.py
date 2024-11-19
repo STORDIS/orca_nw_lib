@@ -117,7 +117,8 @@ def get_stp_port_members_from_device(device_ip: str, if_name: str = None):
         dict: A dictionary containing the STP port channel members.
     """
     path = get_stp_port_path(if_name)
-    return send_gnmi_get(path=[path], device_ip=device_ip)
+    response = send_gnmi_get(path=[path], device_ip=device_ip)
+    return response if response else {}
 
 
 def delete_stp_port_member_from_device(device_ip: str, if_name: str = None):
