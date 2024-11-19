@@ -22,3 +22,4 @@ black = "^23.3.0"
 packaging = "^23.2"# Because of langchain dependencies in ORCASK, packaging should not be greater than 23.y.z.
 influxdb-client = "^1.47.0"
 prometheus-client = "^0.21.0"
+paramiko = "^3.5.0"
