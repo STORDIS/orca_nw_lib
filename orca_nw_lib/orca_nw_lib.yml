@@ -31,7 +31,7 @@ neo4j_password: "password"
 telemetry_db: "influxdb" # influxdb | prometheus |  "" 
 
 ## InfluxDB credentials used by orca_nw_lib
-influxdb_url: "http://localhost:8086"
+influxdb_url: "localhost:8086"
 influxdb_token: "<influxdb_token>"
 influxdb_org: "<influxdb_organization_name>"
 influxdb_bucket: "<influxdb_bucket_name>"
