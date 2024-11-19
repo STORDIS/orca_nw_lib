@@ -28,3 +28,16 @@ neo4j_password: "password"
 # neo4j_url: "abcd1234.databases.neo4j.io"
 # neo4j_user: "neo4j"
 # neo4j_password: "as8d76asd868a9sd6fsa89f6as9d86asd98f6ss6"
+
+## variables for monsoon2.0
+telemetry_db: "influxdb" # influxdb | prometheus |  "" 
+
+## InfluxDB credentials used by orca_nw_lib
+influxdb_url: "localhost:8086"
+influxdb_token: "<influxdb_token>"
+influxdb_org: "<influxdb_organization_name>"
+influxdb_bucket: "<influxdb_bucket_name>"
+
+## Prometheus pushgateway credentials used by orca_nw_lib
+promdb_pushgateway_url: "localhost:9091"
+promdb_job: "<job_name>"

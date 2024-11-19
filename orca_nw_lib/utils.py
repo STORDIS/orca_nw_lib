@@ -68,6 +68,19 @@ def get_device_grpc_port():
     )
 
 
+def get_telemetry_db():
+        """
+        Reads the telemetry_db parameter from the configuration and environment variables.
+        Returns (string): "prometheus" or "influxdb", else False based on the configuration.
+        """
+        telemetry_db = (os.environ.get(const.telemetry_db, _settings.get(const.telemetry_db))).lower()
+        if telemetry_db in ["prometheus", "influxdb"]:
+            return telemetry_db
+        else:
+            return False
+
+
+
 def load_orca_config(orca_config_file: str = default_orca_nw_lib_config):
     """
     Read the Orca configuration file and return the parsed settings.
