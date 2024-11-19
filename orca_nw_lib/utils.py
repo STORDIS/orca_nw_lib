@@ -67,8 +67,6 @@ def get_device_grpc_port():
         os.environ.get(const.device_gnmi_port, _settings.get(const.device_gnmi_port))
     )
 
-def check_live_monitoring():
-    return os.environ.get(const.live_monitoring, _settings.get(const.live_monitoring))
 
 def get_telemetry_db():
         """
