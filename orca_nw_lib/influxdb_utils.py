@@ -1,12 +1,8 @@
 """ Utils for Influx DB """
 
 import os
-import re
-import ipaddress
-import logging.config
-import logging
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS, WriteOptions
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 import yaml
 from . import constants as const
 

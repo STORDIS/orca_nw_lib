@@ -1,11 +1,9 @@
 from threading import Thread
 from typing import List
-import json
 from datetime import datetime
 
-from orca_nw_lib.device_gnmi import get_device_status_from_device
-from orca_nw_lib.gnmi_sub import get_running_thread_names, get_subscription_path_for_monitoring, get_subscription_thread_name, gnmi_unsubscribe, subscribe_to_path, device_sync_responses
-from orca_nw_lib.influxdb_utils import create_point, get_write_api, write_to_influx
+from orca_nw_lib.gnmi_sub import get_running_thread_names, get_subscription_path_for_monitoring, gnmi_unsubscribe, subscribe_to_path, device_sync_responses
+from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 from orca_nw_lib.utils import get_logging
 from .gnmi_pb2 import (
     Encoding,
@@ -13,7 +11,6 @@ from .gnmi_pb2 import (
     SubscribeResponse,
     Subscription,
     SubscriptionList,
-    SubscriptionMode,
 )
 from orca_nw_lib.gnmi_util import getGrpcStubs
 from orca_nw_lib.interface_gnmi import get_interface_base_path

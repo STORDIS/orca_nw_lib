@@ -1,10 +1,6 @@
 """ Utils for Prometheus """
 
 import os
-import re
-import ipaddress
-import logging.config
-import logging
 from prometheus_client import CollectorRegistry, push_to_gateway
 import yaml
 from . import constants as const
