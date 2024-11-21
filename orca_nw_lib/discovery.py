@@ -97,7 +97,7 @@ def _discover_device_and_lldp_info(device_ip):
             _discover_device_and_lldp_info(nbr_ip)
 
 
-def trigger_discovery(device_ip):
+def trigger_discovery(device_ip, feature_to_discover: DiscoveryFeature = None):
     """
     Trigger discovery for a given device.
 
@@ -112,15 +112,18 @@ def trigger_discovery(device_ip):
     # some links can only be created after all teh topology devices are discovered
     for ip in get_all_devices_ip_from_db() or []:
         create_lldp_relations_in_db(ip)
-        discover_nw_features(ip, DiscoveryFeature.port_channel)
-        discover_nw_features(ip, DiscoveryFeature.vlan)
-        discover_nw_features(ip, DiscoveryFeature.mclag)
-        discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
-        discover_nw_features(ip, DiscoveryFeature.bgp)
-        discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
-        discover_nw_features(ip, DiscoveryFeature.stp)
-        discover_nw_features(ip, DiscoveryFeature.stp_port)
-        discover_nw_features(ip, DiscoveryFeature.stp_vlan)
+        if feature_to_discover:
+            discover_nw_features(ip, feature_to_discover)
+        else:
+            discover_nw_features(ip, DiscoveryFeature.port_channel)
+            discover_nw_features(ip, DiscoveryFeature.vlan)
+            discover_nw_features(ip, DiscoveryFeature.mclag)
+            discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
+            discover_nw_features(ip, DiscoveryFeature.bgp)
+            discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
+            discover_nw_features(ip, DiscoveryFeature.stp)
+            discover_nw_features(ip, DiscoveryFeature.stp_port)
+            discover_nw_features(ip, DiscoveryFeature.stp_vlan)
         gnmi_subscribe(ip)
 
 

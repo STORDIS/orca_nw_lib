@@ -26,7 +26,6 @@ default_logging_config = os.environ.get(
 
 
 def is_influxdb_monitoring():
-    global _influxdb_monitoring
     return _influxdb_monitoring
 
 

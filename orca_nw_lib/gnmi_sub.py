@@ -144,11 +144,11 @@ def handle_stp_config(device_ip: str, resp: SubscribeResponse):
     bpdu_filter = None
     loop_guard = None
     disabled_vlans = None
-    rootguard_timeout = (None,)
-    portfast = (None,)
-    hello_time = (None,)
-    max_age = (None,)
-    forwarding_delay = (None,)
+    rootguard_timeout = None
+    portfast = None
+    hello_time = None
+    max_age = None
+    forwarding_delay = None
     bridge_priority = None
     for u in resp.update.update:
         for ele in u.path.elem:
