@@ -80,10 +80,11 @@ def get_stp_vlan_from_device(device_ip: str, vlan_id: int = None):
         The result of sending a GNMI get request to get STP VLAN configuration from the device.
     """
     try:
-        return send_gnmi_get(
+        response = send_gnmi_get(
             device_ip=device_ip,
             path=[get_stp_vlan_path(vlan_id=vlan_id)],
         )
+        return response if response else {}
     except Exception:
         return {}
 

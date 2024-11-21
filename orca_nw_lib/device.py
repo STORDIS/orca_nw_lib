@@ -1,8 +1,11 @@
 from typing import List, Optional, Union
 from orca_nw_lib.device_db import get_device_db_obj, insert_devices_in_db
-from orca_nw_lib.device_gnmi import get_device_details_from_device, get_device_status_from_device
+from orca_nw_lib.device_gnmi import (get_device_details_from_device,
+                                     get_device_status_from_device)
 from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.utils import get_logging
+
+from orca_nw_lib.device_gnmi import get_image_list_from_device
 
 _logger=logger = get_logging().getLogger(__name__)
 
@@ -22,6 +25,12 @@ def _create_device_graph_object(ip_addr: str) -> Device | None:
     device_status = get_device_status_from_device(ip_addr).get("openconfig-events:events", {})
     device_status_event = device_status.get("event", [])
     system_status = None
+    images_list_details = get_image_list_from_device(device_ip=ip_addr).get(
+        "sonic-image-management:IMAGE_TABLE_LIST", []
+    )
+    images_list = []
+    for i in images_list_details:
+        images_list.append(i.get("image"))
     for event in reversed(device_status_event):
         state = event.get("state", {})
         if state.get("resource") == "system_status":
@@ -35,7 +44,8 @@ def _create_device_graph_object(ip_addr: str) -> Device | None:
         mac=device_detail.get("mac"),
         platform=device_detail.get("platform"),
         type=device_detail.get("type"),
-        system_status=system_status
+        system_status=system_status,
+        image_list=images_list
     ) if device_detail else None
 
 
