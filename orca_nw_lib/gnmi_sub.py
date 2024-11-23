@@ -2,6 +2,10 @@ import time
 from threading import Thread
 import threading
 from typing import List
+
+from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
+from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
+from orca_nw_lib.utils import get_telemetry_db
 from .common import PortFec, Speed
 from .device_db import get_all_devices_ip_from_db, update_device_status
 from .device_gnmi import get_device_state_url
@@ -361,6 +365,60 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
             raise
 
 
+# Modifed handle_update function to insert interface counters to telemetry DB:
+def handle_telemetry_notification(device_ip: str, subscriptions: List[Subscription]):
+    device_gnmi_stub = getGrpcStubs(device_ip)
+    subscriptionlist = SubscriptionList(
+            subscription=subscriptions,
+            mode=SubscriptionList.Mode.Value("STREAM"),
+            encoding=Encoding.Value("JSON_IETF"),
+        )
+    sub_req = SubscribeRequest(subscribe=subscriptionlist)
+    subscription = device_gnmi_stub.Subscribe(subscribe_to_path(sub_req))
+    global gnmi_subscriptions
+    gnmi_subscriptions[device_ip] = subscription
+    for resp in subscription:
+        try:
+            if not resp.sync_response:
+                for ele in resp.update.prefix.elem:
+                    if ele.name == get_interface_base_path().elem[0].name:
+                        _logger.debug("gNMI subscription interface counters received from %s -> %s",
+                                      device_ip, 
+                                      resp,
+                                    )
+                        if get_telemetry_db() == "influxdb":
+                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
+                            thread = Thread(
+                                target=handle_interface_counters_influxdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread.start()
+                            
+
+                        if get_telemetry_db() == "prometheus":
+                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
+                            thread = Thread(
+                                target=handle_interface_counters_promdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread.start()
+            
+            elif resp.sync_response:
+                _logger.info("gNMI subscription sync response received from %s -> %s", device_ip, resp,)
+                device_sync_responses[device_ip] = resp.sync_response
+                _logger.debug("Subscription sync response status for devices %s",device_sync_responses,)
+                   
+            else:
+                device_sync_responses[device_ip] = resp.sync_response
+                
+        except Exception as e:
+            _logger.error(f"Error processing subscription response: {e}")
+
+
+
+
 """
 dictionary to store the sync response received from the device.
     Key: device_ip
@@ -392,6 +450,19 @@ def get_subscription_thread_name(device_ip: str):
     return f"subscription_thread_{device_ip}"
 
 
+def get_telemetry_thread_name(device_ip: str):
+    """
+    Returns the name of the telemetry thread for the given device IP.
+
+    Parameters:
+    device_ip (str): The IP address of the device.
+
+    Returns:
+    str: The name of the subscription telemetry thread.
+    """
+    return f"telemetry_subscription_thread_{device_ip}"
+
+
 def get_running_thread_names():
     running_threads = threading.enumerate()
     thread_names = [thread.name for thread in running_threads]
@@ -411,6 +482,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
     """
 
     thread_name = get_subscription_thread_name(device_ip)
+    telemetry_thread_name = get_telemetry_thread_name(device_ip)
     if force_resubscribe:
         _logger.info("The force subscription is true, first removing the existing subscription if any.")
         gnmi_unsubscribe(device_ip)
@@ -421,8 +493,6 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         return True
     else:
         subscriptions = get_subscription_path_for_config_change(device_ip)
-        ## add get_subscription_path_for_config_change to subscritions
-        # subscriptions += get_subscription_path_for_monitoring(device_ip)
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
@@ -437,6 +507,18 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
             daemon=True,
         )
         thread.start()
+
+        # If telemetry_db has value then start to push interface counters
+        if get_telemetry_db():
+            ## add get_subscription_path_for_monitoring to subscritions
+            infc_conts_subscriptions = get_subscription_path_for_monitoring(device_ip)
+            thread = Thread(
+            name=telemetry_thread_name,
+            target=handle_telemetry_notification,
+            args=(device_ip, infc_conts_subscriptions),
+            # daemon=True,
+            )
+            thread.start()
         _logger.debug("Currently running threads %s", get_running_thread_names())
         if thread_name in get_running_thread_names():
             _logger.debug(
