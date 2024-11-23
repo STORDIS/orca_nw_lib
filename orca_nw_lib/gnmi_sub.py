@@ -516,7 +516,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
             name=telemetry_thread_name,
             target=handle_telemetry_notification,
             args=(device_ip, infc_conts_subscriptions),
-            # daemon=True,
+            daemon=True,
             )
             thread.start()
         _logger.debug("Currently running threads %s", get_running_thread_names())
