@@ -66,26 +66,28 @@ def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
         return
     
     try:
-        point = create_point("discovered_interfaces")
-        device_pnt = point.tag("device_ip", device.mgt_ip)
         for intfc, sub_intfc in interfaces.items():
-            device_pnt.field("interface_name", intfc.name)
-            device_pnt.field("enabled", intfc.enabled)
-            device_pnt.field("mtu", intfc.mtu)
-            device_pnt.field("speed", intfc.speed)
-            device_pnt.field("fec", intfc.fec)
-            device_pnt.field("oper_status", intfc.oper_sts)
-            device_pnt.field("admin_status", intfc.admin_sts)
-            device_pnt.field("description", intfc.description)
-            device_pnt.field("mac_address", intfc.mac_addr)
-            device_pnt.field("alias", intfc.alias)
-            device_pnt.field("lanes", intfc.lanes)
-            device_pnt.field("breakout_supported", intfc.breakout_supported)
-            device_pnt.field("valid_speeds", intfc.valid_speeds)
-            device_pnt.field("breakout_mode", intfc.breakout_mode)
-            device_pnt.field("breakout_supported", intfc.breakout_supported)
-
+            point = create_point("discovered_interfaces") \
+                .tag("device_ip", device.mgt_ip) \
+                .tag("ether_name", intfc.name) \
+                .field("interface_name", intfc.name) \
+                .field("enabled", intfc.enabled) \
+                .field("mtu", intfc.mtu) \
+                .field("speed", intfc.speed) \
+                .field("fec", intfc.fec) \
+                .field("oper_status", intfc.oper_sts) \
+                .field("admin_status", intfc.admin_sts) \
+                .field("description", intfc.description) \
+                .field("mac_address", intfc.mac_addr) \
+                .field("alias", intfc.alias) \
+                .field("lanes", intfc.lanes) \
+                .field("breakout_supported", intfc.breakout_supported) \
+                .field("valid_speeds", intfc.valid_speeds) \
+                .field("breakout_mode", intfc.breakout_mode) \
+                
             write_to_influx(point=point)
+
+            
         _logger.debug(f"Successfully inserted discovered interface data into InfluxDB")
     except Exception as e:
         _logger.error(f"Error instering in influxdb: {e}")

@@ -119,59 +119,40 @@ def handle_interface_counters_promdb(device_ip: str, resp: SubscribeResponse):
 # Function to insert discoverd interface info to prometheus
 def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
     """
-    Retrieves discovered interface data and inserts it into Prometheus.
-
+    Retrieves discovered interface data and inserts into prometheus DB.
+   
     Args:
-        device (Device): The device object containing device details.
-        interfaces (dict): A dictionary of interface objects to be processed.
-
-    This function creates and populates Prometheus metrics with interface
-    information such as name, admin status, operational status, and other
-    attributes. It logs the interface data and pushes the metrics to the
-    Prometheus Pushgateway.
+        device (Device): Object of type Device.
+        interfaces (dict): Dictionary pf key value pairs.
     """
-    # interface_info = Info("interface_info", "Static information about network interfaces",
-                
-    #             labelnames=["device_ip", "ether_name", "enabled", "mtu", "speed", "fec", "oper_status", "admin_status", "description",
-    #                         "mac_address", "alias", "lanes", "breakout_supported","valid_speeds","breakout_mode","breakout_supported"],
-    #             registry=registry)
+    if not device:
+        _logger.error("Device object is required.")
+        return
+   
+    if not interfaces:
+        _logger.error("Interfaces dictionary is required.")
+        return
     try:
-        # Initialize Prometheus registry
-        registry = CollectorRegistry()
-
-        # Info metric for interface information (removed device label)
-        interface_info = Info('interface_info', 'Interface status and static information', ['interface'], registry=registry)
-
-        # Populate metrics
-        for interface in interfaces:
-            name = getattr(interface, 'name', 'unknown')
-            admin_status = "UP"  # if getattr(interface, 'admin_status', '').upper() == 'UP' else "DOWN"
-            oper_status = "UP"  # if getattr(interface, 'oper_status', '').upper() == 'UP' else "DOWN"
-            enabled = "True"  # if getattr(interface, 'enabled', False) else False
-
-            # Set dynamic interface status information in the Info metric
-            interface_info.labels(interface=name).info({
-                'device_ip': str(device.mgt_ip),
-                'ether_name': str(name),
-                'admin_status': str(admin_status),
-                'oper_status': str(oper_status),
-                'enabled': str(enabled),
-                'alias': str(getattr(interface, 'alias', 'N/A')),
-                'description': str(getattr(interface, 'description', "")),
-                'fec': str(getattr(interface, 'fec', 'N/A')),
-                'lanes': str(getattr(interface, 'lanes', 'N/A')),
-                'mac_address': str(getattr(interface, 'mac_addr')),
-                'mtu': str(getattr(interface, 'mtu', 'N/A')),
-                'speed': str(getattr(interface, 'speed', 'N/A'))
+        for intfc, sub_intfc in interfaces.items():
+            interface_info.labels(device_ip=device.mgt_ip, ether_name=intfc.name).info({
+                "interface_name": intfc.name,
+                "enabled": str(intfc.enabled),
+                "mtu": str(intfc.mtu),
+                "speed": intfc.speed if intfc.speed else "N/A",
+                "fec": intfc.fec if intfc.fec else "N/A",
+                "oper_status": intfc.oper_sts,
+                "admin_status": intfc.admin_sts,
+                "description": intfc.description if intfc.description else "N/A",
+                "mac_address": intfc.mac_addr if intfc.mac_addr else "N/A",
+                "alias": intfc.alias if intfc.alias else "N/A",
+                "lanes": intfc.lanes,
+                "valid_speeds": str(intfc.valid_speeds),
+                "breakout_supported": str(intfc.breakout_supported),
+                "breakout_mode": str(intfc.breakout_mode)
             })
-
-        # Log the dictionary of interface data (for debugging purposes)
-        _logger.debug(f"Interface data to be sent to Pushgateway: {interface_info}")
-
-        # Push metrics to Pushgateway
-        write_to_prometheus(registry=registry)
-
-        _logger.info("Successfully pushed interface data to Prometheus.")
+       
+        write_to_prometheus(registry=intfc_registry)        
+ 
     except Exception as e:
-        _logger.error(f"Error pushing data to Prometheus: {e}")
+        _logger.error(f"Error instering in prometheus: {e}")
 
