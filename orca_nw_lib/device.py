@@ -99,10 +99,13 @@ def discover_device(device_ip:str):
         _logger.info("Discovering device with IP: %s", device_ip)
         device_object = _create_device_graph_object(device_ip)
         insert_devices_in_db(device_object)
+        ## Check if the telemetry DB is influxdb or prometheus for inserting device info.
         if get_telemetry_db() == "influxdb":
             insert_device_info_in_influxdb(device_object)
-        if get_telemetry_db() == "prometheus":
+        elif get_telemetry_db() == "prometheus":
             insert_device_info_in_prometheus(device_ip, device_object)
+        else:
+            _logger.debug("Telemetry DB not configured, skipping device info insertion for IP: %s", device_ip)
 
     except Exception as e:
         _logger.error("Error discovering device with IP %s: %s", device_ip, str(e))
