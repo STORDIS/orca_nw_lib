@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 from orca_nw_lib.device_db import get_device_db_obj, insert_devices_in_db
+from orca_nw_lib.device_info_influxdb import insert_device_info_in_influxdb
 from orca_nw_lib.device_info_promdb import insert_device_info_in_prometheus
 from orca_nw_lib.device_gnmi import (get_device_details_from_device,
                                      get_device_status_from_device)
@@ -101,7 +102,7 @@ def discover_device(device_ip:str):
         if get_telemetry_db() == "influxdb":
             insert_device_info_in_influxdb(device_object)
         if get_telemetry_db() == "prometheus":
-            insert_device_info_in_prometheus(device_object)
+            insert_device_info_in_prometheus(device_ip, device_object)
 
     except Exception as e:
         _logger.error("Error discovering device with IP %s: %s", device_ip, str(e))
