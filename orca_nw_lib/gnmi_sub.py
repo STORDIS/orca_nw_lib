@@ -292,7 +292,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
         mode=SubscriptionList.Mode.Value("STREAM"),
         # encoding=Encoding.Value("PROTO"),
         encoding=Encoding.Value("JSON_IETF"),
-        updates_only=True,
+        # updates_only=True,
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
@@ -506,13 +506,13 @@ def get_subscription_path_for_config_change(device_ip: str):
     for eth in get_all_interfaces_name_of_device_from_db(device_ip) or []:
         subscriptions.append(
             Subscription(
-                path=get_intfc_config_path(eth), mode=SubscriptionMode.TARGET_DEFINED
+                path=get_intfc_config_path(eth), mode=SubscriptionMode.ON_CHANGE
             )
         )
         subscriptions.append(
             Subscription(
                 path=get_oc_ethernet_config_path(eth),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 
@@ -520,7 +520,7 @@ def get_subscription_path_for_config_change(device_ip: str):
         subscriptions.append(
             Subscription(
                 path=get_port_group_speed_path(pg_id),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 

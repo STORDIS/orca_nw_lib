@@ -91,6 +91,5 @@ def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
             
 
             write_to_influx(point=point)
-        print("Successfully inserted discovered interface data into InfluxDB")
     except Exception as e:
         _logger.error(f"Error instering in influxdb: {e}")
