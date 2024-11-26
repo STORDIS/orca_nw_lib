@@ -1,5 +1,3 @@
-from typing import List
-import json
 from datetime import datetime
 
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx

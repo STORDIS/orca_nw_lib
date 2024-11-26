@@ -328,9 +328,10 @@ def discover_interfaces(
             )
             if get_telemetry_db() == "influxdb":
                 insert_device_interfaces_in_influxdb(device, if_data)
- 
-            if get_telemetry_db() == "prometheus":
+            elif get_telemetry_db() == "prometheus":
                  insert_device_interface_in_prometheus(device, if_data)
+            else:
+                _logger.debug("Telemetry DB not configured, skipping interface insertion for IP: %s", device.mgt_ip)
         except Exception as e:
             _logger.error(
                 f"Interface Discovery Failed on device {device_ip}, Reason: {e}"
