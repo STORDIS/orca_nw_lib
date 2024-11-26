@@ -21,7 +21,7 @@ from .stp import discover_stp
 from .stp_port import discover_stp_port
 from .stp_vlan import discover_stp_vlan
 from .vlan import discover_vlan
-from .utils import get_logging, get_networks, ping_ok
+from .utils import get_logging, get_networks, is_grpc_device_listening
 
 _logger = get_logging().getLogger(__name__)
 
@@ -31,7 +31,7 @@ topology = {}
 def _discover_device_and_enable_ifs(device_ip: str):
     report = []
     device_ip = str(device_ip)
-    if not ping_ok(device_ip):
+    if not is_grpc_device_listening(device_ip):
         log_msg = f"Can not discover, Device {device_ip} is not reachable !!"
         _logger.error(log_msg)
         report.append(log_msg)
@@ -97,7 +97,7 @@ def _discover_device_and_lldp_info(device_ip):
             _discover_device_and_lldp_info(nbr_ip)
 
 
-def trigger_discovery(device_ip):
+def trigger_discovery(device_ip, feature_to_discover: DiscoveryFeature = None):
     """
     Trigger discovery for a given device.
 
@@ -112,15 +112,18 @@ def trigger_discovery(device_ip):
     # some links can only be created after all teh topology devices are discovered
     for ip in get_all_devices_ip_from_db() or []:
         create_lldp_relations_in_db(ip)
-        discover_nw_features(ip, DiscoveryFeature.port_channel)
-        discover_nw_features(ip, DiscoveryFeature.vlan)
-        discover_nw_features(ip, DiscoveryFeature.mclag)
-        discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
-        discover_nw_features(ip, DiscoveryFeature.bgp)
-        discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
-        discover_nw_features(ip, DiscoveryFeature.stp)
-        discover_nw_features(ip, DiscoveryFeature.stp_port)
-        discover_nw_features(ip, DiscoveryFeature.stp_vlan)
+        if feature_to_discover:
+            discover_nw_features(ip, feature_to_discover)
+        else:
+            discover_nw_features(ip, DiscoveryFeature.port_channel)
+            discover_nw_features(ip, DiscoveryFeature.vlan)
+            discover_nw_features(ip, DiscoveryFeature.mclag)
+            discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
+            discover_nw_features(ip, DiscoveryFeature.bgp)
+            discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
+            discover_nw_features(ip, DiscoveryFeature.stp)
+            discover_nw_features(ip, DiscoveryFeature.stp_port)
+            discover_nw_features(ip, DiscoveryFeature.stp_vlan)
         gnmi_subscribe(ip)
 
 

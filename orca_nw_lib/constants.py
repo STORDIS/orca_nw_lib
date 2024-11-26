@@ -4,6 +4,8 @@ device_gnmi_port='device_gnmi_port'
 device_username='device_username'
 device_password='device_password'
 device_conn_timeout='device_conn_timeout'
+request_timeout='request_timeout'
+ping_timeout='ping_timeout'
 
 #neo4j
 neo4j_protocol='neo4j_protocol'
