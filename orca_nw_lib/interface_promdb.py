@@ -158,4 +158,4 @@ def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
         write_to_prometheus(registry=intfc_registry) 
         _logger.info("Interface info successfully pushed to Pushgateway for IP: %s", device.mgt_ip)       
     except Exception as e:
-        _logger.error(f"Error instering in prometheus: {e}")
+        _logger.error(f"Error inserting in prometheus: {e}")
