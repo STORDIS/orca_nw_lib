@@ -86,8 +86,6 @@ def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
                 .field("breakout_mode", intfc.breakout_mode) \
                 
             write_to_influx(point=point)
-
-            
         _logger.debug(f"Successfully inserted discovered interface data into InfluxDB")
     except Exception as e:
         _logger.error(f"Error instering in influxdb: {e}")

@@ -38,6 +38,11 @@ in_utilization = Counter('in_utilization', 'Sonic Interface ethernets counters: 
 out_unicast_pkts = Counter('out_unicast_pkts', 'Sonic Interface ethernets counters: outgoing unicast packets', labelnames=["device_ip", "ether_name"], registry=registry)
 
 
+# Create Info metric for discoverd interface data.
+intfc_registry = CollectorRegistry()
+interface_info = Info('interface_info', 'Discoverd Interface information',
+                            labelnames=["device_ip", "ether_name"],
+                            registry=intfc_registry)
 
 def handle_interface_counters_promdb(device_ip: str, resp: SubscribeResponse):
     """
@@ -113,9 +118,9 @@ def handle_interface_counters_promdb(device_ip: str, resp: SubscribeResponse):
     try:
         write_to_prometheus(registry=registry)
     except Exception as e:
-        _logger.error(f"Error instering in prometheus: {e}")
-
-
+        _logger.error(f"Error insterting in prometheus: {e}")
+ 
+ 
 # Function to insert discoverd interface info to prometheus
 def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
     """
@@ -133,7 +138,7 @@ def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
         _logger.error("Interfaces dictionary is required.")
         return
     try:
-        for intfc, sub_intfc in interfaces.items():
+        for intfc in interfaces.items():
             interface_info.labels(device_ip=device.mgt_ip, ether_name=intfc.name).info({
                 "interface_name": intfc.name,
                 "enabled": str(intfc.enabled),
@@ -150,9 +155,7 @@ def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
                 "breakout_supported": str(intfc.breakout_supported),
                 "breakout_mode": str(intfc.breakout_mode)
             })
-       
-        write_to_prometheus(registry=intfc_registry)        
- 
+        write_to_prometheus(registry=intfc_registry) 
+        _logger.info("Interface info successfully pushed to Pushgateway for IP: %s", device.mgt_ip)       
     except Exception as e:
         _logger.error(f"Error instering in prometheus: {e}")
-

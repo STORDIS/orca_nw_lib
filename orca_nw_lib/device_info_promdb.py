@@ -1,14 +1,16 @@
+import logging
 from prometheus_client import CollectorRegistry, Info
 from orca_nw_lib.promdb_utils import write_to_prometheus
- 
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
  
 # Create a registry for this device
 registry = CollectorRegistry()
  
 # Define an Info metric for device details
 info_device_details = Info('device_info', 'Detailed information about the device', labelnames=["device_ip"], registry=registry)
- 
- 
  
 def insert_device_info_in_prometheus(device_ip:str, device_info):
     """
@@ -28,11 +30,7 @@ def insert_device_info_in_prometheus(device_ip:str, device_info):
             "device_type": device_info.type,
             "system_status": str(1 if device_info.system_status == "System is ready" else 0)
         })
- 
-        # Push metrics to the Pushgateway
         write_to_prometheus(registry=registry)
- 
-        print("Metrics successfully pushed to Pushgateway for device")
- 
+        logger.info("Metrics successfully pushed to Pushgateway for device")
     except Exception as e:
-        print(f"Failed to push metrics to Pushgateway for device {device_info.img_name}: {e}")
+        logger.error(f"Failed to push metrics to Pushgateway for device: {e}")
