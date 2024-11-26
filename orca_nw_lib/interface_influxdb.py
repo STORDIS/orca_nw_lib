@@ -1,21 +1,12 @@
-from typing import List
 from datetime import datetime
 
-from orca_nw_lib.gnmi_sub import get_running_thread_names, get_subscription_path_for_monitoring, gnmi_unsubscribe, subscribe_to_path, device_sync_responses
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 from orca_nw_lib.utils import get_logging
 from .gnmi_pb2 import (
-    Encoding,
-    SubscribeRequest,
     SubscribeResponse,
-    Subscription,
-    SubscriptionList,
 )
-from orca_nw_lib.gnmi_util import getGrpcStubs
-from orca_nw_lib.interface_gnmi import get_interface_base_path
 
-from typing import List
-from .gnmi_pb2 import SubscribeResponse, Subscription
+from .gnmi_pb2 import SubscribeResponse
 from .gnmi_util import get_logging
 from .gnmi_pb2 import SubscribeResponse
 from orca_nw_lib.graph_db_models import Device
