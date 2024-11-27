@@ -2,6 +2,10 @@ import time
 from threading import Thread
 import threading
 from typing import List
+
+from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
+from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
+from orca_nw_lib.utils import get_telemetry_db
 from .common import PortFec, Speed
 from .device_db import get_all_devices_ip_from_db, update_device_status
 from .device_gnmi import get_device_state_url
@@ -286,8 +290,9 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     subscriptionlist = SubscriptionList(
         subscription=subscriptions,
         mode=SubscriptionList.Mode.Value("STREAM"),
-        encoding=Encoding.Value("PROTO"),
-        updates_only=True,
+        # encoding=Encoding.Value("PROTO"),
+        encoding=Encoding.Value("JSON_IETF"),
+        # updates_only=True,
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
@@ -313,6 +318,26 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         thread.start()
                         # handle_interface_config_update(device_ip, resp)
+
+                        # Check the telemetry db and push the data.  
+                        if get_telemetry_db() == "influxdb":
+                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
+                            thread_influxdb = Thread(
+                                target=handle_interface_counters_influxdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_influxdb.start()
+                        elif get_telemetry_db() == "prometheus":
+                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
+                            thread_promdb = Thread(
+                                target=handle_interface_counters_promdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_promdb.start()
+
+
                     if ele.name == _get_port_groups_base_path().elem[0].name:
                         ## Its a port group config update
                         _logger.debug(
@@ -364,7 +389,6 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
         except Exception as e:
             _logger.error(e)
             raise
-
 
 """
 dictionary to store the sync response received from the device.
@@ -428,8 +452,9 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         return True
     else:
         subscriptions = get_subscription_path_for_config_change(device_ip)
-        ## add get_subscription_path_for_config_change to subscritions
-        # subscriptions += get_subscription_path_for_monitoring(device_ip)
+        ## add get_subscription_path_for_monitoring to subscritions if telemetry_db is true
+        if get_telemetry_db():
+            subscriptions += get_subscription_path_for_monitoring(device_ip)
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
@@ -444,6 +469,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
             daemon=True,
         )
         thread.start()
+
         _logger.debug("Currently running threads %s", get_running_thread_names())
         if thread_name in get_running_thread_names():
             _logger.debug(
@@ -478,13 +504,13 @@ def get_subscription_path_for_config_change(device_ip: str):
     for eth in get_all_interfaces_name_of_device_from_db(device_ip) or []:
         subscriptions.append(
             Subscription(
-                path=get_intfc_config_path(eth), mode=SubscriptionMode.TARGET_DEFINED
+                path=get_intfc_config_path(eth), mode=SubscriptionMode.ON_CHANGE
             )
         )
         subscriptions.append(
             Subscription(
                 path=get_oc_ethernet_config_path(eth),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 
@@ -492,7 +518,7 @@ def get_subscription_path_for_config_change(device_ip: str):
         subscriptions.append(
             Subscription(
                 path=get_port_group_speed_path(pg_id),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 

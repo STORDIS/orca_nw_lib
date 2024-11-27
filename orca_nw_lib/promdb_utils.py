@@ -33,15 +33,14 @@ def init_prometheus_client():
     """
     Initialize prometheus client
     Returns:
-        Prometheus Client object http://localhost:9091/metrics/job/pushgateway
+        Prometheus Client object http://localhost:9091
     """
     global _prometheus_url
-    _prometheus_url = f"http://{os.environ.get(const.promdb_pushgateway_url, _settings.get(const.promdb_pushgateway_url))}/metrics/job/{os.environ.get(const.promdb_job, _settings.get(const.promdb_job))}"
+    _prometheus_url = f"http://{os.environ.get(const.promdb_pushgateway_url, _settings.get(const.promdb_pushgateway_url))}"
     return _prometheus_url
 
 
-
-def write_to_prometheus(registry: CollectorRegistry):
+def write_to_prometheus(registry: CollectorRegistry = None):
     """
     Pushes data to the prometheus pushgateway.
 
@@ -51,7 +50,7 @@ def write_to_prometheus(registry: CollectorRegistry):
         None
     """
     push_to_gateway(
-        _prometheus_url, 
+         gateway= _prometheus_url, 
         job= os.environ.get(const.promdb_job, _settings.get(const.promdb_job)), 
         registry= registry
     )
