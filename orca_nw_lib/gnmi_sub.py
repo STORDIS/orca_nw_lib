@@ -328,9 +328,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                                 daemon=True,
                             )
                             thread_influxdb.start()
-                            
-
-                        if get_telemetry_db() == "prometheus":
+                        elif get_telemetry_db() == "prometheus":
                             _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
                             thread_promdb = Thread(
                                 target=handle_interface_counters_promdb,
