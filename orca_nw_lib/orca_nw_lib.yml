@@ -29,8 +29,8 @@ neo4j_password: "password"
 # neo4j_user: "neo4j"
 # neo4j_password: "as8d76asd868a9sd6fsa89f6as9d86asd98f6ss6"
 
-## variables for monsoon2.0
-telemetry_db: "influxdb" # influxdb | prometheus |  "" 
+## When telemetry db is selected make sure it is running with provided credentials.
+telemetry_db: "" # influxdb | prometheus |  "" 
 
 ## InfluxDB credentials used by orca_nw_lib
 influxdb_url: "localhost:8086"
