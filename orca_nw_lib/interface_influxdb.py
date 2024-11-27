@@ -25,8 +25,6 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     ether = ""
     point = create_point("interface_counters")
     device_pnt = point.tag("device_ip", device_ip)
-    point = create_point("interface_counters")
-    device_pnt = point.tag("device_ip", device_ip)
     for ele in resp.update.prefix.elem:
        if ele.name == "interface":
             ether = ele.key.get("name")
