@@ -1,16 +1,9 @@
-from datetime import datetime
+import datetime
 
-from orca_nw_lib.influxdb_utils import create_point, write_to_influx
-from orca_nw_lib.utils import get_logging
-from .gnmi_pb2 import (
-    SubscribeResponse,
-)
-
-from .gnmi_pb2 import SubscribeResponse
-from .gnmi_util import get_logging
 from .gnmi_pb2 import SubscribeResponse
 from orca_nw_lib.graph_db_models import Device
-
+from orca_nw_lib.influxdb_utils import create_point, write_to_influx
+from .gnmi_util import get_logging
 
 _logger = get_logging().getLogger(__name__)
 
@@ -45,7 +38,7 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
             value = float(u.val.uint_val)
             ether_pnt.field(key, value)
         point.field("device_ip", device_ip)
-    point.time(datetime.utcnow())
+    point.time(datetime.datetime.now(datetime.timezone.utc))
     write_to_influx(point=point)
     _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
     
@@ -87,7 +80,7 @@ def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
                 .field("lanes", intfc.lanes) \
                 .field("breakout_supported", intfc.breakout_supported) \
                 .field("valid_speeds", intfc.valid_speeds) \
-                .field("breakout_mode", intfc.breakout_mode) \
+                .field("breakout_mode", intfc.breakout_mode)
             
 
             write_to_influx(point=point)
