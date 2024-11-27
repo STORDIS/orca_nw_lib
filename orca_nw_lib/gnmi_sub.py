@@ -290,8 +290,9 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
     subscriptionlist = SubscriptionList(
         subscription=subscriptions,
         mode=SubscriptionList.Mode.Value("STREAM"),
-        encoding=Encoding.Value("PROTO"),
-        updates_only=True,
+        # encoding=Encoding.Value("PROTO"),
+        encoding=Encoding.Value("JSON_IETF"),
+        # updates_only=True,
     )
 
     sub_req = SubscribeRequest(subscribe=subscriptionlist)
@@ -317,6 +318,26 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         thread.start()
                         # handle_interface_config_update(device_ip, resp)
+
+                        # Check the telemetry db and push the data.  
+                        if get_telemetry_db() == "influxdb":
+                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
+                            thread_influxdb = Thread(
+                                target=handle_interface_counters_influxdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_influxdb.start()
+                        elif get_telemetry_db() == "prometheus":
+                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
+                            thread_promdb = Thread(
+                                target=handle_interface_counters_promdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_promdb.start()
+
+
                     if ele.name == _get_port_groups_base_path().elem[0].name:
                         ## Its a port group config update
                         _logger.debug(
@@ -368,61 +389,6 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
         except Exception as e:
             _logger.error(e)
             raise
-
-
-# Modifed handle_update function to insert interface counters to telemetry DB:
-def handle_telemetry_notification(device_ip: str, subscriptions: List[Subscription]):
-    device_gnmi_stub = getGrpcStubs(device_ip)
-    subscriptionlist = SubscriptionList(
-            subscription=subscriptions,
-            mode=SubscriptionList.Mode.Value("STREAM"),
-            encoding=Encoding.Value("JSON_IETF"),
-        )
-    sub_req = SubscribeRequest(subscribe=subscriptionlist)
-    subscription = device_gnmi_stub.Subscribe(subscribe_to_path(sub_req))
-    global gnmi_subscriptions
-    gnmi_subscriptions[device_ip] = subscription
-    for resp in subscription:
-        try:
-            if not resp.sync_response:
-                for ele in resp.update.prefix.elem:
-                    if ele.name == get_interface_base_path().elem[0].name:
-                        _logger.debug("gNMI subscription interface counters received from %s -> %s",
-                                      device_ip, 
-                                      resp,
-                                    )
-                        if get_telemetry_db() == "influxdb":
-                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
-                            thread = Thread(
-                                target=handle_interface_counters_influxdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread.start()
-                            
-
-                        if get_telemetry_db() == "prometheus":
-                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
-                            thread = Thread(
-                                target=handle_interface_counters_promdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread.start()
-            
-            elif resp.sync_response:
-                _logger.info("gNMI subscription sync response received from %s -> %s", device_ip, resp,)
-                device_sync_responses[device_ip] = resp.sync_response
-                _logger.debug("Subscription sync response status for devices %s",device_sync_responses,)
-                   
-            else:
-                device_sync_responses[device_ip] = resp.sync_response
-                
-        except Exception as e:
-            _logger.error(f"Error processing subscription response: {e}")
-
-
-
 
 """
 dictionary to store the sync response received from the device.
@@ -500,6 +466,9 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         return True
     else:
         subscriptions = get_subscription_path_for_config_change(device_ip)
+        ## add get_subscription_path_for_monitoring to subscritions if telemetry_db is true
+        if get_telemetry_db():
+            subscriptions += get_subscription_path_for_monitoring(device_ip)
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
@@ -515,17 +484,6 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         )
         thread.start()
 
-        # If telemetry_db has value then start to push interface counters
-        if get_telemetry_db():
-            ## add get_subscription_path_for_monitoring to subscritions
-            infc_conts_subscriptions = get_subscription_path_for_monitoring(device_ip)
-            thread = Thread(
-            name=telemetry_thread_name,
-            target=handle_telemetry_notification,
-            args=(device_ip, infc_conts_subscriptions),
-            daemon=True,
-            )
-            thread.start()
         _logger.debug("Currently running threads %s", get_running_thread_names())
         if thread_name in get_running_thread_names():
             _logger.debug(
@@ -560,13 +518,13 @@ def get_subscription_path_for_config_change(device_ip: str):
     for eth in get_all_interfaces_name_of_device_from_db(device_ip) or []:
         subscriptions.append(
             Subscription(
-                path=get_intfc_config_path(eth), mode=SubscriptionMode.TARGET_DEFINED
+                path=get_intfc_config_path(eth), mode=SubscriptionMode.ON_CHANGE
             )
         )
         subscriptions.append(
             Subscription(
                 path=get_oc_ethernet_config_path(eth),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 
@@ -574,7 +532,7 @@ def get_subscription_path_for_config_change(device_ip: str):
         subscriptions.append(
             Subscription(
                 path=get_port_group_speed_path(pg_id),
-                mode=SubscriptionMode.TARGET_DEFINED,
+                mode=SubscriptionMode.ON_CHANGE,
             )
         )
 

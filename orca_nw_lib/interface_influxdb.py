@@ -1,5 +1,7 @@
-from datetime import datetime
+import datetime
 
+from .gnmi_pb2 import SubscribeResponse
+from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 from .gnmi_util import get_logging
 from .gnmi_pb2 import SubscribeResponse
@@ -9,6 +11,7 @@ from orca_nw_lib.graph_db_models import Device
 _logger = get_logging().getLogger(__name__)
 
 
+def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
 def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     """
     Sends the subscription interface counters metrics received from a device to the InfluxDB.
@@ -23,8 +26,13 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     ether = ""
     point = create_point("interface_counters")
     device_pnt = point.tag("device_ip", device_ip)
+    point = create_point("interface_counters")
+    device_pnt = point.tag("device_ip", device_ip)
     for ele in resp.update.prefix.elem:
        if ele.name == "interface":
+        ether = ele.key.get("name")
+        ether_pnt = device_pnt.tag("ether_name", ether)
+        break
         ether = ele.key.get("name")
         ether_pnt = device_pnt.tag("ether_name", ether)
         break
@@ -33,14 +41,24 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
         return
     
     # Insert each intfc cntrs update
+    # Insert each intfc cntrs update
     for u in resp.update.update:
         for ele in u.path.elem:
             key = ele.name
             value = float(u.val.uint_val)
             ether_pnt.field(key, value)
         point.field("device_ip", device_ip)
-    point.time(datetime.utcnow())
+    point.time(datetime.datetime.now(datetime.timezone.utc))
     write_to_influx(point=point)
+    _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
+    
+
+
+# GET function that inserts the discoverd device interface into inflixdb
+def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
+    """
+    Retrieves discovered interface data and inserts into influx DB.
+    
     _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
     
 
@@ -81,10 +99,9 @@ def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
                 .field("lanes", intfc.lanes) \
                 .field("breakout_supported", intfc.breakout_supported) \
                 .field("valid_speeds", intfc.valid_speeds) \
-                .field("breakout_mode", intfc.breakout_mode) \
-                
+                .field("breakout_mode", intfc.breakout_mode)
+            
+
             write_to_influx(point=point)
-        _logger.debug(f"Successfully inserted discovered interface data into InfluxDB")
     except Exception as e:
         _logger.error(f"Error instering in influxdb: {e}")
-
