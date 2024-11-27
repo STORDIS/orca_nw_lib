@@ -12,7 +12,6 @@ _logger = get_logging().getLogger(__name__)
 
 
 def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
-def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     """
     Sends the subscription interface counters metrics received from a device to the InfluxDB.
     
@@ -52,16 +51,6 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     write_to_influx(point=point)
     _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
     
-
-
-# GET function that inserts the discoverd device interface into inflixdb
-def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
-    """
-    Retrieves discovered interface data and inserts into influx DB.
-    
-    _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
-    
-
 
 # GET function that inserts the discoverd device interface into inflixdb
 def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):
