@@ -4,6 +4,9 @@ from .gnmi_pb2 import SubscribeResponse
 from orca_nw_lib.graph_db_models import Device
 from orca_nw_lib.influxdb_utils import create_point, write_to_influx
 from .gnmi_util import get_logging
+from .gnmi_pb2 import SubscribeResponse
+from orca_nw_lib.graph_db_models import Device
+
 
 _logger = get_logging().getLogger(__name__)
 
@@ -24,9 +27,9 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     device_pnt = point.tag("device_ip", device_ip)
     for ele in resp.update.prefix.elem:
        if ele.name == "interface":
-        ether = ele.key.get("name")
-        ether_pnt = device_pnt.tag("ether_name", ether)
-        break
+            ether = ele.key.get("name")
+            ether_pnt = device_pnt.tag("ether_name", ether)
+            break
     if not ether:
         _logger.debug("Ethernet interface not found in gNMI subscription response from %s",device_ip,)
         return
@@ -42,7 +45,6 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     write_to_influx(point=point)
     _logger.debug("gNMI subscription interface counters received from %s ",device_ip)
     
-
 
 # GET function that inserts the discoverd device interface into inflixdb
 def insert_device_interfaces_in_influxdb(device: Device, interfaces: dict):

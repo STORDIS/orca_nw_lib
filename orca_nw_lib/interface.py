@@ -2,6 +2,9 @@ import datetime
 from typing import Dict, List
 import pytz
 
+from orca_nw_lib.interface_influxdb import insert_device_interfaces_in_influxdb
+from orca_nw_lib.interface_promdb import insert_device_interface_in_prometheus
+
 from .common import IFMode, Speed, PortFec
 from .device_db import get_device_db_obj
 from .gnmi_sub import check_gnmi_subscription_and_apply_config
@@ -30,7 +33,7 @@ from .portgroup_db import (
     get_port_group_id_of_device_interface_from_db,
     get_port_group_of_if_from_db,
 )
-from .utils import get_logging, get_if_alias
+from .utils import get_logging, get_if_alias, get_telemetry_db
 
 _logger = get_logging().getLogger(__name__)
 
@@ -319,9 +322,16 @@ def discover_interfaces(
             _logger.info(
                 f"Discovering {intfc_name if intfc_name else 'all interfaces'} of device {device}."
             )
+            if_data = _create_interface_graph_objects(device.mgt_ip, intfc_name)
             insert_device_interfaces_in_db(
-                device, _create_interface_graph_objects(device.mgt_ip, intfc_name)
+                device, if_data
             )
+            if get_telemetry_db() == "influxdb":
+                insert_device_interfaces_in_influxdb(device, if_data)
+            elif get_telemetry_db() == "prometheus":
+                 insert_device_interface_in_prometheus(device, if_data)
+            else:
+                _logger.debug("Telemetry DB not configured, skipping interface insertion for IP: %s", device.mgt_ip)
         except Exception as e:
             _logger.error(
                 f"Interface Discovery Failed on device {device_ip}, Reason: {e}"
