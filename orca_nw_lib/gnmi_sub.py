@@ -421,19 +421,6 @@ def get_subscription_thread_name(device_ip: str):
     return f"subscription_thread_{device_ip}"
 
 
-def get_telemetry_thread_name(device_ip: str):
-    """
-    Returns the name of the telemetry thread for the given device IP.
-
-    Parameters:
-    device_ip (str): The IP address of the device.
-
-    Returns:
-    str: The name of the subscription telemetry thread.
-    """
-    return f"telemetry_subscription_thread_{device_ip}"
-
-
 def get_running_thread_names():
     running_threads = threading.enumerate()
     thread_names = [thread.name for thread in running_threads]
@@ -453,7 +440,6 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
     """
 
     thread_name = get_subscription_thread_name(device_ip)
-    telemetry_thread_name = get_telemetry_thread_name(device_ip)
     if force_resubscribe:
         _logger.info(
             "The force subscription is true, first removing the existing subscription if any."
