@@ -29,17 +29,13 @@ def handle_interface_counters_influxdb(device_ip: str, resp: SubscribeResponse):
     device_pnt = point.tag("device_ip", device_ip)
     for ele in resp.update.prefix.elem:
        if ele.name == "interface":
-        ether = ele.key.get("name")
-        ether_pnt = device_pnt.tag("ether_name", ether)
-        break
-        ether = ele.key.get("name")
-        ether_pnt = device_pnt.tag("ether_name", ether)
-        break
+            ether = ele.key.get("name")
+            ether_pnt = device_pnt.tag("ether_name", ether)
+            break
     if not ether:
         _logger.debug("Ethernet interface not found in gNMI subscription response from %s",device_ip,)
         return
     
-    # Insert each intfc cntrs update
     # Insert each intfc cntrs update
     for u in resp.update.update:
         for ele in u.path.elem:
