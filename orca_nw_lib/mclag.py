@@ -135,10 +135,11 @@ def discover_mclag(device_ip: str = None):
             _logger.info(f"Discovering MCLAG on device {device}.")
             mclag_data = _create_mclag_graph_objects(device.mgt_ip)
             insert_device_mclag_in_db(device, mclag_data)
+            
 
-            # if not mclag_data:  # Check if mclag_data is empty
-            #     _logger.debug(f"No MCLAG data found for device with management IP: {device.mgt_ip}.")
-            #     continue
+            if not mclag_data:  # Check if mclag_data is empty
+                _logger.info(f"No MCLAG data found for device with management IP: {device.mgt_ip}.")
+                continue
 
             if get_telemetry_db() == "prometheus":
                 insert_mclag_info_in_prometheus(device, mclag_data)
