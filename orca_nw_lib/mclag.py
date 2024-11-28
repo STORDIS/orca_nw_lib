@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Union
 
-from orca_nw_lib.utils import get_logging
+from orca_nw_lib.mclag_influxdb import insert_mclag_info_in_influxdb
+from orca_nw_lib.mclag_promdb import insert_mclag_info_in_prometheus
+from orca_nw_lib.utils import get_logging, get_telemetry_db
 from .common import MclagFastConvergence
 
 from .device_db import get_device_db_obj
@@ -131,9 +133,22 @@ def discover_mclag(device_ip: str = None):
     for device in devices:
         try:
             _logger.info(f"Discovering MCLAG on device {device}.")
-            insert_device_mclag_in_db(
-                device, _create_mclag_graph_objects(device.mgt_ip)
-            )
+            mclag_data = _create_mclag_graph_objects(device.mgt_ip)
+            insert_device_mclag_in_db(device, mclag_data)
+
+            # if not mclag_data:  # Check if mclag_data is empty
+            #     _logger.debug(f"No MCLAG data found for device with management IP: {device.mgt_ip}.")
+            #     continue
+
+            if get_telemetry_db() == "prometheus":
+                insert_mclag_info_in_prometheus(device, mclag_data)
+            elif get_telemetry_db() == "influxdb":
+                insert_mclag_info_in_influxdb(device, mclag_data)
+            else:
+                _logger.debug(
+                    "Telemetry DB not configured, skipping MCLAG data insertion for IP: %s", 
+                    device.mgt_ip
+                )
         except Exception as e:
             _logger.error(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
             raise
