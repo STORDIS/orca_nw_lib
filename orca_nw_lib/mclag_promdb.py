@@ -54,12 +54,3 @@ def insert_mclag_info_in_prometheus(device_ip:str, mclag_to_intfc_list):
 
     except Exception as e:
         logger.error(f"Error sending metrics to Pushgateway: {e}")
-
-
-
-# for domain_id, mclag in mclag_to_intfc_list.items():
-#             info_metric = Info(
-#                 "mclag_domain_info", 
-#                 "MCLAG domain information", 
-#                 registry=registry
-#             )
