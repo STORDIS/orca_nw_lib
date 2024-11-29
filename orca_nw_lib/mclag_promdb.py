@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 registry = CollectorRegistry()
 
 def insert_mclag_info_in_prometheus(device_ip:str, mclag_to_intfc_list):
-    # Define an Info metric for device details
     """
     Converts the MCLAG object into Prometheus metrics and pushes them to the Pushgateway.
     
