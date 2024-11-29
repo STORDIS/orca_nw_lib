@@ -136,12 +136,18 @@ def discover_mclag(device_ip: str = None):
             mclag_data = _create_mclag_graph_objects(device.mgt_ip)
             insert_device_mclag_in_db(device, mclag_data)
             
-            if mclag_data and get_telemetry_db() == "influxdb":
-                insert_mclag_info_in_influxdb(device_ip, mclag_data)
-            elif mclag_data and get_telemetry_db() == "prometheus":
-                insert_mclag_info_in_prometheus(device_ip, mclag_data)
+            if mclag_data:
+                if get_telemetry_db() == "influxdb":
+                    _logger.debug("Inserting MCLAG info in influxdb for IP: %s", device_ip)
+                    insert_mclag_info_in_influxdb(device_ip, mclag_data)
+                elif get_telemetry_db() == "prometheus":
+                    _logger.debug("Inserting MCLAG info in prometheus for IP: %s", device_ip)
+                    insert_mclag_info_in_prometheus(device_ip, mclag_data)
+                else:
+                    _logger.debug("Telemetry DB not configured, skipping mclag info insertion for IP: %s", device_ip)
             else:
-                _logger.info("Empty mclag data recived")
+                _logger.debug("No MCLAG data found for IP: %s", device_ip)
+                
         except Exception as e:
             _logger.error(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
             raise
