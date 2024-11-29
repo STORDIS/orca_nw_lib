@@ -28,10 +28,6 @@ def insert_mclag_info_in_prometheus(device_ip:str, mclag_to_intfc_list):
     info_mclag_details = Info('mclag_domain_info', 'MCLAG domain information', labelnames=["device_ip"], registry=registry)
  
     try:
-         # Debugging the keys in the dictionary
-        logger.debug(f"mclag_to_intfc_list: {mclag_to_intfc_list}")
-        logger.debug(f"Available keys in mclag_to_intfc_list: {list(mclag_to_intfc_list.keys())}")
-        
         info_mclag_details.labels(device_ip=device_ip).info({
             "domain_id": str(mclag_to_intfc_list.get("domain_id", "")),
             "keepalive_interval": mclag_to_intfc_list.get("keepalive_interval", ""),
@@ -50,7 +46,6 @@ def insert_mclag_info_in_prometheus(device_ip:str, mclag_to_intfc_list):
 
         # Push to Prometheus Pushgateway
         write_to_prometheus(registry=registry)
-        print(f"Metrics pushed to Pushgateway successfully.")
-
+        logger.info("Metrics pushed to Pushgateway successfully for IP: %s", device_ip)
     except Exception as e:
         logger.error(f"Error sending metrics to Pushgateway: {e}")

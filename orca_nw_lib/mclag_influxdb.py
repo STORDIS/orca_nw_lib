@@ -14,7 +14,6 @@ def insert_mclag_info_in_influxdb(device: Device, mclag_to_intfc_list):
         device (Device): Object to type Device.
         mclag_to_intfc_list (dict): Dictionary of key value pairs.
     """
-    print("MCLAG DOMAIN INFO: ", mclag_to_intfc_list)
     try:
         point = create_point("discovered_mclag")
         for mclag in mclag_to_intfc_list.items() or []:
@@ -34,7 +33,6 @@ def insert_mclag_info_in_influxdb(device: Device, mclag_to_intfc_list):
             point_tag.field("fast_convergence", mclag.fast_convergence)
            
             write_to_influx(point=point)
-            print("Metrics pushed to InfluxDB successfully.")
- 
+            logger.info("Metrics pushed to InfluxDB successfully.")
     except Exception as e:
         logger.error(f"Error instering in influxdb: {e}")
