@@ -166,9 +166,9 @@ def install_image_on_device(
         is_grpc_device_listening(device_ip, max_retries=10, interval=10)
 
         # Trigger discovery if discover_also is True
-        if discover_also:
-            _logger.info("Triggering discovery on %s", device_ip)
-            trigger_discovery(device_ip)
+        # if discover_also:
+        #     _logger.info("Triggering discovery on %s", device_ip)
+        #     trigger_discovery(device_ip)
         return {"output": output, "error": error}
     except Exception as e:
         _logger.error("Failed to install image on device %s: %s", device_ip, e)
