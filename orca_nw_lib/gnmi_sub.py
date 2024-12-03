@@ -5,6 +5,9 @@ from typing import List
 
 from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
 from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
+from orca_nw_lib.system_gnmi import get_subscription_path_for_system, get_system_base_path
+from orca_nw_lib.system_influxdb import handle_system_influxdb
+from orca_nw_lib.system_promdb import handle_system_promdb
 from orca_nw_lib.utils import get_telemetry_db
 from .common import PortFec, Speed
 from .device_db import get_all_devices_ip_from_db, update_device_status
@@ -367,6 +370,34 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_device_state(device_ip, resp)
+
+                    if ele.name == get_system_base_path().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription system metric received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # handle_system_influxdb(device_ip, resp)
+                        
+                        # Check the telemetry db and push the data.  
+                        if get_telemetry_db() == "influxdb":
+                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
+                            thread_influxdb = Thread(
+                                target=handle_system_influxdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_influxdb.start()
+                            
+                        if get_telemetry_db() == "prometheus":
+                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
+                            thread_promdb = Thread(
+                                target=handle_system_promdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_promdb.start()
+
             elif resp.sync_response:
                 global device_sync_responses
                 _logger.info(
@@ -455,6 +486,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         ## add get_subscription_path_for_monitoring to subscritions if telemetry_db is true
         if get_telemetry_db():
             subscriptions += get_subscription_path_for_monitoring(device_ip)
+            subscriptions += get_subscription_path_for_system()
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",

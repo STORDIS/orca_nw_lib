@@ -101,7 +101,7 @@ def discover_device(device_ip:str):
         insert_devices_in_db(device_object)
         ## Check if the telemetry DB is influxdb or prometheus for inserting device info.
         if get_telemetry_db() == "influxdb":
-            insert_device_info_in_influxdb(device_object)
+            insert_device_info_in_influxdb(device_ip, device_object)
         elif get_telemetry_db() == "prometheus":
             insert_device_info_in_prometheus(device_ip, device_object)
         else:
