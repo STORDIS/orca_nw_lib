@@ -131,6 +131,7 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
         if is_grpc_device_listening(device_ip):
             _logger.info("Getting device details from %s", device_ip)
             details = get_device_details_from_device(device_ip)
+            details["mgt_ip"] = device_ip
             return True, details
         return False, "SONiC not found"
     except Exception as e:
@@ -286,7 +287,7 @@ def switch_image_on_device(device_ip: str, image_name: str):
             # Trigger discovery if discover_also is True
             try:
                 _logger.info("Triggering discovery on device %s.", device_ip)
-                trigger_discovery(device_ip)
+                trigger_discovery(device_ips=[device_ip])
             except Exception as e:
                 _logger.error(
                     "Failed to trigger discovery on device %s. Error: %s", device_ip, e
