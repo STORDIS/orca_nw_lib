@@ -3,9 +3,11 @@ from threading import Thread
 import threading
 from typing import List
 
+from orca_nw_lib.crm_influxdb import handle_crm_stats_influxdb
+from orca_nw_lib.crm_promdb import handle_crm_stats_promdb
 from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
 from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
-from orca_nw_lib.system_gnmi import get_subscription_path_for_system, get_system_base_path
+from orca_nw_lib.system_gnmi import get_crm_stats_path, get_subscription_path_for_crm_stats, get_subscription_path_for_system, get_system_base_path
 from orca_nw_lib.system_influxdb import handle_system_influxdb
 from orca_nw_lib.system_promdb import handle_system_promdb
 from orca_nw_lib.utils import get_telemetry_db
@@ -321,8 +323,8 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         thread.start()
                         # handle_interface_config_update(device_ip, resp)
-
-                        # Check the telemetry db and push the data.  
+                        
+                        # Checks for CRM Statistics and inserts data to db  
                         if get_telemetry_db() == "influxdb":
                             _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
                             thread_influxdb = Thread(
@@ -371,32 +373,56 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         handle_device_state(device_ip, resp)
 
+                    # checks for system metric and inserts data to db 
                     if ele.name == get_system_base_path().elem[0].name:
                         _logger.debug(
                             "gNMI subscription system metric received from %s -> %s",
                             device_ip,
                             resp,
                         )
-                        # handle_system_influxdb(device_ip, resp)
-                        
                         # Check the telemetry db and push the data.  
                         if get_telemetry_db() == "influxdb":
-                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
+                            _logger.debug("gNMI subscription system metric to influxdb %s",device_ip,)
                             thread_influxdb = Thread(
                                 target=handle_system_influxdb,
                                 args=(device_ip, resp),
                                 daemon=True,
                             )
                             thread_influxdb.start()
-                            
-                        if get_telemetry_db() == "prometheus":
-                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
+                        elif get_telemetry_db() == "prometheus":
+                            _logger.debug("gNMI subscription system metric to prometheus %s",device_ip,)
                             thread_promdb = Thread(
                                 target=handle_system_promdb,
                                 args=(device_ip, resp),
                                 daemon=True,
                             )
                             thread_promdb.start()
+
+                    # checks for CRM Statistics and inserts data to db 
+                    if ele.name == get_crm_stats_path().elem[1].name:
+                        _logger.debug(
+                            "gNMI subscription crm statistics update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # Check the telemetry db and push the data.
+                        if get_telemetry_db() == "influxdb":
+                            _logger.debug("gNMI subscription crm stats to influxdb %s",device_ip,)
+                            thread_influxdb = Thread(
+                                target=handle_crm_stats_influxdb,
+                                args=(device_ip, resp),
+                                daemon=True,
+                            )
+                            thread_influxdb.start()
+                        # elif get_telemetry_db() == "prometheus":
+                        #     _logger.debug("gNMI subscription system metric to prometheus %s",device_ip,)
+                        #     thread_promdb = Thread(
+                        #         target=handle_crm_stats_promdb,
+                        #         args=(device_ip, resp),
+                        #         daemon=True,
+                        #     )
+                        #     thread_promdb.start()
+                        
 
             elif resp.sync_response:
                 global device_sync_responses
@@ -487,6 +513,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         if get_telemetry_db():
             subscriptions += get_subscription_path_for_monitoring(device_ip)
             subscriptions += get_subscription_path_for_system()
+            subscriptions += get_subscription_path_for_crm_stats()
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
