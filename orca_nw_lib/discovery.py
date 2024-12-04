@@ -100,7 +100,8 @@ def _discover_device_and_lldp_info(device_ip):
 
 def trigger_discovery(device_ip, feature_to_discover: DiscoveryFeature = None):
     """
-    Trigger discovery for a given device.
+    Trigger the discovery process for a device. Discover the device with the features specified.
+    If no feature is specified, a complete discovery of device along with all of its features is triggered.
 
     Parameters:
         device_ip (str): Device IP address.
