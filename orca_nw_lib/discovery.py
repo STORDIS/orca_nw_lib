@@ -121,6 +121,7 @@ def trigger_discovery(device_ip, feature_to_discover: DiscoveryFeature = None):
             discover_nw_features(ip, DiscoveryFeature.mclag_gw_macs)
             discover_nw_features(ip, DiscoveryFeature.bgp)
             discover_nw_features(ip, DiscoveryFeature.bgp_neighbors)
+            discover_nw_features(ip, DiscoveryFeature.platform)
             discover_nw_features(ip, DiscoveryFeature.stp)
             discover_nw_features(ip, DiscoveryFeature.stp_port)
             discover_nw_features(ip, DiscoveryFeature.stp_vlan)

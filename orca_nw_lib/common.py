@@ -252,6 +252,7 @@ class DiscoveryFeature(str, Enum):
     device_info = auto()
     lldp_info = auto()
     mclag_gw_macs = auto()
+    platform = auto()
 
     @staticmethod
     def get_enum_from_str(name: str):
