@@ -325,21 +325,9 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         
                         # Checks for CRM Statistics and inserts data to db  
                         if get_telemetry_db() == "influxdb":
-                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
-                            thread_influxdb = Thread(
-                                target=handle_interface_counters_influxdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_influxdb.start()
+                            handle_interface_counters_influxdb(device_ip, resp)
                         elif get_telemetry_db() == "prometheus":
-                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
-                            thread_promdb = Thread(
-                                target=handle_interface_counters_promdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_promdb.start()
+                            handle_interface_counters_promdb(device_ip, resp)
 
 
                     if ele.name == _get_port_groups_base_path().elem[0].name:
@@ -350,13 +338,6 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_port_group_config_update(device_ip, resp)
-                    # if ele.name == get_stp_global_config_path().elem[0].name:
-                    #     _logger.debug(
-                    #         "gNMI subscription stp config update received from %s -> %s",
-                    #         device_ip,
-                    #         resp,
-                    #     )
-                    #     handle_stp_config(device_ip, resp)
                     if ele.name == get_stp_port_path().elem[0].name:
                         _logger.debug(
                             "gNMI subscription stp config update received from %s -> %s",
@@ -381,21 +362,10 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         # Check the telemetry db and push the data.  
                         if get_telemetry_db() == "influxdb":
-                            _logger.debug("gNMI subscription system metric to influxdb %s",device_ip,)
-                            thread_influxdb = Thread(
-                                target=handle_system_influxdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_influxdb.start()
+                            handle_system_influxdb(device_ip, resp)
                         elif get_telemetry_db() == "prometheus":
-                            _logger.debug("gNMI subscription system metric to prometheus %s",device_ip,)
-                            thread_promdb = Thread(
-                                target=handle_system_promdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_promdb.start()
+                            handle_system_promdb(device_ip, resp)
+
 
                     # checks for CRM Statistics and inserts data to db 
                     if ele.name == get_crm_stats_path().elem[1].name:
@@ -406,21 +376,10 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         # Check the telemetry db and push the data.
                         if get_telemetry_db() == "influxdb":
-                            _logger.debug("gNMI subscription crm stats to influxdb %s",device_ip,)
-                            thread_influxdb = Thread(
-                                target=handle_crm_stats_influxdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_influxdb.start()
-                        # elif get_telemetry_db() == "prometheus":
-                        #     _logger.debug("gNMI subscription system metric to prometheus %s",device_ip,)
-                        #     thread_promdb = Thread(
-                        #         target=handle_crm_stats_promdb,
-                        #         args=(device_ip, resp),
-                        #         daemon=True,
-                        #     )
-                        #     thread_promdb.start()
+                            handle_crm_stats_influxdb(device_ip, resp)
+                        elif get_telemetry_db() == "prometheus":
+                            handle_crm_stats_promdb(device_ip, resp)
+
                         
 
             elif resp.sync_response:
