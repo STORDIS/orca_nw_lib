@@ -4,6 +4,7 @@ import threading
 from typing import List
 
 from orca_nw_lib.crm_influxdb import handle_crm_stats_influxdb
+from orca_nw_lib.crm_promdb import handle_crm_stats_promdb
 from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
 from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
 from orca_nw_lib.system_gnmi import get_crm_stats_path, get_subscription_path_for_crm_stats, get_subscription_path_for_system, get_system_base_path
