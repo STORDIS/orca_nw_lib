@@ -1,5 +1,5 @@
 
-from prometheus_client import CollectorRegistry, Gauge, Info
+from prometheus_client import CollectorRegistry, Info
 
 from orca_nw_lib.promdb_utils import write_to_prometheus
 from .gnmi_pb2 import SubscribeResponse
