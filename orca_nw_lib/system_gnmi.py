@@ -19,12 +19,30 @@ def get_system_base_path() -> Path:
     )
 
 
+# CRM Statistics Path
+def get_crm_stats_path():
+    return get_gnmi_path("openconfig-system:system/openconfig-system-crm:crm/statistics/state")
+
+# CRM ACL Statistics Path
+def get_crm_acl_stats_path():
+    return get_gnmi_path("openconfig-system:system/openconfig-system-crm:crm/acl-statistics")
+
+
 
 def get_system_info_from_device(device_ip: str):
     uptime_path = get_gnmi_path("openconfig-system:system/openconfig-system-ext:infra/state")
     ntp_path = get_gnmi_path(f"openconfig-system:system/ntp/servers/server")
     return send_gnmi_get(
         path=[uptime_path, ntp_path],
+        device_ip=device_ip,
+    )
+
+
+def get_crm_stats_from_device(device_ip: str):
+    # crm_acl_stats = get_gnmi_path("openconfig-system:system/openconfig-system-crm:crm/acl-statistics")
+    crm_acl_stats = get_crm_acl_stats_path()
+    return send_gnmi_get(
+        path=[crm_acl_stats],
         device_ip=device_ip,
     )
 
@@ -61,6 +79,28 @@ def get_subscription_path_for_system() -> List[Subscription]:
     subscriptions.append(
         Subscription(
             path=memory_path,
+            mode=SubscriptionMode.TARGET_DEFINED
+        )
+    )
+    return subscriptions
+
+
+
+
+
+
+def get_subscription_path_for_crm_stats() -> List[Subscription]:
+    """
+    Creates subscription paths for crm statistics        
+    Returns:
+        List[Subscription]: List of subscriptions for system paths
+    """
+    subscriptions = []
+
+    crm_stats = get_crm_stats_path()
+    subscriptions.append(
+        Subscription(
+            path=crm_stats,
             mode=SubscriptionMode.TARGET_DEFINED
         )
     )
