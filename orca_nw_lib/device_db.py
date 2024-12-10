@@ -38,6 +38,7 @@ def delete_device(mgt_ip: str = None):
 
     """
     try:
+        from orca_nw_lib.gnmi_sub import close_gnmi_channel
         if mgt_ip:
             ## Delete Specific Device and its components, when mgt_ip is provided.
             device = get_device_db_obj(mgt_ip)
@@ -63,9 +64,14 @@ def delete_device(mgt_ip: str = None):
                 interface.delete()
                             
             device.delete()
+            close_gnmi_channel(device_ip=mgt_ip)
         else:
             ## Delete all devices and their components. When mgt_ip is not provided.
+            devices = get_device_db_obj()
+            for device in devices or []:
+                close_gnmi_channel(device_ip=device.mgt_ip)
             clean_db()
+
         return True
     except Exception as e:
         _logger.error(f"Error: {e}")
