@@ -33,8 +33,8 @@ def insert_mclag_info_in_prometheus(device_ip: str, mclag_to_intfc_list: dict):
     """
     try:
         for mclag, interfaces in mclag_to_intfc_list.items():
-            print("mclag", mclag)
-            logger.info("Processing MCLAG object: %s with interfaces: %s", mclag, interfaces)
+            #print("mclag", mclag)
+            #logger.info("Processing MCLAG object: %s with interfaces: %s", mclag, interfaces)
             # Ensure that no value is None, replace with "None" or another default value
             info_mclag_details.labels(device_ip=device_ip).info({
                 "domain_id": str(getattr(mclag, "domain_id", "N/A")),
@@ -55,7 +55,7 @@ def insert_mclag_info_in_prometheus(device_ip: str, mclag_to_intfc_list: dict):
 
         # Push metrics to Prometheus Pushgateway
         write_to_prometheus(registry=registry)
-        logger.info("Metrics pushed to Prometheus Pushgateway successfully for IP: %s", device_ip)
+        #logger.info("Metrics pushed to Prometheus Pushgateway successfully for IP: %s", device_ip)
 
     except Exception as e:
         logger.error("Error sending metrics to Prometheus Pushgateway for IP %s: %s", device_ip, e)
