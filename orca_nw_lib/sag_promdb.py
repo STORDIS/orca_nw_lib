@@ -36,6 +36,6 @@ def insert_sag_info_in_promdb(device_ip: str, sag_data: dict):
             })
         # Push to Prometheus Pushgateway
         write_to_prometheus(registry=registry)
-        logger.info("Metrics pushed to Pushgateway successfully for IP: %s", device_ip)
+        #logger.info("Metrics pushed to Pushgateway successfully for IP: %s", device_ip)
     except Exception as e:
         logger.error(f"Error sending metrics to Pushgateway: {e}")
