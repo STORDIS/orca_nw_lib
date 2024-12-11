@@ -5,6 +5,9 @@ from typing import List
 
 from orca_nw_lib.crm_influxdb import handle_crm_stats_influxdb
 from orca_nw_lib.crm_promdb import handle_crm_stats_promdb
+from orca_nw_lib.dom_gnmi import get_dom_path, get_subscription_path_for_dom
+from orca_nw_lib.dom_influxdb import handle_dom_influxdb
+from orca_nw_lib.dom_promdb import handle_dom_promdb
 from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
 from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
 from orca_nw_lib.system_gnmi import get_crm_stats_path, get_subscription_path_for_crm_stats, get_subscription_path_for_system, get_system_base_path
@@ -324,7 +327,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         thread.start()
                         # handle_interface_config_update(device_ip, resp)
                         
-                        # Checks for CRM Statistics and inserts data to db  
+                        # Checks for Interface and inserts data to db  
                         if get_telemetry_db() == "influxdb":
                             handle_interface_counters_influxdb(device_ip, resp)
                         elif get_telemetry_db() == "prometheus":
@@ -380,6 +383,19 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             handle_crm_stats_influxdb(device_ip, resp)
                         elif get_telemetry_db() == "prometheus":
                             handle_crm_stats_promdb(device_ip, resp)
+
+                    # checks for DOM and inserts data to db 
+                    if ele.name == get_dom_path().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription crm statistics update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # Check the telemetry db and push the data.
+                        if get_telemetry_db() == "influxdb":
+                            handle_dom_influxdb(device_ip, resp)
+                        elif get_telemetry_db() == "prometheus":
+                            handle_dom_promdb(device_ip, resp)
 
                         
 
@@ -473,6 +489,7 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
             subscriptions += get_subscription_path_for_monitoring(device_ip)
             subscriptions += get_subscription_path_for_system()
             subscriptions += get_subscription_path_for_crm_stats()
+            subscriptions += get_subscription_path_for_dom()
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",
