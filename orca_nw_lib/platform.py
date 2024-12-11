@@ -1,6 +1,6 @@
+from orca_nw_lib.platform_gnmi import get_platform_info_from_device
 from orca_nw_lib.platform_influxdb import insert_platform_info_in_influxdb
 from orca_nw_lib.platform_promdb import insert_platform_info_in_prometheus
-from orca_nw_lib.platform_test import get_platform_info_from_device
 from orca_nw_lib.utils import get_logging, get_telemetry_db
 from .device_db import get_device_db_obj
 
@@ -140,25 +140,6 @@ def get_platform_details(ip_addr: str) -> dict:
         }
         for temp in temperature_info
     ]
-
-    # # Parse I2CERROR_STATS
-    # i2c_error_stats = pt_data.get("sonic-platform:sonic-platform", {}).get("I2CERROR_STATS", {}).get("I2CERROR_STATS_LIST", [])
-    # platform_details["I2CERROR_STATS"] = [
-    #     {
-    #         "name": i2c.get("name"),
-    #         "dev_addr": i2c.get("dev_addr"),
-    #         "eio": i2c.get("eio"),
-    #         "etimedout": i2c.get("etimedout"),
-    #         "ebusy": i2c.get("ebusy"),
-    #         "enxio": i2c.get("enxio"),
-    #         "einval": i2c.get("einval"),
-    #         "eagain": i2c.get("eagain"),
-    #         "eopnotsupp": i2c.get("eopnotsupp"),
-    #         "eproto": i2c.get("eproto"),
-    #         "timestamp": i2c.get("timestamp"),
-    #     }
-    #     for i2c in i2c_error_stats
-    # ]
     return platform_details
 
 
@@ -186,7 +167,8 @@ def discover_platform(device_ip: str = None):
             if platform_data and get_telemetry_db() == "influxdb":
                 insert_platform_info_in_influxdb(device_ip, platform_data)
             elif platform_data and get_telemetry_db() == "prometheus":
-                insert_platform_info_in_prometheus(device_ip, platform_data)
+                #insert_platform_info_in_prometheus(device_ip, platform_data)
+                pass
             else:
                 _logger.info("Empty platform data received")
         except Exception as e:
