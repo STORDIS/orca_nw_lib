@@ -8,15 +8,7 @@ from orca_nw_lib.influxdb_utils import load_influxdb_config
 
 
 # Load configuration from YAML file
-settings = load_orca_config()
-
-# Loads influxdb configs
-if get_telemetry_db() == "influxdb":
-    load_influxdb_config(settings)
-
-# Loads prometheus configs
-if get_telemetry_db() == "prometheus":
-    load_prometheus_config(settings)
+load_orca_config()
 
 logging.getLogger("neo4j").setLevel(logging.ERROR)
 

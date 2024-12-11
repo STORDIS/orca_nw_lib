@@ -7,6 +7,9 @@ import logging.config
 import logging
 from neomodel import config, db, clear_neo4j_database
 import yaml
+
+from orca_nw_lib.influxdb_utils import load_influxdb_config
+from orca_nw_lib.promdb_utils import load_prometheus_config
 from . import constants as const
 
 _settings = {}
@@ -93,14 +96,19 @@ def load_orca_config(orca_config_file: str = default_orca_nw_lib_config):
         dict: The parsed settings from the Orca configuration file.
     """
     global _settings
-    if not _settings:
-        with open(orca_config_file, "r") as stream:
-            try:
-                _settings = yaml.safe_load(stream)
-                print("Loaded ORCA config from {0}".format(orca_config_file))
-            except yaml.YAMLError as exc:
-                print(exc)
-        init_db_connection()
+    with open(orca_config_file, "r") as stream:
+        try:
+            _settings = yaml.safe_load(stream)
+            print("Loaded ORCA config from {0}".format(orca_config_file))
+        except yaml.YAMLError as exc:
+            print(exc)
+    init_db_connection()
+    # Loads influxdb configs
+    if get_telemetry_db() == "influxdb":
+        load_influxdb_config(_settings)
+    # Loads prometheus configs
+    if get_telemetry_db() == "prometheus":
+        load_prometheus_config(_settings)
     return _settings
 
 
