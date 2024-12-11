@@ -1,9 +1,7 @@
 import logging
 
 from orca_nw_lib.gnmi_sub import gnmi_subscribe_for_all_devices_in_db
-from orca_nw_lib.utils import get_telemetry_db, load_orca_config
-from orca_nw_lib.promdb_utils import load_prometheus_config
-from orca_nw_lib.influxdb_utils import load_influxdb_config
+from orca_nw_lib.utils import load_orca_config
 
 
 

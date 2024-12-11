@@ -8,11 +8,13 @@ import logging
 from neomodel import config, db, clear_neo4j_database
 import yaml
 
-from orca_nw_lib.influxdb_utils import load_influxdb_config
-from orca_nw_lib.promdb_utils import load_prometheus_config
+from influxdb_client import InfluxDBClient
 from . import constants as const
 
 _settings = {}
+_influxdb_client = None
+_prometheus_url = ""
+
 abspath = os.path.abspath(__file__)
 # Absolute directory name containing this file
 dname = os.path.dirname(abspath)
@@ -27,6 +29,34 @@ default_logging_config = os.environ.get(
 
 def init_db_connection():
     config.DATABASE_URL = f"{os.environ.get(const.neo4j_protocol, _settings.get(const.neo4j_protocol))}://{os.environ.get(const.neo4j_user, _settings.get(const.neo4j_user))}:{os.environ.get(const.neo4j_password, _settings.get(const.neo4j_password))}@{os.environ.get(const.neo4j_url, _settings.get(const.neo4j_url))}"
+
+# Influxdb init
+def init_influxdb_client():
+    """
+    Initialize Influxdb client
+
+    Returns:
+        Influxdb client obj
+    """
+    global _influxdb_client
+    _influxdb_client = InfluxDBClient(
+        url= get_influxdb_url(),
+        token= get_influxdb_token(),
+        org= get_influxdb_org()
+    )
+
+
+# Prometheus init
+def init_prometheus_client():
+    """
+    Initialize prometheus client
+    Returns:
+        Prometheus Client object http://localhost:9091
+    """
+    global _prometheus_url
+    _prometheus_url = f"http://{os.environ.get(const.promdb_pushgateway_url, _settings.get(const.promdb_pushgateway_url))}"
+    return _prometheus_url
+
 
 
 def clean_db():
@@ -81,6 +111,34 @@ def get_telemetry_db():
             return telemetry_db
         else:
             return False
+        
+
+# Reads InfluxDB configs
+def get_influxdb_url():
+    return f"http://{os.environ.get(const.influxdb_url, _settings.get(const.influxdb_url))}"
+
+def get_influxdb_bucket():
+    return os.environ.get(const.influxdb_bucket, _settings.get(const.influxdb_bucket))
+
+def get_influxdb_token():
+    return os.environ.get(const.influxdb_token, _settings.get(const.influxdb_token))
+
+def get_influxdb_org():
+    return os.environ.get(const.influxdb_org, _settings.get(const.influxdb_org))
+
+def get_influxdb_client():
+    global _influxdb_client
+    return _influxdb_client
+
+
+# Reads Prometheus configs
+def get_prometheus_url():
+    global _prometheus_url
+    return _prometheus_url
+
+
+def get_prometheus_job():
+    return os.environ.get(const.promdb_job, _settings.get(const.promdb_job))
 
 
 
@@ -103,14 +161,18 @@ def load_orca_config(orca_config_file: str = default_orca_nw_lib_config):
         except yaml.YAMLError as exc:
             print(exc)
     init_db_connection()
-    # Loads influxdb configs
-    if get_telemetry_db() == "influxdb":
-        load_influxdb_config(_settings)
-    # Loads prometheus configs
-    if get_telemetry_db() == "prometheus":
-        load_prometheus_config(_settings)
+    try:
+        # Init influxdb
+        if get_telemetry_db() == "influxdb":
+            init_influxdb_client()
+            print("Loaded InfluxDB config.")
+        # Init prometheus
+        if get_telemetry_db() == "prometheus":
+            init_prometheus_client()
+            print("Loaded Prometheus config.")
+    except Exception as e:
+        print(e)
     return _settings
-
 
 _logging_initialized: bool = False
 
