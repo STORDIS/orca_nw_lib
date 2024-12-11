@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Union
 
-from orca_nw_lib.utils import get_logging
+from orca_nw_lib.mclag_influxdb import insert_mclag_info_in_influxdb
+from orca_nw_lib.mclag_promdb import insert_mclag_info_in_prometheus
+from orca_nw_lib.utils import get_logging, get_telemetry_db
 from .common import MclagFastConvergence
 
 from .device_db import get_device_db_obj
@@ -63,7 +65,7 @@ def _create_mclag_graph_objects(device_ip: str) -> dict:
         mclag_obj = MCLAG(
             domain_id=domain_id,
             keepalive_interval=mclag_domain.get("config").get("keepalive-interval"),
-            mclag_sys_mac=mclag_domain.get("config").get("mclag-system-mac"),
+            mclag_sys_mac=mclag_domain.get("state").get("mclag-system-mac"),
             peer_addr=mclag_domain.get("config").get("peer-address"),
             peer_link=mclag_domain.get("config").get("peer-link"),
             session_timeout=mclag_domain.get("config").get("session-timeout"),
@@ -131,9 +133,15 @@ def discover_mclag(device_ip: str = None):
     for device in devices:
         try:
             _logger.info(f"Discovering MCLAG on device {device}.")
-            insert_device_mclag_in_db(
-                device, _create_mclag_graph_objects(device.mgt_ip)
-            )
+            mclag_data = _create_mclag_graph_objects(device.mgt_ip)
+            insert_device_mclag_in_db(device, mclag_data)
+
+            if mclag_data and get_telemetry_db() == "influxdb":
+                insert_mclag_info_in_influxdb(device_ip, mclag_data)
+            elif mclag_data and get_telemetry_db() == "prometheus":
+                insert_mclag_info_in_prometheus(device_ip, mclag_data)
+            else:
+                _logger.info("Empty mclag data received")
         except Exception as e:
             _logger.error(f"MCLAG Discovery Failed on device {device_ip}, Reason: {e}")
             raise
