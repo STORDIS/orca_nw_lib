@@ -18,6 +18,7 @@ from .bgp import discover_bgp, discover_bgp_neighbors
 from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
+from .sag import discover_sag
 from .stp import discover_stp
 from .stp_port import discover_stp_port
 from .stp_vlan import discover_stp_vlan
@@ -243,6 +244,12 @@ def discover_nw_features(device_ip: str, feature: DiscoveryFeature) -> None:
             except Exception as e:
                 _logger.info(f"STP Discovery Failed on device {device_ip}, Reason: {e}")
                 return f"STP Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.sag:
+            try:
+                discover_sag(device_ip) 
+            except Exception as e:  
+                _logger.info(f"SAG Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"SAG Discovery Failed on device {device_ip}, Reason: {e}"
         case DiscoveryFeature.stp_port:
             try:
                 discover_stp_port(device_ip)
