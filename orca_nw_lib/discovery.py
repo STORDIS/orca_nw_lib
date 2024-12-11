@@ -248,7 +248,7 @@ def discover_nw_features(device_ip: str, feature: DiscoveryFeature) -> None:
         case DiscoveryFeature.sag:
             try:
                 discover_sag(device_ip) 
-            except Exception as e:
+            except Exception as e:  
                 _logger.info(f"SAG Discovery Failed on device {device_ip}, Reason: {e}")
                 return f"SAG Discovery Failed on device {device_ip}, Reason: {e}"
         case DiscoveryFeature.stp_port:
