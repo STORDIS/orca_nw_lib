@@ -2,6 +2,7 @@ import ipaddress
 import time
 
 from orca_nw_lib.lldp_db import create_lldp_relations_in_db
+from orca_nw_lib.system import discover_system
 from .common import DiscoveryFeature
 
 from .device import discover_device, get_device_details
@@ -76,7 +77,7 @@ def _discover_device_and_enable_ifs(device_ip: str):
     discover_nw_features(device_ip, DiscoveryFeature.lldp_info)
 
 
-def _discover_device_and_lldp_info(device_ip):
+def _discover_device_and_lldp_info(device_ips: list):
     """
     Recursively discover a device and its neighbors using LLDP information.
 
@@ -85,7 +86,7 @@ def _discover_device_and_lldp_info(device_ip):
     discovered, it calls itself to discover the neighbor and so on.
 
     Args:
-        device_ip (str): The IP address of the device to be discovered.
+        device_ips (list): The IP address of the device to be discovered.
 
     Returns:
         None
@@ -106,10 +107,12 @@ def _discover_device_and_lldp_info(device_ip):
 
 def trigger_discovery(device_ips: list, feature_to_discover: DiscoveryFeature = None):
     """
-    Trigger discovery for a given device.
+    Trigger the discovery process for a device. Discover the device with the features specified.
+    If no feature is specified, a complete discovery of device along with all of its features is triggered.
 
     Parameters:
-        device_ip (str): Device IP address.
+        device_ips (list): List of device IPs to be discovered.
+        feature_to_discover (DiscoveryFeature): Feature to discover.
 
     Returns:
         None

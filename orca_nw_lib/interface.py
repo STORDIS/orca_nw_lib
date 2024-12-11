@@ -315,6 +315,19 @@ def discover_interfaces(
     intfc_name: str = None,
     config_triggered_discovery: bool = False,
 ):
+    
+    """
+    Discovers interfaces for a given device.
+
+    Args:
+        device_ip (str): The IP address of the device.
+        intfc_name (str): The name of the interface.
+        config_triggered_discovery (bool): Flag to indicate if the discovery is triggered by reading config file. Defaults to False.
+
+    Returns:
+        None
+    """
+    
     _logger.info("Interface Discovery Started.")
     devices = [get_device_db_obj(device_ip)] if device_ip else get_device_db_obj()
     for device in devices:
