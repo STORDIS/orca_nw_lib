@@ -45,77 +45,77 @@ interface_info = Info('interface_info', 'Discoverd Interface information',
                             registry=intfc_registry)
 
 def handle_interface_counters_promdb(device_ip: str, resp: SubscribeResponse):
-    """
-    Sends the subscription interface counters metrics received from a device to the prometheus pushgateway.
-    
-    Args:
-        device_ip (str): The IP address of the device
-        resp (SubscribeResponse): The subscription response containing metrics
-
-    Returns: 
-        None
-    """
-    ether = ""    
-    for ele in resp.update.prefix.elem:
-       if ele.name == "interface":
-        ether = ele.key.get("name")
-        break
-    if not ether:
-        _logger.debug("Ethernet interface not found in gNMI subscription response from %s", device_ip,)
-        return
-    
-    # Push the interface counters to prometheus pushgateway
-    for u in resp.update.update:
-        for ele in u.path.elem:
-            # assign values to variables [if key then var = value] key --> (ele.name), value --> int(u.val.uint_val)
-            if ele.name == "out-multicast-pkts":
-                out_multicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-bits-per-second":
-                in_bits_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-broadcast-pkts":
-                in_broadcast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-errors":
-                in_errors.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-octets":
-                in_octets.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-unicast-pkts":
-                in_unicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-bits-per-second":
-                out_bits_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-discards":
-                out_discards.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-octets-per-second":
-                out_octets_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-octets-per-second":
-                in_octets_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-pkts":
-                in_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-pkts-per-second":
-                in_pkts_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-errors":
-                out_errors.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-pkts":
-                out_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-pkts-per-second":
-                out_pkts_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-utilization":
-                out_utilization.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "last-clear":
-                last_clear.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-broadcast-pkts":
-                out_broadcast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-octets":
-                out_octets.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-discards":
-                in_discards.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-multicast-pkts":
-                in_multicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "in-utilization":
-                in_utilization.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-            if ele.name == "out-unicast-pkts":
-                out_unicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
-
     try:
+        """
+        Sends the subscription interface counters metrics received from a device to the prometheus pushgateway.
+
+        Args:
+            device_ip (str): The IP address of the device
+            resp (SubscribeResponse): The subscription response containing metrics
+
+        Returns: 
+            None
+        """
+        ether = ""    
+        for ele in resp.update.prefix.elem:
+           if ele.name == "interface":
+            ether = ele.key.get("name")
+            break
+        if not ether:
+            _logger.debug("Ethernet interface not found in gNMI subscription response from %s", device_ip,)
+            return
+
+        # Push the interface counters to prometheus pushgateway
+        for u in resp.update.update:
+            for ele in u.path.elem:
+                # assign values to variables [if key then var = value] key --> (ele.name), value --> int(u.val.uint_val)
+                if ele.name == "out-multicast-pkts":
+                    out_multicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-bits-per-second":
+                    in_bits_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-broadcast-pkts":
+                    in_broadcast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-errors":
+                    in_errors.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-octets":
+                    in_octets.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-unicast-pkts":
+                    in_unicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-bits-per-second":
+                    out_bits_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-discards":
+                    out_discards.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-octets-per-second":
+                    out_octets_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-octets-per-second":
+                    in_octets_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-pkts":
+                    in_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-pkts-per-second":
+                    in_pkts_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-errors":
+                    out_errors.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-pkts":
+                    out_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-pkts-per-second":
+                    out_pkts_per_second.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-utilization":
+                    out_utilization.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "last-clear":
+                    last_clear.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-broadcast-pkts":
+                    out_broadcast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-octets":
+                    out_octets.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-discards":
+                    in_discards.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-multicast-pkts":
+                    in_multicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "in-utilization":
+                    in_utilization.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+                if ele.name == "out-unicast-pkts":
+                    out_unicast_pkts.labels(device_ip=device_ip, ether_name=ether).inc(int(u.val.uint_val))
+
         write_to_prometheus(registry=registry)
     except Exception as e:
         _logger.error(f"Error insterting in prometheus: {e}")
@@ -138,7 +138,7 @@ def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
         _logger.error("Interfaces dictionary is required.")
         return
     try:
-        for intfc in interfaces.items():
+        for intfc, sub_intfc in interfaces.items():
             interface_info.labels(device_ip=device.mgt_ip, ether_name=intfc.name).info({
                 "interface_name": intfc.name,
                 "enabled": str(intfc.enabled),
@@ -155,7 +155,6 @@ def insert_device_interface_in_prometheus(device: Device, interfaces: dict):
                 "breakout_supported": str(intfc.breakout_supported),
                 "breakout_mode": str(intfc.breakout_mode)
             })
-        write_to_prometheus(registry=intfc_registry) 
-        _logger.info("Interface info successfully pushed to Pushgateway for IP: %s", device.mgt_ip)       
+        write_to_prometheus(registry=intfc_registry)
     except Exception as e:
         _logger.error(f"Error inserting in prometheus: {e}")

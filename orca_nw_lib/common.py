@@ -246,12 +246,14 @@ class DiscoveryFeature(str, Enum):
     port_group = auto()
     bgp = auto()
     bgp_neighbors = auto()
+    sag = auto()
     stp = auto()
     stp_port = auto()
     stp_vlan = auto()
     device_info = auto()
     lldp_info = auto()
     mclag_gw_macs = auto()
+    system = auto()
 
     @staticmethod
     def get_enum_from_str(name: str):
