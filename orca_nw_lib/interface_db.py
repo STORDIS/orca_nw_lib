@@ -316,7 +316,6 @@ def insert_device_interfaces_in_db(device: Device, interfaces: dict):
         # received in the dictionary after discovery.
         # because current implementation always discovers all the subinterfaces,
         # hence we have uptodate subinterfaces in the dictionary.
-        saved_i.subInterfaces.disconnect_all()
         for si in saved_i.subInterfaces.all():
             si.delete()
         for sub_i in sub_intfc:
