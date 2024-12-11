@@ -116,6 +116,9 @@ def send_gnmi_get(device_ip, path: list[Path], resend: bool = False):
             else:
                 _logger.error("Device %s is not reachable !!" % device_ip)
                 raise
+        else:
+            _logger.error("Failed to get details from %s", device_ip)
+            raise 
     except Exception as e:
         _logger.debug(
             f"{e} \n on device_ip : {device_ip} \n requested gnmi_path : {path}"
@@ -163,6 +166,9 @@ def send_gnmi_set(req: SetRequest, device_ip: str, resend: bool = False):
             else:
                 _logger.error("Device %s is not reachable !!" % device_ip)
                 raise
+        else:
+            _logger.error("Failed to send set request for device %s" % device_ip)
+            raise
     except Exception as e:
         _logger.debug(f"{e} \n on device_ip : {device_ip} \n set request : {req}")
         raise
