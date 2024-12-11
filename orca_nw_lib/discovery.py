@@ -2,6 +2,7 @@ import ipaddress
 import time
 
 from orca_nw_lib.lldp_db import create_lldp_relations_in_db
+from orca_nw_lib.sag import discover_sag
 from .common import DiscoveryFeature
 
 from .device import discover_device, get_device_details
@@ -234,6 +235,12 @@ def discover_nw_features(device_ip: str, feature: DiscoveryFeature) -> None:
             except Exception as e:
                 _logger.info(f"STP Discovery Failed on device {device_ip}, Reason: {e}")
                 return f"STP Discovery Failed on device {device_ip}, Reason: {e}"
+        case DiscoveryFeature.sag:
+            try:
+                discover_sag(device_ip)
+            except Exception as e:
+                _logger.info(f"SAG Discovery Failed on device {device_ip}, Reason: {e}")
+                return f"SAG Discovery Failed on device {device_ip}, Reason: {e}"
         case DiscoveryFeature.stp_port:
             try:
                 discover_stp_port(device_ip)
