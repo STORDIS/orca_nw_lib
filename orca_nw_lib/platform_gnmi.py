@@ -1,6 +1,6 @@
 from orca_nw_lib.gnmi_util import get_gnmi_path, send_gnmi_get
 
-def get_system_info_from_device(device_ip: str):
+def get_platform_info_from_device(device_ip: str):
     """
     Retrieves the system information from the specified device.
 
