@@ -3,8 +3,16 @@ from threading import Thread
 import threading
 from typing import List
 
+from orca_nw_lib.crm_influxdb import handle_crm_stats_influxdb
+from orca_nw_lib.crm_promdb import handle_crm_stats_promdb
+from orca_nw_lib.dom_gnmi import get_dom_path, get_subscription_path_for_dom
+from orca_nw_lib.dom_influxdb import handle_dom_influxdb
+from orca_nw_lib.dom_promdb import handle_dom_promdb
 from orca_nw_lib.interface_influxdb import handle_interface_counters_influxdb
 from orca_nw_lib.interface_promdb import handle_interface_counters_promdb
+from orca_nw_lib.system_gnmi import get_crm_stats_path, get_subscription_path_for_crm_stats, get_subscription_path_for_system, get_system_base_path
+from orca_nw_lib.system_influxdb import handle_system_influxdb
+from orca_nw_lib.system_promdb import handle_system_promdb
 from orca_nw_lib.utils import get_telemetry_db
 from .common import PortFec, Speed
 from .device_db import get_all_devices_ip_from_db, update_device_status
@@ -318,24 +326,12 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                         )
                         thread.start()
                         # handle_interface_config_update(device_ip, resp)
-
-                        # Check the telemetry db and push the data.  
+                        
+                        # Checks for Interface and inserts data to db  
                         if get_telemetry_db() == "influxdb":
-                            _logger.debug("Subed intfc counters into influxdb for %s",device_ip,)
-                            thread_influxdb = Thread(
-                                target=handle_interface_counters_influxdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_influxdb.start()
+                            handle_interface_counters_influxdb(device_ip, resp)
                         elif get_telemetry_db() == "prometheus":
-                            _logger.debug("Subed intfc counters into promdb for %s",device_ip,)
-                            thread_promdb = Thread(
-                                target=handle_interface_counters_promdb,
-                                args=(device_ip, resp),
-                                daemon=True,
-                            )
-                            thread_promdb.start()
+                            handle_interface_counters_promdb(device_ip, resp)
 
 
                     if ele.name == _get_port_groups_base_path().elem[0].name:
@@ -346,13 +342,6 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_port_group_config_update(device_ip, resp)
-                    # if ele.name == get_stp_global_config_path().elem[0].name:
-                    #     _logger.debug(
-                    #         "gNMI subscription stp config update received from %s -> %s",
-                    #         device_ip,
-                    #         resp,
-                    #     )
-                    #     handle_stp_config(device_ip, resp)
                     if ele.name == get_stp_port_path().elem[0].name:
                         _logger.debug(
                             "gNMI subscription stp config update received from %s -> %s",
@@ -367,6 +356,49 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                             resp,
                         )
                         handle_device_state(device_ip, resp)
+
+                    # checks for system metric and inserts data to db 
+                    if ele.name == get_system_base_path().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription system metric received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # Check the telemetry db and push the data.  
+                        if get_telemetry_db() == "influxdb":
+                            handle_system_influxdb(device_ip, resp)
+                        elif get_telemetry_db() == "prometheus":
+                            handle_system_promdb(device_ip, resp)
+
+
+                    # checks for CRM Statistics and inserts data to db 
+                    if ele.name == get_crm_stats_path().elem[1].name:
+                        _logger.debug(
+                            "gNMI subscription crm statistics update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # Check the telemetry db and push the data.
+                        if get_telemetry_db() == "influxdb":
+                            handle_crm_stats_influxdb(device_ip, resp)
+                        elif get_telemetry_db() == "prometheus":
+                            handle_crm_stats_promdb(device_ip, resp)
+
+                    # checks for DOM and inserts data to db 
+                    if ele.name == get_dom_path().elem[0].name:
+                        _logger.debug(
+                            "gNMI subscription crm statistics update received from %s -> %s",
+                            device_ip,
+                            resp,
+                        )
+                        # Check the telemetry db and push the data.
+                        if get_telemetry_db() == "influxdb":
+                            handle_dom_influxdb(device_ip, resp)
+                        elif get_telemetry_db() == "prometheus":
+                            handle_dom_promdb(device_ip, resp)
+
+                        
+
             elif resp.sync_response:
                 global device_sync_responses
                 _logger.info(
@@ -455,6 +487,9 @@ def gnmi_subscribe(device_ip: str, force_resubscribe: bool = False):
         ## add get_subscription_path_for_monitoring to subscritions if telemetry_db is true
         if get_telemetry_db():
             subscriptions += get_subscription_path_for_monitoring(device_ip)
+            subscriptions += get_subscription_path_for_system()
+            subscriptions += get_subscription_path_for_crm_stats()
+            subscriptions += get_subscription_path_for_dom()
         if not subscriptions:
             _logger.warn(
                 "No subscription paths created for %s, Check if device with its components and config is discovered in DB or rediscover device.",

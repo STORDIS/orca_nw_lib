@@ -131,6 +131,7 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
         if is_grpc_device_listening(device_ip):
             _logger.info("Getting device details from %s", device_ip)
             details = get_device_details_from_device(device_ip)
+            details["mgt_ip"] = device_ip
             return True, details
         return False, "SONiC not found"
     except Exception as e:
@@ -143,7 +144,6 @@ def validate_and_get_sonic_details_from_device(device_ip: str) -> tuple[bool, di
 def install_image_on_device(
         device_ip: str,
         image_url: str,
-        discover_also: bool = False,
         username: str = None,
         password: str = None,
 ):
@@ -152,7 +152,6 @@ def install_image_on_device(
     Args:
         device_ip (str): The IP address of the device.
         image_url (str): The URL of the image to install.
-        discover_also (bool, optional): Whether to discover the device. Defaults to False.
         username (str, optional): The username to use for authentication. Defaults to None.
         password (str, optional): The password to use for authentication. Defaults to None.
     """
@@ -165,10 +164,6 @@ def install_image_on_device(
         # Wait for the device to reconnect
         is_grpc_device_listening(device_ip, max_retries=10, interval=10)
 
-        # Trigger discovery if discover_also is True
-        if discover_also:
-            _logger.info("Triggering discovery on %s", device_ip)
-            trigger_discovery(device_ip)
         return {"output": output, "error": error}
     except Exception as e:
         _logger.error("Failed to install image on device %s: %s", device_ip, e)
@@ -286,7 +281,7 @@ def switch_image_on_device(device_ip: str, image_name: str):
             # Trigger discovery if discover_also is True
             try:
                 _logger.info("Triggering discovery on device %s.", device_ip)
-                trigger_discovery(device_ip)
+                trigger_discovery(device_ips=[device_ip])
             except Exception as e:
                 _logger.error(
                     "Failed to trigger discovery on device %s. Error: %s", device_ip, e

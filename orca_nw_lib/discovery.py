@@ -18,8 +18,6 @@ from .bgp import discover_bgp, discover_bgp_neighbors
 from .mclag import discover_mclag, discover_mclag_gw_macs
 
 from .port_chnl import discover_port_chnl
-from .sag import discover_sag
-from .platform import discover_platform
 from .stp import discover_stp
 from .stp_port import discover_stp_port
 from .stp_vlan import discover_stp_vlan
