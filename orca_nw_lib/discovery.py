@@ -16,6 +16,8 @@ from .portgroup import discover_port_groups
 from .bgp import discover_bgp, discover_bgp_neighbors
 
 from .mclag import discover_mclag, discover_mclag_gw_macs
+from .sag import discover_sag
+from .platform import discover_platform
 
 from .port_chnl import discover_port_chnl
 from .stp import discover_stp
