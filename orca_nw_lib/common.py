@@ -247,6 +247,7 @@ class DiscoveryFeature(str, Enum):
     bgp = auto()
     bgp_neighbors = auto()
     sag = auto()
+    platform = auto()
     stp = auto()
     stp_port = auto()
     stp_vlan = auto()
