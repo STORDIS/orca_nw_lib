@@ -1,6 +1,6 @@
 from orca_nw_lib.platform_gnmi import get_platform_info_from_device
 from orca_nw_lib.platform_influxdb import insert_platform_info_in_influxdb
-from orca_nw_lib.platform_promdb import insert_platform_info_in_prometheus
+#from orca_nw_lib.platform_promdb import insert_platform_info_in_prometheus
 from orca_nw_lib.utils import get_logging, get_telemetry_db
 from .device_db import get_device_db_obj
 
