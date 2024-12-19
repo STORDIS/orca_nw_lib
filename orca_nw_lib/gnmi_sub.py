@@ -419,8 +419,7 @@ def handle_update(device_ip: str, subscriptions: List[Subscription]):
                 )
 
         except Exception as e:
-            _logger.error(e)
-            raise
+            _logger.debug("Will not receive gNMI subscription response from %s , Maybe due subscription has been cancelled. %s ", device_ip, e)
 
 """
 dictionary to store the sync response received from the device.
@@ -639,21 +638,22 @@ def gnmi_unsubscribe(device_ip: str, retries: int = 5, timeout: int = 1) -> None
         try:
             _logger.info("Removing subscription for %s", device_ip)
             subscription.cancel()
+            ## Remove the subscription thread
+            # Thread can only be reomved when subscription is cancelled.
+            thread_name = get_subscription_thread_name(device_ip)
+            while retries > 0:
+                _logger.info("Checking if subscription removed for %s", device_ip)
+                if thread_name in get_running_thread_names():
+                    _logger.error("Subscription thread not removed for %s", device_ip)
+                else:
+                    _logger.info("Removed subscription thread for %s", device_ip)
+                    break
+                time.sleep(timeout)
+                retries -= 1
+            _logger.debug("Currently running threads %s", get_running_thread_names())
         except Exception as e:
             _logger.debug("Failed to remove subscription for %s: %s", device_ip, e)
-            raise
 
-    thread_name = get_subscription_thread_name(device_ip)
-    while retries > 0:
-        _logger.info("Checking if subscription removed for %s", device_ip)
-        if thread_name in get_running_thread_names():
-            _logger.error("Subscription not removed for %s", device_ip)
-        else:
-            _logger.info("Removed subscription for %s", device_ip)
-            break
-        time.sleep(timeout)
-        retries -= 1
-    _logger.debug("Currently running threads %s", get_running_thread_names())
 
 
 def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> None:
@@ -678,7 +678,6 @@ def close_gnmi_channel(device_ip: str, retries: int = 5, timeout: int = 1) -> No
         _logger.info("Closed channel for %s", device_ip)
     except Exception as e:
         _logger.debug("Failed to close channel for %s: %s", device_ip, e)
-        raise
 
     # remove gnmi stub from global stubs
     from orca_nw_lib.gnmi_util import remove_stub
