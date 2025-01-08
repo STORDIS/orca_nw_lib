@@ -84,10 +84,11 @@ def get_device_details(mgt_ip: Optional[str] = None) -> Union[dict, List[dict]]:
         return op_dict
 
 
-def discover_device(device_ip:str):
+def discover_device_basic_system_details(device_ip:str):
     """
-    Discover a device by its IP address and insert the device details into the database.
-
+    Discover only the basic system details of a device with the given IP address and insert the device details into the database.
+    Function doesn't discover any network topology or any network configuration of the given device.
+    
     Args:
         device_ip (str): The IP address of the device to be discovered.
 

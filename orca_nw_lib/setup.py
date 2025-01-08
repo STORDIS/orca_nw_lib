@@ -4,7 +4,7 @@ import re
 import paramiko
 from orca_nw_lib.device_gnmi import get_device_details_from_device
 
-from orca_nw_lib.discovery import trigger_discovery
+from orca_nw_lib.discovery import discover_device
 from orca_nw_lib.gnmi_util import remove_stub
 
 from orca_nw_lib.utils import (
@@ -281,7 +281,7 @@ def switch_image_on_device(device_ip: str, image_name: str):
             # Trigger discovery if discover_also is True
             try:
                 _logger.info("Triggering discovery on device %s.", device_ip)
-                trigger_discovery(device_ips=[device_ip])
+                discover_device(device_ips=[device_ip])
             except Exception as e:
                 _logger.error(
                     "Failed to trigger discovery on device %s. Error: %s", device_ip, e

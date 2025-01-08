@@ -5,7 +5,7 @@ from orca_nw_lib.lldp_db import create_lldp_relations_in_db
 from orca_nw_lib.system import discover_system
 from .common import DiscoveryFeature
 
-from .device import discover_device, get_device_details
+from .device import discover_device_basic_system_details, get_device_details
 from .device_db import get_all_devices_ip_from_db
 from .gnmi_sub import gnmi_subscribe, sync_response_received
 
@@ -106,14 +106,16 @@ def _discover_device_and_lldp_info(device_ips: list):
                 _discover_device_and_lldp_info(device_ips=[nbr_ip])
 
 
-def trigger_discovery(device_ips: list, feature_to_discover: DiscoveryFeature = None):
+def discover_device(device_ips: list, feature_to_discover: DiscoveryFeature = None):
     """
-    Trigger the discovery process for a device. Discover the device with the features specified.
-    If no feature is specified, a complete discovery of device along with all of its features is triggered.
+    Discover the devices, in the list `device_ips` with the features specified.
+    Function not only discovers device's basic system details but also its network features and topology associated.
+    If no feature is specified, a complete discovery of all of the features is triggered.
 
     Parameters:
         device_ips (list): List of device IPs to be discovered.
-        feature_to_discover (DiscoveryFeature): Feature to discover.
+        feature_to_discover (DiscoveryFeature): Feature to discover. If not specified, a complete device discovery with all its features triggered.
+        
 
     Returns:
         None
@@ -163,7 +165,7 @@ def discover_device_from_config() -> []:
                 "Invalid network address- {ip_or_nw}, can not discover devices !!"
             )
             return report
-        trigger_discovery(device_ips=[str(ip) for ip in ipaddress.ip_network(ip_or_nw, strict=False)])
+        discover_device(device_ips=[str(ip) for ip in ipaddress.ip_network(ip_or_nw, strict=False)])
     return report
 
 
@@ -193,7 +195,7 @@ def discover_nw_features(device_ip: str, feature: DiscoveryFeature) -> None:
                 return f"Port Group Discovery Failed on device {device_ip}, Reason: {e}"
         case DiscoveryFeature.device_info:
             try:
-                discover_device(device_ip)
+                discover_device_basic_system_details(device_ip)
             except Exception as e:
                 _logger.info(f"Device Info Discovery Failed on device {device_ip}, Reason: {e}")
                 return f"Device Info Discovery Failed on device {device_ip}, Reason: {e}"
