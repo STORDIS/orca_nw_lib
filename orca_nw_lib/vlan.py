@@ -211,6 +211,7 @@ def config_vlan(device_ip: str, vlan_name: str, **kwargs):
         descr (str, optional): The description of the VLAN. Defaults to None.
         mem_ifs (dict[str:IFMode], optional): A dictionary mapping interface names to VLAN tag modes. Defaults to None.
         mtu (int, optional): The MTU of the VLAN. Defaults to None.
+        
     Raises:
         Exception: If there is an error while configuring the VLAN on the device.
 
