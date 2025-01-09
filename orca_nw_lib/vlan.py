@@ -201,8 +201,16 @@ def config_vlan(device_ip: str, vlan_name: str, **kwargs):
     Args:
         device_ip (str): The IP address of the device.
         vlan_name (str): The name of the VLAN.
-        **kwargs: Additional keyword arguments to be passed to the `config_vlan_on_device` function.
-
+        kwargs (dict): The configuration parameters of the vlan.
+        
+    kwargs:
+        autostate (VlanAutoState, optional): The autostate of the VLAN. Defaults to None.
+        ip_addr_with_prefix (str, optional): The IP address of the VLAN. Defaults to None.
+        anycast_addr (List[str], optional): The anycast ip (or) sag ip of the VLAN. Defaults to None.
+        enabled (bool, optional): Whether the VLAN is enabled. Defaults to None.
+        descr (str, optional): The description of the VLAN. Defaults to None.
+        mem_ifs (dict[str:IFMode], optional): A dictionary mapping interface names to VLAN tag modes. Defaults to None.
+        mtu (int, optional): The MTU of the VLAN. Defaults to None.
     Raises:
         Exception: If there is an error while configuring the VLAN on the device.
 
@@ -220,7 +228,7 @@ def config_vlan(device_ip: str, vlan_name: str, **kwargs):
 
 def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:IFMode]):
     """
-    Adds VLAN members to a device.
+    adds a VLAN members on a device.
 
     Args:
         device_ip (str): The IP address of the device.
@@ -232,6 +240,9 @@ def add_vlan_mem(device_ip: str, vlan_name: str, mem_ifs: dict[str:IFMode]):
 
     Returns:
         None
+        
+    Example:
+        >>> add_vlan_mem(10.10.10.10, Vlan1, {"Ethernet0": IFMode.ACCESS, "Ethernet1": IFMode.TRUNK})
     """
 
     try:
@@ -283,7 +294,7 @@ def del_vlan_mem(device_ip: str, vlan_name: str, if_name: str):
 
     Args:
         device_ip (str): The IP address of the device.
-        vlan_name (int): The ID of the VLAN.
+        vlan_name (str): The name of the VLAN. 
         if_name (str): The name of the interface to be removed from the VLAN.
         if_mode (IFMode): The mode of the interface to be removed from the VLAN.
 
